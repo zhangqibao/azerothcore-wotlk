@@ -98,5 +98,12 @@ local.properties
 #  !modules/yourmodule
 #
 # ==================
+<<<<<<< HEAD
 .cache
 compile_commands.json
+=======
+
+#NPCBots
+!/data/sql/custom/db_characters/
+!/data/sql/custom/db_world/
+>>>>>>> npcbot/npcbots_3.3.5

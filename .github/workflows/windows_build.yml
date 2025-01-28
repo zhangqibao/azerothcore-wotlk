@@ -1,7 +1,13 @@
 name: windows-build
 on:
   push:
+<<<<<<< HEAD
     branches: [ "Playerbot" ]
+=======
+    branches:
+      - 'npcbots_3.3.5'
+      - 'CI'
+>>>>>>> npcbot/npcbots_3.3.5
   pull_request:
     branches: [ "Playerbot" ]
 
@@ -19,6 +25,10 @@ jobs:
     name: ${{ matrix.os }}
     env:
       BOOST_ROOT: C:\local\boost_1_82_0
+<<<<<<< HEAD
+=======
+    if: github.repository == 'trickerer/AzerothCore-wotlk-with-NPCBots' && !github.event.pull_request.draft
+>>>>>>> npcbot/npcbots_3.3.5
     steps:
       - uses: actions/checkout@v4
       - name: ccache
