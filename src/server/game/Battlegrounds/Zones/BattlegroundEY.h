@@ -388,6 +388,9 @@ struct CaptureEYPointInfo
     int8 _barStatus;
     uint32 _areaTrigger;
     int8 _playersCount[PVP_TEAMS_COUNT];
+    //npcbot
+    Creature* bot = nullptr;
+    //end npcbot
 
     bool IsUnderControl(TeamId teamId) const { return _ownerTeamId == teamId; }
     bool IsUnderControl() const { return _ownerTeamId != TEAM_NEUTRAL; }
@@ -468,33 +471,8 @@ private:
     /* Scorekeeping */
     void AddPoints(TeamId teamId, uint32 points);
 
-<<<<<<< HEAD
     CaptureEYPointInfo _capturePointInfo[EY_POINTS_MAX];
-=======
-    struct CapturePointInfo
-    {
-        CapturePointInfo() : _ownerTeamId(TEAM_NEUTRAL), _barStatus(BG_EY_PROGRESS_BAR_STATE_MIDDLE), _areaTrigger(0)
-        {
-            _playersCount[TEAM_ALLIANCE] = 0;
-            _playersCount[TEAM_HORDE] = 0;
-        }
 
-        TeamId _ownerTeamId;
-        int8 _barStatus;
-        uint32 _areaTrigger;
-        int8 _playersCount[PVP_TEAMS_COUNT];
-        Player* player = nullptr;
-        //npcbot
-        Creature* bot = nullptr;
-        //end npcbot
-
-        bool IsUnderControl(TeamId teamId) const { return _ownerTeamId == teamId; }
-        bool IsUnderControl() const { return _ownerTeamId != TEAM_NEUTRAL; }
-        bool IsUncontrolled() const { return _ownerTeamId == TEAM_NEUTRAL; }
-    };
-
-    CapturePointInfo _capturePointInfo[EY_POINTS_MAX];
->>>>>>> npcbot/npcbots_3.3.5
     EventMap _bgEvents;
     uint32 _honorTics;
     uint8 _ownedPointsCount[PVP_TEAMS_COUNT];
