@@ -328,7 +328,7 @@ public:
     //end npcbot
 
     bool UpdatePlayerScore(Player* player, uint32 type, uint32 value, bool doAddHonor = true) override;
-    void FillInitialWorldStates(WorldPacket& data) override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void EventPlayerClickedOnFlag(Player* source, GameObject* gameObject) override;
 
     bool AllNodesConrolledByTeam(TeamId teamId) const override;
@@ -354,5 +354,6 @@ private:
     uint32 _reputationTics;
     uint8 _controlledPoints[PVP_TEAMS_COUNT] {};
     bool _teamScores500Disadvantage[PVP_TEAMS_COUNT] {};
+    uint32 _configurableMaxTeamScore;
 };
 #endif

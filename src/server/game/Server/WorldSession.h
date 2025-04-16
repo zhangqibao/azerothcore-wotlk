@@ -341,7 +341,7 @@ protected:
 struct PacketCounter
 {
     time_t lastReceiveTime;
-    uint32 amountCounter;
+    uint16 amountCounter;
 };
 
 /// Player session in the World
@@ -466,7 +466,7 @@ public:
 
     void SendTradeStatus(TradeStatus status);
     void SendUpdateTrade(bool trader_data = true);
-    void SendCancelTrade();
+    void SendCancelTrade(TradeStatus status);
 
     void SendPetitionQueryOpcode(ObjectGuid petitionguid);
 
@@ -528,9 +528,9 @@ public:
     time_t m_muteTime;
 
     // Locales
-    LocaleConstant GetSessionDbcLocale() const { return /*_isBot? LOCALE_enUS : */m_sessionDbcLocale; }
-    LocaleConstant GetSessionDbLocaleIndex() const { return /*_isBot? LOCALE_enUS : */m_sessionDbLocaleIndex; }
-    char const* GetAcoreString(uint32 entry) const;
+    LocaleConstant GetSessionDbcLocale() const { return m_sessionDbcLocale; }
+    LocaleConstant GetSessionDbLocaleIndex() const { return m_sessionDbLocaleIndex; }
+    std::string GetAcoreString(uint32 entry) const;
     std::string const* GetModuleString(std::string module, uint32 id) const;
 
     uint32 GetLatency() const { return m_latency; }
@@ -1134,22 +1134,21 @@ protected:
     {
         friend class World;
     public:
-        DosProtection(WorldSession* s);
-        bool EvaluateOpcode(WorldPacket& p, time_t time) const;
-    protected:
-        enum Policy
+        enum class Policy
         {
-            POLICY_LOG,
-            POLICY_KICK,
-            POLICY_BAN
+            Process,
+            Kick,
+            Ban,
+            Log,
+            BlockingThrottle,
+            DropPacket
         };
 
-        uint32 GetMaxPacketCounterAllowed(uint16 opcode) const;
-
+        DosProtection(WorldSession* s);
+        Policy EvaluateOpcode(WorldPacket const& p, time_t const time) const;
+    protected:
         WorldSession* Session;
-
     private:
-        Policy _policy;
         typedef std::unordered_map<uint16, PacketCounter> PacketThrottlingMap;
         // mark this member as "mutable" so it can be modified even in const functions
         mutable PacketThrottlingMap _PacketThrottlingMap;
