@@ -45,10 +45,14 @@
 #include "Weather.h"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 //npcbot
 #include "botmgr.h"
 //end npcbot
 
+<<<<<<< HEAD
 union u_map_magic
 {
     char asChar[4];
@@ -66,6 +70,9 @@ static uint16 const holetab_v[4] = { 0x000F, 0x00F0, 0x0F00, 0xF000 };
 =======
 #define MAP_INVALID_ZONE        0xFFFFFFFF
 >>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
+=======
+#define MAP_INVALID_ZONE        0xFFFFFFFF
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 
 ZoneDynamicInfo::ZoneDynamicInfo() : MusicId(0), WeatherId(WEATHER_STATE_FINE),
                                      WeatherGrade(0.0f), OverrideLightId(0), LightFadeInTime(0) { }

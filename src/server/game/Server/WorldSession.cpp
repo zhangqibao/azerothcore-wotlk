@@ -1432,6 +1432,7 @@ WorldSession::DosProtection::Policy WorldSession::DosProtection::EvaluateOpcode(
         }
         default: // invalid policy
 <<<<<<< HEAD
+<<<<<<< HEAD
             return true;
     }
 }
@@ -1694,6 +1695,9 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
 =======
             break;
 >>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
+=======
+            break;
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
     }
 
     return WorldSession::DosProtection::Policy(policy->Policy);

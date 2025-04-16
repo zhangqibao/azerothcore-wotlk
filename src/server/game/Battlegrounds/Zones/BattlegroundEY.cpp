@@ -779,7 +779,7 @@ void BattlegroundEY::EventBotTeamCapturedPoint(Creature const* bot, TeamId teamI
 
     _capturePointInfo[point]._ownerTeamId = teamId;
 
-    GraveyardStruct const* sg = sGraveyard->GetGraveyard(m_CapturingPointTypes[point].GraveYardId);
+    GraveyardStruct const* sg = sGraveyard->GetGraveyard(m_CapturingPointTypes[point].GraveyardId);
     AddSpiritGuide(point, sg->x, sg->y, sg->z, 3.124139f, teamId);
 
     UpdatePointsIcons(point);
@@ -874,6 +874,9 @@ bool BattlegroundEY::UpdatePlayerScore(Player* player, uint32 type, uint32 value
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 //npcbot
 bool BattlegroundEY::UpdateBotScore(Creature const* bot, uint32 type, uint32 value)
 {
@@ -883,10 +886,14 @@ bool BattlegroundEY::UpdateBotScore(Creature const* bot, uint32 type, uint32 val
 }
 //end npcbot
 
+<<<<<<< HEAD
 void BattlegroundEY::FillInitialWorldStates(WorldPacket& data)
 =======
 void BattlegroundEY::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 >>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
+=======
+void BattlegroundEY::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 {
     packet.Worldstates.reserve(22);
     packet.Worldstates.emplace_back(EY_HORDE_BASE, _ownedPointsCount[TEAM_HORDE]);
@@ -955,7 +962,7 @@ GraveyardStruct const* BattlegroundEY::GetClosestGraveyardForBot(Creature* bot) 
     {
         if (_capturePointInfo[i].IsUnderControl(GetBotTeamId(bot->GetGUID())))
         {
-            entry = sGraveyard->GetGraveyard(m_CapturingPointTypes[i].GraveYardId);
+            entry = sGraveyard->GetGraveyard(m_CapturingPointTypes[i].GraveyardId);
             dist = (entry->x - x) * (entry->x - x) + (entry->y - y) * (entry->y - y) + (entry->z - z) * (entry->z - z);
             if (dist < minDist)
             {

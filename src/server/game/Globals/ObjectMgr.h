@@ -1548,10 +1548,16 @@ private:
     InstanceTemplateContainer _instanceTemplateStore;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     CreatureOutfitContainer _creatureOutfitStore;
 =======
     CreatureSparringContainer _creatureSparringStore;
 >>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
+=======
+    CreatureOutfitContainer _creatureOutfitStore;
+
+    CreatureSparringContainer _creatureSparringStore;
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 
 private:
     void LoadScripts(ScriptsType type);

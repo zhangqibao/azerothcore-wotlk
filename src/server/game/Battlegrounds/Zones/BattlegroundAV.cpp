@@ -1334,6 +1334,9 @@ void BattlegroundAV::EventPlayerAssaultsPoint(Player* player, uint32 object)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 void BattlegroundAV::EventBotAssaultsPoint(Creature* bot, uint32 object)
 {
     ASSERT(GetStatus() == STATUS_IN_PROGRESS);
@@ -1440,11 +1443,15 @@ void BattlegroundAV::EventBotAssaultsPoint(Creature* bot, uint32 object)
     PlaySoundToAll((teamId == TEAM_ALLIANCE) ? AV_SOUND_ALLIANCE_ASSAULTS : AV_SOUND_HORDE_ASSAULTS);
 }
 
+<<<<<<< HEAD
 void BattlegroundAV::FillInitialWorldStates(WorldPacket& data)
 =======
 void BattlegroundAV::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 >>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
 {
+=======
+void BattlegroundAV::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet){
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
     bool stateok;
     packet.Worldstates.reserve(7*2*2 + 8*2*2 + 5);
     //graveyards

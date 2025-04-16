@@ -432,12 +432,18 @@ public:
     void GetVoidClosePoint(float& x, float& y, float& z, float size, float distance2d = 0, float relAngle = 0, float controlZ = 0) const;
     bool GetClosePoint(float& x, float& y, float& z, float size, float distance2d = 0, float angle = 0, WorldObject const* forWho = nullptr, bool force = false) const;
 <<<<<<< HEAD
+<<<<<<< HEAD
     void MovePosition(Position& pos, float dist, float angle, bool disableWarning = false);
     Position GetNearPosition(float dist, float angle, bool disableWarning = false);
+=======
+    void MovePosition(Position& pos, float dist, float angle);
+    Position GetNearPosition(float dist, float angle);
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
     void MovePositionToFirstCollision(Position& pos, float dist, float angle) const;
     Position GetFirstCollisionPosition(float startX, float startY, float startZ, float destX, float destY);
     Position GetFirstCollisionPosition(float destX, float destY, float destZ);
     Position GetFirstCollisionPosition(float dist, float angle) const;
+<<<<<<< HEAD
     Position GetRandomNearPosition(float radius, bool disableWarning = false);
 =======
     void MovePosition(Position& pos, float dist, float angle);
@@ -448,6 +454,9 @@ public:
     Position GetFirstCollisionPosition(float dist, float angle);
     Position GetRandomNearPosition(float radius);
 >>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
+=======
+    Position GetRandomNearPosition(float radius);
+>>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 
     void GetContactPoint(WorldObject const* obj, float& x, float& y, float& z, float distance2d = CONTACT_DISTANCE) const;
     void GetChargeContactPoint(WorldObject const* obj, float& x, float& y, float& z, float distance2d = CONTACT_DISTANCE) const;
