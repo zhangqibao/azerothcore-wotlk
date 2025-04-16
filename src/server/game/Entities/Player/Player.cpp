@@ -458,22 +458,11 @@ Player::~Player()
     delete m_reputationMgr;
     delete _cinematicMgr;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
     //npcbot
     delete _botMgr;
     //end npcbot
 
-<<<<<<< HEAD
-    sWorld->DecreasePlayerCount();
-=======
     sWorldSessionMgr->DecreasePlayerCount();
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
-    sWorldSessionMgr->DecreasePlayerCount();
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 
     if (!m_isInSharedVisionOf.empty())
     {
@@ -4418,24 +4407,13 @@ void Player::DeleteFromDB(ObjectGuid::LowType lowGuid, uint32 accountId, bool up
 
                 Corpse::DeleteFromDB(playerGuid, trans);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
                 //npcbot - erase npcbots and manager data
                 uint32 newOwner = 0;
                 BotDataMgr::UpdateNpcBotDataAll(lowGuid, NPCBOT_UPDATE_OWNER, &newOwner);
                 BotDataMgr::EraseNpcBotMgrData(playerGuid);
                 //end npcbot
 
-<<<<<<< HEAD
-                sScriptMgr->OnDeleteFromDB(trans, lowGuid);
-=======
                 sScriptMgr->OnPlayerDeleteFromDB(trans, lowGuid);
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
-                sScriptMgr->OnPlayerDeleteFromDB(trans, lowGuid);
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 
                 CharacterDatabase.CommitTransaction(trans);
                 break;
@@ -12938,26 +12916,11 @@ bool Player::isHonorOrXPTarget(Unit* victim) const
         return false;
 
     if (victim->IsCreature())
-<<<<<<< HEAD
-<<<<<<< HEAD
-    {
-        //npcbot: count npcbots at xp targets (DEPRECATED)
-        if (victim->ToCreature()->IsNPCBotOrPet())
-            return true;
-        //end npcbots
-
-        if (victim->IsTotem() || victim->IsCritter() || victim->IsPet() || (victim->ToCreature()->GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_XP))
-        {
-=======
         if (victim->IsTotem() || victim->IsCritter() || victim->IsPet() || victim->ToCreature()->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_XP))
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
-        if (victim->IsTotem() || victim->IsCritter() || victim->IsPet() || victim->ToCreature()->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_XP))
-        //npcbot: count npcbots at xp targets (DEPRECATED)
-        if (!victim->ToCreature()->IsNPCBotOrPet())
-        //end npcbots
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
-            return false;
+            //npcbot: count npcbots at xp targets (DEPRECATED)
+            if (!victim->ToCreature()->IsNPCBotOrPet())
+                //end npcbots
+                return false;
 
     return true;
 }

@@ -863,10 +863,6 @@ GraveyardStruct const* BattlegroundWS::GetClosestGraveyard(Player* player)
         return sGraveyard->GetGraveyard(player->GetTeamId() == TEAM_ALLIANCE ? WS_GRAVEYARD_FLAGROOM_ALLIANCE : WS_GRAVEYARD_FLAGROOM_HORDE);
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 //npcbot
 GraveyardStruct const* BattlegroundWS::GetClosestGraveyardForBot(Creature* bot) const
 {
@@ -877,14 +873,7 @@ GraveyardStruct const* BattlegroundWS::GetClosestGraveyardForBot(Creature* bot) 
 }
 //end npcbot
 
-<<<<<<< HEAD
-void BattlegroundWS::FillInitialWorldStates(WorldPacket& data)
-=======
 void BattlegroundWS::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
-void BattlegroundWS::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 {
     packet.Worldstates.reserve(7);
     packet.Worldstates.emplace_back(BG_WS_FLAG_CAPTURES_ALLIANCE, GetTeamScore(TEAM_ALLIANCE));

@@ -4506,9 +4506,6 @@ Debug.Arena = 0
 ###################################################################################################
 
 ###################################################################################################
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 # DYNAMIC RESPAWN SETTINGS
 #
 #
@@ -4554,8 +4551,6 @@ Respawn.DynamicMinimumGameObject = 10
 #
 ###################################################################################################
 
-###################################################################################################
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 # NPCBOT CONFIGURATION
 #
 #    NpcBot.Enable
@@ -5270,52 +5265,6 @@ NpcBot.HK.Rate.Honor = 1.0
 #                     1 - (Enabled)
 
 NpcBot.Premade.Enable = 0
-<<<<<<< HEAD
-=======
-# DYNAMIC RESPAWN SETTINGS
-#
-#
-#    Respawn.DynamicRateCreature
-#        Description: Controls how creature respawn times adjust based on player count in a zone.
-#                     The respawn time is unchanged up to the configured number of players.
-#                     As player count exceeds this value, respawn times decrease proportionally
-#                     (e.g., at double the player count, respawn times are halved; at triple the player count, respawns happen three times as fast).
-#                     Does not affect instanced creatures, bosses, or quest givers.
-#                     Formula: adjustFactor = rate / playerCount
-#                              RespawnTime = RespawnTime * adjustFactor
-#        Default:     1 (Disabled)
-
-Respawn.DynamicRateCreature = 1
-
-#
-#    Respawn.DynamicMinimumCreature
-#        Description: The minimum respawn time for a creature under dynamic scaling.
-#        Default:     10 - (10 seconds)
-
-Respawn.DynamicMinimumCreature = 10
-
-#
-#    Respawn.DynamicRateGameObject
-#        Description: Controls how gameobject respawn times adjust based on player count in a zone.
-#                     The respawn time is unchanged up to the configured number of players.
-#                     As player count exceeds this value, respawn times decrease proportionally
-#                     (e.g., at double the player count, respawn times are halved; at triple the player count, respawns happen three times as fast).
-#                     Does not affect instanced objects or quest givers.
-#                     Formula: adjustFactor = rate / playerCount
-#                              RespawnTime = RespawnTime * adjustFactor
-#        Default:     1 (Disabled)
-
-Respawn.DynamicRateGameObject = 1
-
-#
-#    Respawn.DynamicMinimumGameObject
-#        Description: The minimum respawn time for a gameobject under dynamic scaling.
-#        Default:     10 - (10 seconds)
-
-Respawn.DynamicMinimumGameObject = 10
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 
 #
 ###################################################################################################

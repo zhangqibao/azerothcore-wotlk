@@ -380,32 +380,6 @@ public: /* PlayerScript */
     void OnPlayerEquip(Player* player, Item* it, uint8 bag, uint8 slot, bool update);
     void OnPlayerJoinBG(Player* player);
     void OnPlayerJoinArena(Player* player);
-<<<<<<< HEAD
-    void GetCustomGetArenaTeamId(Player const* player, uint8 slot, uint32& teamID) const;
-    void GetCustomArenaPersonalRating(Player const* player, uint8 slot, uint32& rating) const;
-    void OnGetMaxPersonalArenaRatingRequirement(Player const* player, uint32 minSlot, uint32& maxArenaRating) const;
-    void OnLootItem(Player* player, Item* item, uint32 count, ObjectGuid lootguid);
-    void OnBeforeFillQuestLootItem(Player* player, LootItem& item);
-    void OnStoreNewItem(Player* player, Item* item, uint32 count);
-    void OnCreateItem(Player* player, Item* item, uint32 count);
-    void OnQuestRewardItem(Player* player, Item* item, uint32 count);
-    bool CanPlaceAuctionBid(Player* player, AuctionEntry* auction);
-    void OnGroupRollRewardItem(Player* player, Item* item, uint32 count, RollVote voteType, Roll* roll);
-    bool OnBeforeOpenItem(Player* player, Item* item);
-    bool OnBeforePlayerQuestComplete(Player* player, uint32 quest_id);
-    void OnQuestComputeXP(Player* player, Quest const* quest, uint32& xpValue);
-    void OnBeforePlayerDurabilityRepair(Player* player, ObjectGuid npcGUID, ObjectGuid itemGUID, float& discountMod, uint8 guildBank);
-    void OnBeforeBuyItemFromVendor(Player* player, ObjectGuid vendorguid, uint32 vendorslot, uint32& item, uint8 count, uint8 bag, uint8 slot);
-    void OnBeforeStoreOrEquipNewItem(Player* player, uint32 vendorslot, uint32& item, uint8 count, uint8 bag, uint8 slot, ItemTemplate const* pProto, Creature* pVendor, VendorItem const* crItem, bool bStore);
-    void OnAfterStoreOrEquipNewItem(Player* player, uint32 vendorslot, Item* item, uint8 count, uint8 bag, uint8 slot, ItemTemplate const* pProto, Creature* pVendor, VendorItem const* crItem, bool bStore);
-    void OnAfterUpdateMaxPower(Player* player, Powers& power, float& value);
-    void OnAfterUpdateMaxHealth(Player* player, float& value);
-    void OnBeforeUpdateAttackPowerAndDamage(Player* player, float& level, float& val2, bool ranged);
-    void OnAfterUpdateAttackPowerAndDamage(Player* player, float& level, float& base_attPower, float& attPowerMod, float& attPowerMultiplier, bool ranged);
-    void OnBeforeInitTalentForLevel(Player* player, uint8& level, uint32& talentPointsForLevel);
-    void OnFirstLogin(Player* player);
-    void OnSetMaxLevel(Player* player, uint32& maxPlayerLevel);
-=======
     void OnPlayerGetMaxPersonalArenaRatingRequirement(Player const* player, uint32 minSlot, uint32& maxArenaRating) const;
     void OnPlayerLootItem(Player* player, Item* item, uint32 count, ObjectGuid lootguid);
     void OnPlayerBeforeFillQuestLootItem(Player* player, LootItem& item);
@@ -428,7 +402,7 @@ public: /* PlayerScript */
     void OnPlayerBeforeInitTalentForLevel(Player* player, uint8& level, uint32& talentPointsForLevel);
     void OnPlayerFirstLogin(Player* player);
     void OnPlayerSetMaxLevel(Player* player, uint32& maxPlayerLevel);
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
+
     void OnPlayerCompleteQuest(Player* player, Quest const* quest);
     void OnPlayerBattlegroundDesertion(Player* player, BattlegroundDesertionType const desertionType);
     bool OnPlayerCanJoinInBattlegroundQueue(Player* player, ObjectGuid BattlemasterGuid, BattlegroundTypeId BGTypeID, uint8 joinAsGroup, GroupJoinBattlegroundResult& err);

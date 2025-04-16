@@ -52,13 +52,6 @@ protected:
     void AddPlayer(Player* player) override;
     void RemovePlayer(Player* /*player*/) override;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    void FillInitialWorldStates(WorldPacket& data) override;
-=======
-    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
-
     //npcbot
     void AddBot(Creature* bot) override;
     void RemoveBotAtLeave(ObjectGuid guid) override;
@@ -68,12 +61,8 @@ protected:
     void HandlePlayerKillBot(Creature* victim, Player* killer) override;
     //end npcbot
 
-<<<<<<< HEAD
-=======
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
+
     void UpdateArenaWorldState();
 
     void HandleKillPlayer(Player* player, Player* killer) override;

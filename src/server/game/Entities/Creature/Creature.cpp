@@ -4039,22 +4039,11 @@ void Creature::ModifyThreatPercentTemp(Unit* victim, int32 percent, Milliseconds
 
 bool Creature::IsDamageEnoughForLootingAndReward() const
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
     //npcbot
     if (IsNPCBotOrPet())
         return (m_creatureInfo->flags_extra & CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ) || _playerDamageReq == 0;
     //end npcbot
-<<<<<<< HEAD
-    return (m_creatureInfo->flags_extra & CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ) || (_playerDamageReq == 0 && _damagedByPlayer);
-=======
     return m_creatureInfo->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ) || (_playerDamageReq == 0 && _damagedByPlayer);
->>>>>>> 97342b05e7ae7669de11a14bc05f6135b500626e
-=======
-    return m_creatureInfo->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ) || (_playerDamageReq == 0 && _damagedByPlayer);
->>>>>>> 08a39509ac70e590f1034c3f7d11ef07c839b3c9
 }
 
 void Creature::LowerPlayerDamageReq(uint32 unDamage, bool damagedByPlayer /*= true*/)
