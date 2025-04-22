@@ -692,6 +692,8 @@ public:
 
     bool SetName(std::string_view const& name);
 
+    inline uint8 GetLowestRankId() const { return _GetLowestRankId(); }
+
     // Handle client commands
     void HandleRoster(WorldSession* session);
     void HandleQuery(WorldSession* session);

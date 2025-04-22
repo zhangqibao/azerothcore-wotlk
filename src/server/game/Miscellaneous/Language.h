@@ -1311,6 +1311,9 @@ enum AcoreStrings
     LANG_BAN_IP_YOUBANNEDMESSAGE_WORLD            = 11017,
     LANG_BAN_IP_YOUPERMBANNEDMESSAGE_WORLD        = 11018,
 
+    //currency set dianquan
+    LANG_CURRENCY_NOT_ENOUGH                      = 20000,
+
     LANG_MUTED_PLAYER                             = 30000, // Mute for player 2 hour
 
     // Instant Flight

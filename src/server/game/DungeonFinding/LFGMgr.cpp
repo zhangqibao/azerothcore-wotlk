@@ -397,6 +397,9 @@ namespace lfg
     {
         ObjectGuid guid = player->GetGUID();
 
+        //获得配置项目
+        uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+
         uint8 level = player->GetLevel();
         uint8 expansion = player->GetSession()->Expansion();
         LfgDungeonSet const& dungeons = GetDungeonsByRandom(0);
@@ -417,6 +420,14 @@ namespace lfg
             uint32 lockData = 0;
             if (dungeon->expansion > expansion || (onlySeasonalBosses && !dungeon->seasonal))
                 lockData = LFG_LOCKSTATUS_INSUFFICIENT_EXPANSION;
+            else if (wowpatch == 0 && dungeon->group > 1)
+            {
+                lockData = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
+            }
+            else if (wowpatch == 1 && dungeon->group > 2)
+            {
+                lockData = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
+            }
             else if (sDisableMgr->IsDisabledFor(DISABLE_TYPE_MAP, dungeon->map, player))
                 lockData = LFG_LOCKSTATUS_RAID_LOCKED;
             else if (sDisableMgr->IsDisabledFor(DISABLE_TYPE_LFG_MAP, dungeon->map, player))
@@ -518,6 +529,12 @@ namespace lfg
     {
         if (!player || dungeons.empty())
             return;
+
+        //流浪者模式禁止使用副本组队
+        if ((player->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && player->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+        {
+            return;
+        }
 
         Group* grp = player->GetGroup();
         ObjectGuid guid = player->GetGUID();
@@ -2448,11 +2465,12 @@ namespace lfg
                 continue;
             }
 
+            //无论是否完成地下城，都不会影响原有的冷却时间
             // Remove Dungeon Finder Cooldown if still exists
-            if (player->HasAura(LFG_SPELL_DUNGEON_COOLDOWN))
-            {
-                player->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
-            }
+            //if (player->HasAura(LFG_SPELL_DUNGEON_COOLDOWN))
+            //{
+            //    player->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
+            //}
 
             // Xinef: Update achievements, set correct amount of randomly grouped players
             if (dungeon->difficulty == DUNGEON_DIFFICULTY_HEROIC)

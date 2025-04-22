@@ -243,8 +243,17 @@ public:
         }
         else
         {
-            handler->SendErrorMessage(LANG_NO_CHAR_SELECTED);
-            return false;
+            //如果没有输入目标的名字，看是否有选择目标
+            if (Player* pPlayer = handler->GetSession()->GetPlayer()->GetSelectedPlayer())
+            {
+                targetPlayer = pPlayer;
+            }
+            else
+            {
+                handler->SendErrorMessage(LANG_NO_CHAR_SELECTED);
+                return false;
+            }
+
         }
 
         if (targetPlayer)

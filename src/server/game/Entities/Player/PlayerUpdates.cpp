@@ -717,6 +717,48 @@ void Player::UpdateAllRatings()
         UpdateRating(CombatRating(cr));
 }
 
+
+void Player::UpdateAllAttackSpeeds()
+{
+    //急速系数（根据角色等级）
+    float const mult1 = GetRatingMultiplier(CR_HASTE_MELEE);
+    float const mult2 = GetRatingMultiplier(CR_HASTE_RANGED);
+    float const mult3 = GetRatingMultiplier(CR_HASTE_SPELL);
+
+    //急速百分比
+    float const newVal1 = m_baseRatingValue[CR_HASTE_MELEE] * mult1;
+    float const newVal2 = m_baseRatingValue[CR_HASTE_RANGED] * mult2;
+    float const newVal3 = m_baseRatingValue[CR_HASTE_SPELL] * mult3;
+
+    //LOG_ERROR("xx", "newVal1 {} m_baseRatingPCTValue {}", newVal1, m_baseRatingPCTValue[CR_HASTE_MELEE]);//测试
+
+
+    if (newVal1 != m_baseRatingPCTValue[CR_HASTE_MELEE])
+    {
+        ApplyAttackTimePercentMod(BASE_ATTACK, m_baseRatingPCTValue[CR_HASTE_MELEE], false);//减去过去的加速百分比
+        ApplyAttackTimePercentMod(OFF_ATTACK, m_baseRatingPCTValue[CR_HASTE_MELEE], false);
+        ApplyAttackTimePercentMod(BASE_ATTACK, newVal1, true);//加上现在的加速百分比
+        ApplyAttackTimePercentMod(OFF_ATTACK, newVal1, true);
+
+        m_baseRatingPCTValue[CR_HASTE_MELEE] = newVal1;
+    }
+    if (newVal2 != m_baseRatingPCTValue[CR_HASTE_RANGED])
+    {
+        ApplyAttackTimePercentMod(RANGED_ATTACK, m_baseRatingPCTValue[CR_HASTE_RANGED], false);
+        ApplyAttackTimePercentMod(RANGED_ATTACK, newVal2, true);
+
+        m_baseRatingPCTValue[CR_HASTE_RANGED] = newVal2;
+    }
+    if (newVal3 != m_baseRatingPCTValue[CR_HASTE_SPELL])
+    {
+        ApplyCastTimePercentMod(m_baseRatingPCTValue[CR_HASTE_SPELL], false);
+        ApplyCastTimePercentMod(newVal3, true);
+
+        m_baseRatingPCTValue[CR_HASTE_SPELL] = newVal3;
+    }
+
+}
+
 // skill+step, checking for max value
 bool Player::UpdateSkill(uint32 skill_id, uint32 step)
 {
@@ -778,8 +820,17 @@ bool Player::UpdateGatherSkill(uint32 SkillId, uint32 SkillValue,
               "UpdateGatherSkill(SkillId {} SkillLevel {} RedLevel {})",
               SkillId, SkillValue, RedLevel);
 
+    uint32 _skillmoderate = 1;
+    //技艺模式200%涨点提速
+    if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS4) && GetLevel() < 60 && getZHUANSHENGNUMALL() < 1 && sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+    {
+        _skillmoderate = 1;
+    }
+    //end -------------
+
     uint32 gathering_skill_gain =
-        sWorld->getIntConfig(CONFIG_SKILL_GAIN_GATHERING);
+        sWorld->getIntConfig(CONFIG_SKILL_GAIN_GATHERING) * _skillmoderate;
+
     sScriptMgr->OnPlayerUpdateGatheringSkill(this, SkillId, SkillValue, RedLevel + 100, RedLevel + 50, RedLevel + 25, gathering_skill_gain);
 
     // For skinning and Mining chance decrease with level. 1-74 - no decrease,
@@ -856,8 +907,16 @@ bool Player::UpdateCraftSkill(uint32 spellid)
                     learnSpell(discoveredSpell);
             }
 
+            uint32 _skillmoderate = 1;
+            //技艺模式200%涨点提速
+            if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS4) && GetLevel() < 60 && getZHUANSHENGNUMALL() < 1 && sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+            {
+                _skillmoderate = 1;
+            }
+            //end -------------
             uint32 craft_skill_gain =
-                sWorld->getIntConfig(CONFIG_SKILL_GAIN_CRAFTING);
+                sWorld->getIntConfig(CONFIG_SKILL_GAIN_CRAFTING) * _skillmoderate;
+
             sScriptMgr->OnPlayerUpdateCraftingSkill(this, _spell_idx->second, SkillValue, craft_skill_gain);
 
             return UpdateSkillPro(
@@ -909,10 +968,19 @@ bool Player::UpdateFishingSkill()
     /* Whenever the player clicks on the fishing gameobject the
      * core will decide based on a probability if the skill raises or not.
      */
+
+    uint32 _skillmoderate = 1;
+    //技艺模式200%涨点提速
+    if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS4) && GetLevel() < 60 && getZHUANSHENGNUMALL() < 1 && sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+    {
+        _skillmoderate = 1;
+    }
+    //end -------------
+
     return UpdateSkillPro(
         SKILL_FISHING,
         static_cast<int32>(getProbabilityOfLevelUp(SkillValue)) * 10,
-        sWorld->getIntConfig(CONFIG_SKILL_GAIN_GATHERING));
+        sWorld->getIntConfig(CONFIG_SKILL_GAIN_GATHERING) * _skillmoderate);
 }
 
 // levels sync. with spell requirement for skill levels to learn
@@ -1286,6 +1354,13 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
     // group update
     if (GetGroup())
         SetGroupUpdateFlag(GROUP_UPDATE_FULL);
+
+    //如果玩家进入了竞技场，移除坐骑属性
+    if ((m_areaUpdateId != 2177 && m_areaUpdateId != 1741) && (newArea == 2177 || newArea == 1741))
+    {
+        _RemoveAllItemModsForHLDM();
+    }
+    //end-------------------------------
 
     m_zoneUpdateId    = newZone;
     m_zoneUpdateTimer = ZONE_UPDATE_INTERVAL;

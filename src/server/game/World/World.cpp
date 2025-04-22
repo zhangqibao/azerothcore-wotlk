@@ -97,6 +97,7 @@
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
 #include "WorldState.h"
+#include "AuctionHouseBotMgr.h"
 #include <boost/asio/ip/address.hpp>
 #include <cmath>
 
@@ -312,9 +313,114 @@ void World::LoadConfigSettings(bool reload)
     _rate_values[RATE_AUCTION_TIME]                         = sConfigMgr->GetOption<float>("Rate.Auction.Time", 1.0f);
     _rate_values[RATE_AUCTION_DEPOSIT]                      = sConfigMgr->GetOption<float>("Rate.Auction.Deposit", 1.0f);
     _rate_values[RATE_AUCTION_CUT]                          = sConfigMgr->GetOption<float>("Rate.Auction.Cut", 1.0f);
+
+    //AHbot
+    _bool_configs[CONFIG_AHBOT_ENABLE] = sConfigMgr->GetOption<bool>("AHBot.Enable", false);
+    _int_configs[CONFIG_AHBOT_AH_ID] = sConfigMgr->GetOption<int32>("AHBot.ah.id", 7);
+    _int_configs[CONFIG_AHBOT_AH_FID] = sConfigMgr->GetOption<int32>("AHBot.ah.fid", 120);
+    _int_configs[CONFIG_AHBOT_ITEMCOUNT] = sConfigMgr->GetOption<int32>("AHBot.itemcount", 278);
+    _int_configs[CONFIG_AHBOT_BOT_GUID] = sConfigMgr->GetOption<int32>("AHBot.bot.guid", 2);
+    _int_configs[CONFIG_AHBOT_ACCOUNT] = sConfigMgr->GetOption<int32>("AHBot.bot.account", 1);
+
     _rate_values[RATE_HONOR]                                = sConfigMgr->GetOption<float>("Rate.Honor", 1.0f);
     _rate_values[RATE_ARENA_POINTS]                         = sConfigMgr->GetOption<float>("Rate.ArenaPoints", 1.0f);
     _rate_values[RATE_INSTANCE_RESET_TIME]                  = sConfigMgr->GetOption<float>("Rate.InstanceResetTime", 1.0f);
+
+    //新增配置项
+    _rate_values[CONFIG_FLOAT_YH_RATE_INTELLECT] = sConfigMgr->GetOption<float>("YH.RATE.INTELLECT", 0.5f);
+
+    //团本难度
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_NORMAL_DAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Normal.Damage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_DAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.Elite.Damage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RAREELITE_DAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.RAREELITE.Damage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_BOSS_DAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.BOSS.Damage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RARE_DAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.RARE.Damage", 1.0f);
+
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_NORMAL_SPELLDAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Normal.SpellDamage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_SPELLDAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.Elite.SpellDamage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RAREELITE_SPELLDAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.RAREELITE.SpellDamage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_BOSS_SPELLDAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.BOSS.SpellDamage", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RARE_SPELLDAMAGE] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.RARE.SpellDamage", 1.0f);
+
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_NORMAL_HP] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Normal.HP", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_HP] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.Elite.HP", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RAREELITE_HP] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.RAREELITE.HP", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_BOSS_HP] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.BOSS.HP", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RARE_HP] = sConfigMgr->GetOption<float>("Rate.Creature.Raid.Elite.RARE.HP", 1.0f);
+
+    //经验配置
+    _rate_values[CONFIG_FLOAT_YH_XP_RATE] = sConfigMgr->GetOption<float>("Rate.YHXPRate", 1.0f);
+
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_MULTIPLY] = sConfigMgr->GetOption<float>("Rate.XP.Reward.Multiply", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_MAXLEVEL] = sConfigMgr->GetOption<float>("Rate.XP.Reward.Maxlevel", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CAMPLM] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CampLM", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CAMPBL] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CampBL", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_WARRIOR] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_WARRIOR", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_PALADIN] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_PALADIN", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_SHAMAN] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_SHAMAN", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_PRIEST] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_PRIEST", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_DRUID] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_DRUID", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_HUNTER] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_HUNTER", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_MAGE] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_MAGE", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_WARLOCK] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_WARLOCK", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_ROGUE] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_ROGUE", 1.0f);
+    _rate_values[CONFIG_FLOAT_RATE_XP_REWARD_CLASS_DEATH_KNIGHT] = sConfigMgr->GetOption<float>("Rate.XP.Reward.CLASS_DEATH_KNIGHT", 1.0f);
+
+    //技能价格比率
+    _rate_values[CONFIG_FLOAT_SPELL_LEARN_COST] = sConfigMgr->GetOption<float>("Rate.SpellLearnCost", 1.0f);
+    //大财主和随身助理学技能价格比率
+    _rate_values[CONFIG_FLOAT_SPELL_LEARN_COST_SPECIALNPC] = sConfigMgr->GetOption<float>("Rate.SpellLearnCostSpecialNPC", 1.0f);
+
+    //一个硬核转生石相当于60基础属性的多少
+    _rate_values[CONFIG_FLOAT_REBORN_GET_STATS_RATE] = sConfigMgr->GetOption<float>("Rate.RebornGetStatusRate", 0.1f);
+    //宠物获得的转生石加成是主人的多少倍
+    _rate_values[CONFIG_FLOAT_REBORN_GET_STATS_RATE_PET] = sConfigMgr->GetOption<float>("Rate.RebornGetStatusRateForPet", 0.7f);
+
+
+    //从多少级开始不能获得经验
+    _int_configs[CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL] = sConfigMgr->GetOption<int32>("EarnXPMaxPlayerLevel", 60);
+
+    //幻化卡和声望卡增加多少点属性
+    _int_configs[CONFIG_UINT32_TRANSMODCARD_ADD_STAT] = sConfigMgr->GetOption<int32>("TransmodCardAddStat", 10);
+    _int_configs[CONFIG_UINT32_FACTIONCARD_ADD_STAT] = sConfigMgr->GetOption<int32>("FactionCardAddStat", 15);
+
+    //相差多少级禁止PVP
+    _int_configs[CONFIG_UINT32_PVP_FORBID_LEVEL_DIFF] = sConfigMgr->GetOption<int32>("PvpForbidLevelDiff", 9);
+    //多少级以下禁止PVP
+    _int_configs[CONFIG_UINT32_PVP_FORBID_LEVEL_MIX] = sConfigMgr->GetOption<int32>("PvpForbidLevelMix", 5);
+
+    //是否PVP掉落装备
+    _bool_configs[CONFIG_BOOL_PVPDROPITEM_ENABLE] = sConfigMgr->GetOption<bool>("PVPDropItemEnable", false);
+
+    //是否降低团本命中暴击闪避招架格挡
+    _bool_configs[CONFIG_BOOL_RAID_DIFFICULT_ENABLE] = sConfigMgr->GetOption<bool>("RaidDifficultEnable", false);
+
+    //随机附魔是否启动
+    _bool_configs[CONFIG_BOOL_RANDOMFM] = sConfigMgr->GetOption<bool>("RandomFM", false);
+
+    //是否允许转生后再开模式
+    _bool_configs[CONFIG_BOOL_REBORN_START_CHALLENGE_ENABLE] = sConfigMgr->GetOption<bool>("RebornToStartChallengeEnable", false);
+
+    //是否专家模式死亡后回到普通模式（取消专家模式），false：永久死亡；true：可以继续玩普通模式
+    _bool_configs[CONFIG_BOOL_PROFESSOR_DEAD_TO_NORMAL_ENABLE] = sConfigMgr->GetOption<bool>("ProfessorDeadChangeToNormalEnable", false);
+
+    //PVE战袍每一级增加多少伤害
+    _rate_values[CONFIG_FLOAT_PVE_PERLEVEL_DAMAGE] = sConfigMgr->GetOption<float>("Rate.PVEPerLevelDamage", 0.05f);
+    //PVE战袍每一级减少多少伤害
+    _rate_values[CONFIG_FLOAT_PVE_PERLEVEL_UNDAMAGE] = sConfigMgr->GetOption<float>("Rate.PVEPerLevelUNDamage", 0.05f);
+
+    //技艺模式是否启动
+    _bool_configs[CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE] = sConfigMgr->GetOption<bool>("Challenge.Artmode.enable", false);
+
+    //是否对法伤做等级惩罚
+    _bool_configs[CONFIG_BOOL_FS_LEVELPENALTY_ENABLE] = sConfigMgr->GetOption<bool>("fashang.levelpenalty.enable", true);
+
+    //是否允许战场内使用氪金道具
+    _bool_configs[CONFIG_BOOL_ITEMUSEINBG_ENABLE] = sConfigMgr->GetOption<bool>("ItemCanUseInBGEnable", false);
+
+    //是否允许竞技场内使用氪金道具
+    _bool_configs[CONFIG_BOOL_ITEMUSEINARENA_ENABLE] = sConfigMgr->GetOption<bool>("ItemCanUseInArenaEnable", false);
+
 
     _rate_values[RATE_MISS_CHANCE_MULTIPLIER_TARGET_CREATURE]       = sConfigMgr->GetOption<float>("Rate.MissChanceMultiplier.TargetCreature", 11.0f);
     _rate_values[RATE_MISS_CHANCE_MULTIPLIER_TARGET_PLAYER]         = sConfigMgr->GetOption<float>("Rate.MissChanceMultiplier.TargetPlayer", 7.0f);
@@ -494,6 +600,9 @@ void World::LoadConfigSettings(bool reload)
     _bool_configs[CONFIG_ALLOW_TWO_SIDE_ADD_FRIEND]           = sConfigMgr->GetOption<bool>("AllowTwoSide.AddFriend", false);
     _bool_configs[CONFIG_ALLOW_TWO_SIDE_TRADE]                = sConfigMgr->GetOption<bool>("AllowTwoSide.Trade", false);
     _bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_EMOTE]    = sConfigMgr->GetOption<bool>("AllowTwoSide.Interaction.Emote", false);
+
+    //增加阶段配置项
+    _int_configs[CONFIG_WOWPATCH] = sConfigMgr->GetOption<int32>("WowPatch", 0);
 
     _int_configs[CONFIG_MIN_PLAYER_NAME] = sConfigMgr->GetOption<int32> ("MinPlayerName",  2);
     if (_int_configs[CONFIG_MIN_PLAYER_NAME] < 1 || _int_configs[CONFIG_MIN_PLAYER_NAME] > MAX_PLAYER_NAME)
@@ -1917,6 +2026,10 @@ void World::SetInitialWorldSettings()
     LOG_INFO("server.loading", "Loading Transports...");
     sTransportMgr->SpawnContinentTransports();
 
+    //AHBOT
+    LOG_INFO("server.loading", "Starting AH bot System");
+    sAuctionHouseBotMgr->Load();
+
     ///- Initialize Warden
     LOG_INFO("server.loading", "Loading Warden Checks..." );
     sWardenCheckMgr->LoadWardenChecks();
@@ -2134,6 +2247,10 @@ void World::Update(uint32 diff)
     {
         // pussywizard: handle expired auctions, auctions expired when realm was offline are also handled here (not during loading when many required things aren't loaded yet)
         METRIC_TIMER("world_update_time", METRIC_TAG("type", "Update expired auctions"));
+
+        //ahbot update
+        sAuctionHouseBotMgr->Update();
+
         sAuctionMgr->Update(diff);
     }
 
@@ -2350,6 +2467,24 @@ namespace Acore
     };
 }                                                           // namespace Acore
 
+
+void World::SendGMTicketText(char const* text)
+{
+    for (const auto& itr : sWorldSessionMgr->GetAllSessions())
+    {
+        if (WorldSession* session = itr.second)
+        {
+            if (session->GetSecurity() > SEC_PLAYER)
+            {
+                Player* player = session->GetPlayer();
+                if (player && player->IsInWorld())
+                    ChatHandler(session).SendSysMessage(text);
+            }
+        }
+    }
+}
+
+
 /// Update the game time
 void World::_UpdateGameTime()
 {
@@ -2406,7 +2541,15 @@ void World::ShutdownServ(uint32 time, uint32 options, uint8 exitcode, std::strin
     else
     {
         _shutdownTimer = time;
-        ShutdownMsg(true, nullptr, reason);
+        if (_shutdownTimer < 1 * HOUR)
+        {
+            ShutdownMsg(true, nullptr, reason);
+        }
+        else
+        {
+            SendGMTicketText("Server is planed for restart.");
+        }
+
     }
 
     sScriptMgr->OnShutdownInitiate(ShutdownExitCode(exitcode), ShutdownMask(options));

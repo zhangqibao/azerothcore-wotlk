@@ -138,8 +138,10 @@ public:
                     }
                 });
 
-            me->SetRespawnTime(urand(2 * DAY, 3 * DAY));
-            me->SaveRespawnTime();
+            //使用数据表里的设置：update creature set spawntimesecs=21600  where id1 in (6109);
+            //me->SetRespawnTime(urand(2 * DAY, 3 * DAY));
+            //me->SaveRespawnTime();
+
         }
 
         void UpdateAI(uint32 diff) override

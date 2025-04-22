@@ -502,6 +502,8 @@ public:
                 continue;
             }
 
+            spawnpoint = &pair.second;//循环查找creature
+            /*
             if (!spawnpoint)
             {
                 spawnpoint = &pair.second;
@@ -509,8 +511,10 @@ public:
             else
             {
                 handler->SendSysMessage(LANG_COMMAND_GOCREATMULTIPLE);
+
                 break;
             }
+            */
         }
 
         return spawnpoint;
@@ -526,6 +530,8 @@ public:
                 continue;
             }
 
+            spawnpoint = &pair.second;//循环查找GameObject
+            /*
             if (!spawnpoint)
             {
                 spawnpoint = &pair.second;
@@ -535,6 +541,7 @@ public:
                 handler->SendSysMessage(LANG_COMMAND_GOCREATMULTIPLE);
                 break;
             }
+            */
         }
 
         return spawnpoint;

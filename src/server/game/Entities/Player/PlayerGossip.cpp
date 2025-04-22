@@ -24,6 +24,7 @@
 #include "Pet.h"
 #include "Player.h"
 #include "WorldSession.h"
+#include "Chat.h"
 
 /*********************************************************/
 /***                    GOSSIP SYSTEM                  ***/
@@ -197,7 +198,7 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool 
                 }
             }
 
-            menu->GetGossipMenu().AddMenuItem(itr->second.OptionID, itr->second.OptionIcon, strOptionText, 0, itr->second.OptionType, strBoxText, itr->second.BoxMoney, itr->second.BoxCoded);
+            menu->GetGossipMenu().AddMenuItem(itr->second.OptionID, itr->second.OptionIcon, strOptionText, 0, itr->second.OptionType, strBoxText, itr->second.BoxMoney, itr->second.BoxCoded, itr->second.commandtext);
             menu->GetGossipMenu().AddGossipMenuItemData(itr->second.OptionID, itr->second.ActionMenuID, itr->second.ActionPoiID);
         }
     }
@@ -239,6 +240,36 @@ void Player::SendPreparedGossip(WorldObject* source)
         textId = GetGossipTextId(menuId, source);
 
     PlayerTalkClass->SendGossipMenu(textId, source->GetGUID());
+}
+
+
+void Player::SendTranerListTMP(uint32 fromlowguid, ObjectGuid toguid)
+{
+    Map* map = GetMap();
+    ObjectGuid newguid;
+
+    if (CreatureData const* data = sObjectMgr->GetCreatureData(uint32(fromlowguid)))
+    {
+        ObjectGuid trainerguid = map->GetCreatureGUIDFromSpawnId(fromlowguid, map);
+        Creature* unit = map->GetCreature(trainerguid);
+        if (!unit)
+        {
+            //LOG_ERROR("xx", "WORLD: notfindunit");
+            Creature* pCreature = new Creature();
+            sObjectMgr->AddCreatureToGrid(fromlowguid, data);
+            pCreature->LoadCreatureFromDB(fromlowguid, map, true, false);
+            newguid = pCreature->GetGUID();
+        }
+        else
+            newguid = trainerguid;
+
+        //LOG_ERROR("xx", "toguid {}", toguid.GetCounter());
+
+        GetSession()->SetCurrentTranerGuid(newguid);
+        PlayerTalkClass->ClearMenus();
+        GetSession()->SendTrainerList(newguid, toguid);
+
+    }
 }
 
 void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 menuId)
@@ -298,6 +329,23 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
         case GOSSIP_OPTION_GOSSIP:
         case GOSSIP_OPTION_DUALSPEC_INFO:
         {
+
+            //如果OptionType=1，尝试能否拿到commandtext
+            if (item->m_commandtext.size() > 0)
+            {
+                //LOG_ERROR("xx", "xx2xx m_commandtext: {} ", item->m_commandtext);//测试
+
+                //判断玩家不在战斗中，才可以执行命令
+                if (!IsInCombat())
+                    ChatHandler(GetSession()).ParseCommands(item->m_commandtext.c_str(), true);
+                else
+                {
+                    ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+                }
+
+                break;
+            }
+
             if (menuItemData->GossipActionPoi)
                 PlayerTalkClass->SendPointOfInterest(menuItemData->GossipActionPoi);
 
@@ -328,7 +376,446 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
             GetSession()->SendStablePet(guid);
             break;
         case GOSSIP_OPTION_TRAINER:
-            GetSession()->SendTrainerList(guid);
+            //LOG_ERROR("xx", "GOSSIP_OPTION_TRAINER {}", GOSSIP_OPTION_TRAINER);//测试
+            if (menuItemData->GossipActionMenuId == 99999)//如果是技能训练师
+            {
+                //LOG_ERROR("xx", "GossipActionMenuId {}", menuItemData->GossipActionMenuId);//测试
+                //判断玩家职业
+                if (this->GetClass())
+                {
+                    //LOG_ERROR("xx", "GetClass {}", this->GetClass());//测试
+                    uint32 playerrace = 0;
+                    if (Player::TeamIdForRace(this->GetRace()) == TEAM_ALLIANCE)
+                        playerrace = 0;//联盟
+                    else if (Player::TeamIdForRace(this->GetRace()) == TEAM_HORDE)
+                        playerrace = 1;//部落
+
+                    switch (this->GetClass())
+                    {
+                    case CLASS_PALADIN:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(32066, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(6503, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域，银月城
+                            {
+                                SendTranerListTMP(57671, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(32066, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(32066, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(37586, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(137653, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域，银月城
+                            {
+                                SendTranerListTMP(57748, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(37586, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(37586, guid);
+                        }
+                        break;
+                        break;
+                    case CLASS_SHAMAN:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(34147, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(4663, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(3548, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(34147, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(34147, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(79860, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(61721, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(63013, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(61721, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(61721, guid);
+                        }
+                        break;
+                    case CLASS_HUNTER:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(364, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(7449, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(364, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(364, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(364, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(37609, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(46221, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(59521, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(37609, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(37609, guid);
+                        }
+                        break;
+                    case CLASS_MAGE:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(38422, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(3474, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(57646, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(38422, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(38422, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(90463, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(47640, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(57742, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(90463, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(90463, guid);
+                        }
+                        break;
+                    case CLASS_PRIEST:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(41835, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(3472, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(41835, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(41835, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(41835, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(1079, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(49903, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(1079, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(1079, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(1079, guid);
+                        }
+                        break;
+                    case CLASS_WARLOCK:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(32091, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(3461, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(57641, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(32091, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(32091, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(90461, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(1000000, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(90461, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(90461, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(90461, guid);
+                        }
+                        break;
+                    case CLASS_WARRIOR:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(31897, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(26768, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(1000001, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(31897, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(31897, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(79779, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(49851, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(85589, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(79779, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(79779, guid);
+                        }
+                        break;
+                    case CLASS_ROGUE:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(31885, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(6593, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(57673, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(31885, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(31885, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(79787, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(46469, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(79787, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(79787, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(79787, guid);
+                        }
+                        break;
+                    case CLASS_DRUID:
+                        if (playerrace == 1)
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(1000002, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(42415, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(57648, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(42415, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(42415, guid);
+                        }
+                        else
+                        {
+                            if (GetMapId() == 0)//如果是东部王国
+                            {
+                                SendTranerListTMP(90466, guid);
+                            }
+                            else if (GetMapId() == 1)//卡里姆多
+                            {
+                                SendTranerListTMP(42415, guid);
+                            }
+                            else if (GetMapId() == 530)//秘蓝岛，外域
+                            {
+                                SendTranerListTMP(57708, guid);
+                            }
+                            else if (GetMapId() == 571)//诺森德
+                            {
+                                SendTranerListTMP(90466, guid);
+                            }
+                            else//其他地图如副本、战场中
+                                SendTranerListTMP(90466, guid);
+                        }
+                        break;
+                    case CLASS_DEATH_KNIGHT:
+
+                        if (GetMapId() == 0)//如果是东部王国
+                        {
+                            SendTranerListTMP(125641, guid);
+                        }
+                        else if (GetMapId() == 1)//卡里姆多
+                        {
+                            SendTranerListTMP(125641, guid);
+                        }
+                        else if (GetMapId() == 530)//秘蓝岛，外域
+                        {
+                            SendTranerListTMP(125641, guid);
+                        }
+                        else if (GetMapId() == 571)//诺森德
+                        {
+                            SendTranerListTMP(125641, guid);
+                        }
+                        else//其他地图如副本、战场中
+                            SendTranerListTMP(125641, guid);
+
+                        break;
+                    }
+                }
+            }
+            else
+                GetSession()->SendTrainerList(guid);
             break;
         case GOSSIP_OPTION_LEARNDUALSPEC:
             if (GetSpecsCount() == 1 && GetLevel() >= sWorld->getIntConfig(CONFIG_MIN_DUALSPEC_LEVEL))

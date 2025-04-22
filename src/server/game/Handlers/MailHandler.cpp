@@ -38,11 +38,12 @@ bool WorldSession::CanOpenMailBox(ObjectGuid guid)
 {
     if (guid == _player->GetGUID())
     {
-        if (_player->GetSession()->GetSecurity() < SEC_MODERATOR)
-        {
-            LOG_ERROR("network.opcode", "{} attempt open mailbox in cheating way.", _player->GetName());
-            return false;
-        }
+        //因为用小助理直接打开邮箱了，这里不能加判断了否则无法使用
+        //if (_player->GetSession()->GetSecurity() < SEC_MODERATOR)
+        //{
+        //    LOG_ERROR("network.opcode", "{} attempt open mailbox in cheating way.", _player->GetName());
+        //    return false;
+        //}
     }
     else if (guid.IsGameObject())
     {
@@ -62,6 +63,23 @@ bool WorldSession::CanOpenMailBox(ObjectGuid guid)
 
 void WorldSession::HandleSendMail(WorldPacket& recvData)
 {
+    //如果玩家是流浪者模式，禁止使用邮箱
+    if ((GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21735);
+        GetPlayer()->SendMailResult(0, MAIL_SEND, MAIL_ERR_INTERNAL_ERROR);
+        return;
+    }
+    /*
+    //如果玩家等级小于6，禁止使用邮箱
+    if (GetPlayer()->GetLevel()<6)
+    {
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21736);
+        GetPlayer()->SendMailResult(0, MAIL_SEND, MAIL_ERR_INTERNAL_ERROR);
+        return;
+    }
+    */
+
     ObjectGuid mailbox;
     uint64 unk3;
     std::string receiver, subject, body;
@@ -521,12 +539,51 @@ void WorldSession::HandleMailTakeItem(WorldPacket& recvData)
         return;
     }
 
+    uint32 itemId = m->items[0].item_template;
+
+    //如果玩家是流浪者模式，禁止使用邮箱，但允许接收点券：70000，和免死金牌：70528，新人包：70068，VIP卡70901-70911，24，36的包，新增坐骑、补给包、全开鸟点
+    if ((GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        if (itemId != 70000 && itemId != 70528 && itemId != 70068 && itemId != 80000 && itemId != 80001 && itemId != 89993 && itemId != 70008
+            && itemId != 70901 && itemId != 70902 && itemId != 70903 && itemId != 70904 && itemId != 70905 && itemId != 70906 && itemId != 70907
+            && itemId != 70908 && itemId != 70909 && itemId != 70910 && itemId != 70911 && itemId != 70503 && itemId != 90000 && itemId != 90001 && itemId != 23162
+            && itemId != 70075 && itemId != 70523 && itemId != 70520
+            && itemId != 72198 && itemId != 72199)
+        {
+            player->SendMailResult(mailId, MAIL_ITEM_TAKEN, MAIL_ERR_INTERNAL_ERROR);
+            return;
+        }
+
+    }
+    /*
+    //如果玩家等级小于6，禁止使用邮箱收物品
+    if (GetPlayer()->GetLevel() < 6)
+    {
+        if (itemId != 70000 && itemId != 70528 && itemId != 70068 && itemId != 80000 && itemId != 80001 && itemId != 89993 && itemId != 70008
+            && itemId != 70901 && itemId != 70902 && itemId != 70903 && itemId != 70904 && itemId != 70905 && itemId != 70906 && itemId != 70907
+            && itemId != 70908 && itemId != 70909 && itemId != 70910 && itemId != 70911 && itemId != 70503 && itemId != 90000 && itemId != 90001 && itemId != 23162
+            && itemId != 70075 && itemId != 70523 && itemId != 70520
+            && itemId != 72198 && itemId != 72199)
+        {
+            //LOG_ERROR("xx", "GetLevel {}  ", GetPlayer()->GetLevel());//测试
+            ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21736);
+            player->SendMailResult(mailId, MAIL_ITEM_TAKEN, MAIL_ERR_INTERNAL_ERROR);
+            return;
+        }
+
+    }
+    */
+
     Item* it = player->GetMItem(itemLowGuid);
 
     ItemPosCountVec dest;
     uint8 msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, dest, it, false);
     if (msg == EQUIP_ERR_OK)
     {
+        //添加拾取物品log
+        if (it && m && player)
+            LOG_INFO("loot", "loot player:{}[{}] loot {}x{} from Mail sender is {}", player->GetName(), player->GetGUID().GetCounter(), it->GetEntry(), it->GetCount(), m->sender);
+
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         m->RemoveItem(itemLowGuid);
         m->removedItems.push_back(itemLowGuid);
@@ -598,6 +655,23 @@ void WorldSession::HandleMailTakeMoney(WorldPacket& recvData)
         return;
 
     Player* player = _player;
+
+    //如果玩家是流浪者模式，禁止使用邮箱
+    if ((GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        player->SendMailResult(mailId, MAIL_ITEM_TAKEN, MAIL_ERR_INTERNAL_ERROR);
+        return;
+    }
+    /*
+    //如果玩家等级小于6，禁止使用邮箱收钱
+    if (GetPlayer()->GetLevel() < 6)
+    {
+        //LOG_ERROR("xx", "GetLevel {}  ", GetPlayer()->GetLevel());//测试
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21736);
+        player->SendMailResult(mailId, MAIL_ITEM_TAKEN, MAIL_ERR_INTERNAL_ERROR);
+        return;
+    }
+    */
 
     Mail* m = player->GetMail(mailId);
     if (!m || m->state == MAIL_STATE_DELETED || m->deliver_time > GameTime::GetGameTime().count())

@@ -331,6 +331,12 @@ static bool ValidateAs(HyperlinkInfo const& info)
         return false;
 
     int32 const severity = static_cast<int32>(sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_SEVERITY));
+    //配置文件里增加-1的选项，不验证链接的颜色是否正确，以便例如bot的穿装备lua插件可以使用错误的装备颜色也能正常执行
+    if (severity < 0)
+    {
+        return true;
+    }
+
     if (severity >= 0)
     {
         if (!LinkValidator<TAG>::IsColorValid(t, info.color))

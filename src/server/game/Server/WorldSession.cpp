@@ -770,7 +770,8 @@ void WorldSession::LogoutPlayer(bool save)
         LOG_INFO("entities.player", "Account: {} (IP: {}) Logout Character:[{}] ({}) Level: {}",
             GetAccountId(), GetRemoteAddress(), _player->GetName(), _player->GetGUID().ToString(), _player->GetLevel());
 
-        uint32 statementIndex = CHAR_UPD_ACCOUNT_ONLINE;
+        //uint32 statementIndex = CHAR_UPD_ACCOUNT_ONLINE; //这个写法有问题，228得到的是250
+        uint32 statementIndex = (uint32)CHAR_UPD_ACCOUNT_ONLINE;
         uint32 statementParam = GetAccountId();
         sScriptMgr->OnDatabaseSelectIndexLogout(_player, statementIndex, statementParam);
 
@@ -793,7 +794,8 @@ void WorldSession::LogoutPlayer(bool save)
         LOG_DEBUG("network", "SESSION: Sent SMSG_LOGOUT_COMPLETE Message");
 
         //! Since each account can only have one online character at any given time, ensure all characters for active account are marked as offline
-        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CharacterDatabaseStatements(statementIndex));
+        //CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CharacterDatabaseStatements(statementIndex));//不会更新在线字段
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ACCOUNT_ONLINE);
         stmt->SetData(0, statementParam);
         CharacterDatabase.Execute(stmt);
     }
@@ -1387,7 +1389,7 @@ WorldSession::DosProtection::Policy WorldSession::DosProtection::EvaluateOpcode(
     }
 
     // Check if player is flooding some packets
-    if (++packetCounter.amountCounter <= maxPacketCounterAllowed)
+    if (++packetCounter.amountCounter <= maxPacketCounterAllowed * 2)
         return WorldSession::DosProtection::Policy::Process;
 
     if (WorldSession::DosProtection::Policy(policy->Policy) != WorldSession::DosProtection::Policy::BlockingThrottle)
@@ -1402,6 +1404,7 @@ WorldSession::DosProtection::Policy WorldSession::DosProtection::EvaluateOpcode(
         case WorldSession::DosProtection::Policy::Kick:
         {
             LOG_INFO("network", "AntiDOS: Player {} kicked!", Session->GetPlayerName());
+            LOG_ERROR("Server", "Kick flooding packet: {} maxPacketCounterAllowed:{} p.GetOpcode():{} player:{}", packetCounter.amountCounter, maxPacketCounterAllowed, p.GetOpcode(), Session->GetPlayerName());//测试，好像一键拾取的尸体过多有打印到这里
             Session->KickPlayer();
             break;
         }

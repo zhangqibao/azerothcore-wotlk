@@ -984,8 +984,33 @@ class spell_hun_tame_beast : public SpellScript
         {
             if (target->GetLevel() > player->GetLevel())
             {
-                player->SendTameFailure(PET_TAME_TOO_HIGHLEVEL);
-                return SPELL_FAILED_DONT_REPORT;
+                //特殊的几个野兽允许满60级猎人去抓
+                if (target->GetEntry())
+                {
+                    switch (target->GetEntry())
+                    {
+                    case 32517://洛卡纳哈（幽灵豹）
+                    case 33776://古德利亚（幽灵虎）
+                    case 35189://逐日（电狼）
+                    case 38453://阿克图瑞斯（大角）
+                        //如果服务器设置的最大等级和卡的等级相同，且玩家达到了这个等级，就允许抓（例如整体卡60级就允许抓，整体是80级卡60的时候就不允许抓）
+                        if (player->GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+                        {
+                            //允许抓，不提示
+                        }
+                        else
+                        {
+                            player->SendTameFailure(PET_TAME_TOO_HIGHLEVEL);
+                            return SPELL_FAILED_DONT_REPORT;
+                        }
+                        break;
+                    default:
+                        player->SendTameFailure(PET_TAME_TOO_HIGHLEVEL);
+                        return SPELL_FAILED_DONT_REPORT;
+                        break;
+                    }
+                }
+
             }
 
             if (target->GetCreatureTemplate()->IsExotic() && !player->CanTameExoticPets())

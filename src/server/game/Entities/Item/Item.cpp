@@ -619,7 +619,7 @@ uint32 Item::GetSpell()
     return 0;
 }
 
-int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
+int32 Item::GenerateItemRandomPropertyId(uint32 item_id, bool force)
 {
     ItemTemplate const* itemProto = sObjectMgr->GetItemTemplate(item_id);
 
@@ -640,15 +640,42 @@ int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
     // RandomProperty case
     if (itemProto->RandomProperty)
     {
-        uint32 randomPropId = GetItemEnchantMod(itemProto->RandomProperty);
-        ItemRandomPropertiesEntry const* random_id = sItemRandomPropertiesStore.LookupEntry(randomPropId);
-        if (!random_id)
+        uint32 randomPropId = 0;
+        if (sWorld->getBoolConfig(CONFIG_BOOL_RANDOMFM))
         {
-            LOG_ERROR("sql.sql", "Enchantment id #{} used but it doesn't have records in 'ItemRandomProperties.dbc'", randomPropId);
-            return 0;
+            randomPropId = GetItemEnchantMod(itemProto->RandomProperty);
+        }
+        else
+        {
+
+            if (item_id == 69986 || item_id == 69985 || item_id == 69984 || item_id == 69983)
+            {
+                randomPropId = GetItemEnchantMod(itemProto->RandomProperty);
+            }
+            else
+            {
+                if (itemProto->RandomProperty < 30000 || force)
+                    randomPropId = GetItemEnchantMod(itemProto->RandomProperty);
+            }
+
         }
 
-        return random_id->ID;
+        //LOG_ERROR("xx", "randomPropId {}", randomPropId);//测试
+
+        if (randomPropId > 0)
+        {
+            ItemRandomPropertiesEntry const* random_id = sItemRandomPropertiesStore.LookupEntry(randomPropId);
+            if (!random_id)
+            {
+                LOG_ERROR("sql.sql", "Enchantment id #{} used but it doesn't have records in 'ItemRandomProperties.dbc'", randomPropId);
+                return 0;
+            }
+
+            return random_id->ID;
+        }
+        else
+            return 0;
+
     }
     // RandomSuffix case
     else
@@ -699,6 +726,27 @@ void Item::SetItemRandomProperties(int32 randomPropId)
 
             for (uint32 i = PROP_ENCHANTMENT_SLOT_0; i < MAX_ENCHANTMENT_SLOT; ++i)
                 SetEnchantment(EnchantmentSlot(i), item_rand->Enchantment[i - PROP_ENCHANTMENT_SLOT_0], 0, 0);
+        }
+    }
+}
+
+
+void Item::SetItemFWRandomProperties(int32 randomPropId)
+{
+    if (!randomPropId)
+        return;
+
+    if (randomPropId > 0)
+    {
+        ItemRandomPropertiesEntry const* item_rand = sItemRandomPropertiesStore.LookupEntry(randomPropId);
+        if (item_rand)
+        {
+            if (GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID) != int32(item_rand->ID))
+            {
+                SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID, item_rand->ID);
+                SetState(ITEM_CHANGED);
+            }
+            SetEnchantment(EnchantmentSlot(PROP_ENCHANTMENT_SLOT_3), item_rand->Enchantment[0], 0, 0);
         }
     }
 }
@@ -1102,11 +1150,24 @@ Item* Item::CreateItem(uint32 item, uint32 count, Player const* player, bool clo
         if (pItem->Create(guid, item, player))
         {
             pItem->SetCount(count);
-            if (!clone)
-                pItem->SetItemRandomProperties(randomPropertyId ? randomPropertyId : Item::GenerateItemRandomPropertyId(item));
-            else if (randomPropertyId)
-                pItem->SetItemRandomProperties(randomPropertyId);
-            return pItem;
+            //如果item是符文卷轴
+            if (item == 69986 || item == 69985 || item == 69984 || item == 69983)
+            {
+                if (!clone)
+                    pItem->SetItemFWRandomProperties(randomPropertyId ? randomPropertyId : Item::GenerateItemRandomPropertyId(item));
+                else if (randomPropertyId)
+                    pItem->SetItemFWRandomProperties(randomPropertyId);
+                return pItem;
+            }
+            else
+            {
+                if (!clone)
+                    pItem->SetItemRandomProperties(randomPropertyId ? randomPropertyId : Item::GenerateItemRandomPropertyId(item));
+                else if (randomPropertyId)
+                    pItem->SetItemRandomProperties(randomPropertyId);
+                return pItem;
+            }
+
         }
         else
             delete pItem;
@@ -1128,6 +1189,485 @@ Item* Item::CloneItem(uint32 count, Player const* player) const
     newItem->SetUInt32Value(ITEM_FIELD_FLAGS,        GetUInt32Value(ITEM_FIELD_FLAGS) & ~(ITEM_FIELD_FLAG_REFUNDABLE | ITEM_FIELD_FLAG_BOP_TRADEABLE));
     newItem->SetUInt32Value(ITEM_FIELD_DURATION,     GetUInt32Value(ITEM_FIELD_DURATION));
     return newItem;
+}
+
+
+//随机附魔和符文
+bool Item::ChangeEntry(ItemTemplate const* pNewProto)
+{
+    SetEntry(pNewProto->ItemId);
+    for (int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+        SetSpellCharges(i, pNewProto->Spells[i].SpellCharges);
+    SetItemRandomProperties(GenerateItemRandomPropertyId(pNewProto->ItemId));
+
+    //335随机附魔mod的代码
+    core_rollPossibleEnchant(GetOwner(), this);
+
+
+    SetState(ITEM_CHANGED);
+    if (Player* pOwner = GetOwner())
+        AddToUpdateQueueOf(pOwner);
+    return true;
+}
+
+bool Item::ExtractEntryEmpty(ItemTemplate const* pOldProto)
+{
+    //强制删除装备，提取为空白充能的赫拉迪姆水晶，成功后删除物品
+    //角色释放之前的附魔属性的对应效果，先不更新到客户端，这里整个把物品当做不再装备来做处理
+    //只有装备在角色物品栏的才进行释放，在FlushItem函数里有做限制
+    if (Player* pOwner = GetOwner())
+    {
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), false);
+    }
+    else
+    {
+        //如果物品不是自己的，终止操作
+        return false;
+    }
+    //创建新物品充能的赫拉迪姆水晶
+    if (Player* pOwner = GetOwner())
+    {
+        SetEntry(69997);//直接把物品ID给更换了，物品属性就继承了
+
+        //设置为不提取原物品的附魔,否则会导致玩家全身附魔都一样失去意义
+        SetEnchantment(EnchantmentSlot(0), 0, 0, 0);
+
+        //不提取图腾位置的临时附魔
+        SetEnchantment(EnchantmentSlot(1), 0, 0, 0);
+
+        //不提取宝石和宝石镶嵌奖励位置
+        SetEnchantment(EnchantmentSlot(2), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(3), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(4), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(5), 0, 0, 0);
+
+        //设置随机附魔也为空
+        SetEnchantment(EnchantmentSlot(6), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(7), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(8), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(9), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(10), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(11), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(12), 0, 0, 0);
+
+
+        //重设物品的使用次数为1
+        for (int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+        {
+            if (i == 0)
+                SetSpellCharges(i, -1);
+            else
+                SetSpellCharges(i, 0);
+        }
+
+
+        SetState(ITEM_CHANGED);
+        //执行绑定动作
+        SetBinding(true);
+
+    }
+
+    //更新到客户端
+    if (Player* pOwner = GetOwner())
+    {
+        SendUpdateToPlayer(pOwner);
+    }
+
+    return true;
+}
+
+bool Item::ExtractEntry(ItemTemplate const* pOldProto)
+{
+    //抽取物品属性和附魔，成功后删除物品
+    //角色释放之前的附魔属性的对应效果，先不更新到客户端，这里整个把物品当做不再装备来做处理
+    //只有装备在角色物品栏的才进行释放，在FlushItem函数里有做限制
+    if (Player* pOwner = GetOwner())
+    {
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), false);
+    }
+    else
+    {
+        //如果物品不是自己的，终止操作
+        return false;
+    }
+    //创建新物品充能的赫拉迪姆水晶
+    if (Player* pOwner = GetOwner())
+    {
+        SetEntry(69997);//直接把物品ID给更换了，物品属性就继承了
+
+        //设置为不提取原物品的附魔,否则会导致玩家全身附魔都一样失去意义
+        SetEnchantment(EnchantmentSlot(0), 0, 0, 0);
+
+        //不提取图腾位置的临时附魔
+        SetEnchantment(EnchantmentSlot(1), 0, 0, 0);
+
+        //不提取宝石和宝石镶嵌奖励位置
+        SetEnchantment(EnchantmentSlot(2), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(3), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(4), 0, 0, 0);
+        SetEnchantment(EnchantmentSlot(5), 0, 0, 0);
+
+
+        //重设物品的使用次数为1
+        for (int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+        {
+            if (i == 0)
+                SetSpellCharges(i, -1);
+            else
+                SetSpellCharges(i, 0);
+        }
+
+
+        SetState(ITEM_CHANGED);
+        //执行绑定动作
+        SetBinding(true);
+
+    }
+
+    //更新到客户端
+    if (Player* pOwner = GetOwner())
+    {
+        SendUpdateToPlayer(pOwner);
+    }
+
+    return true;
+}
+
+
+bool Item::SetUnBindingEntry()
+{
+    //角色释放之前的附魔属性的对应效果，先不更新到客户端，这里整个把物品当做不再装备来做处理
+    //只有装备在角色物品栏的才进行释放，在FlushItem函数里有做限制
+    if (Player* pOwner = GetOwner())
+    {
+        GetOwner()->AutoUnequipItemFromSlot(GetSlot());
+    }
+    else
+    {
+        //如果物品不是自己的，终止操作
+        return false;
+    }
+    //解绑装备
+    if (Player* pOwner = GetOwner())
+    {
+        //去掉装备的附魔和随机附魔
+        SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID, 0);//重置物品词缀
+        for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
+            SetEnchantment(EnchantmentSlot(enchant_slot), 0, 0, 0);
+        //end
+
+        SetState(ITEM_CHANGED);
+        //执行解绑动作
+        SetBinding(false);
+
+    }
+
+    //更新到客户端
+    if (Player* pOwner = GetOwner())
+    {
+        SendUpdateToPlayer(pOwner);
+    }
+
+    return true;
+}
+
+bool Item::LoadEntry(Item* castItem, ItemTemplate const* pOldProto, ItemTemplate const* pNewProto)
+{
+    //把充能的赫拉迪姆水晶里的物品属性和附魔，注入到装备中
+    //角色释放之前的附魔属性的对应效果，先不更新到客户端，这里整个把物品当做不再装备来做处理
+    //只有装备在角色物品栏的才进行释放，在FlushItem函数里有做限制
+    if (Player* pOwner = GetOwner())
+    {
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), false);
+    }
+    else
+    {
+        //如果物品不是自己的，终止操作
+        return false;
+    }
+
+    if (Player* pOwner = GetOwner())
+    {
+        SetEntry(pNewProto->ItemId);
+        //把充能的赫拉迪姆水晶属性取出,导入到装备
+        //设置item_instance表的random_property_id 字段
+        if (castItem->GetItemRandomPropertyId() > 0)
+        {
+            ItemRandomPropertiesEntry const* item_rand = sItemRandomPropertiesStore.LookupEntry(castItem->GetItemRandomPropertyId());
+            if (item_rand)
+            {
+                if (GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID) != int32(item_rand->ID))
+                {
+                    SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID, item_rand->ID);
+                }
+            }
+        }
+        //设置item_instance表的enchantments字段
+        for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
+        {
+            uint32 enchant_id = castItem->GetEnchantmentId(EnchantmentSlot(enchant_slot));
+            if (!enchant_id)
+                continue;
+
+            SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+            if (!enchantEntry)
+                continue;
+
+
+            if (enchantEntry->ID)
+            {
+                SetEnchantment(EnchantmentSlot(enchant_slot), enchantEntry->ID, 0, 0);
+            }
+        }
+
+        SetState(ITEM_CHANGED);
+        //执行绑定动作
+        SetBinding(true);
+
+
+        //执行装备物品效果
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), true);
+    }
+
+    //更新到客户端
+    if (Player* pOwner = GetOwner())
+    {
+        SendUpdateToPlayer(pOwner);
+    }
+
+    return true;
+}
+
+
+bool Item::LoadEntryFW(Item* castItem, ItemTemplate const* pOldProto, ItemTemplate const* pNewProto)
+{
+    //把符文卷轴里的附魔，注入到装备第6个栏位中
+    //角色释放之前的附魔属性的对应效果，先不更新到客户端，这里整个把物品当做不再装备来做处理
+    //只有装备在角色物品栏的才进行释放，在FlushItem函数里有做限制
+    if (Player* pOwner = GetOwner())
+    {
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), false);
+    }
+    else
+    {
+        //如果物品不是自己的，终止操作
+        return false;
+    }
+
+    if (Player* pOwner = GetOwner())
+    {
+        SetEntry(pNewProto->ItemId);
+        //把充能的赫拉迪姆水晶属性取出,导入到装备
+        //设置item_instance表的random_property_id 字段
+        if (castItem->GetItemRandomPropertyId() > 0)
+        {
+            ItemRandomPropertiesEntry const* item_rand = sItemRandomPropertiesStore.LookupEntry(castItem->GetItemRandomPropertyId());
+            if (item_rand)
+            {
+                if (GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID) != int32(item_rand->ID))
+                {
+                    SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID, item_rand->ID);
+                }
+            }
+        }
+        //设置item_instance表的enchantments字段
+        for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
+        {
+            uint32 enchant_id = castItem->GetEnchantmentId(EnchantmentSlot(enchant_slot));
+            if (!enchant_id)
+                continue;
+
+            SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+            if (!enchantEntry)
+                continue;
+
+
+            if (enchantEntry->ID)
+            {
+                SetEnchantment(EnchantmentSlot(enchant_slot), enchantEntry->ID, 0, 0);
+            }
+        }
+
+        SetState(ITEM_CHANGED);
+        //执行绑定动作
+        SetBinding(true);
+
+
+        //执行装备物品效果
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), true);
+    }
+
+    //更新到客户端
+    if (Player* pOwner = GetOwner())
+    {
+        SendUpdateToPlayer(pOwner);
+    }
+
+    return true;
+}
+
+bool Item::FlushEntry(ItemTemplate const* pNewProto)
+{
+    //角色释放之前的附魔属性的对应效果，先不更新到客户端，这里整个把物品当做不再装备来做处理
+    //只有装备在角色物品栏的才进行释放，在FlushItem函数里有做限制
+    if (Player* pOwner = GetOwner())
+    {
+        GetOwner()->FlushItem(GetBagSlot(), GetSlot(), false);
+    }
+    else
+    {
+        //如果物品不是自己的，终止操作
+        return false;
+    }
+
+    //重新生成随机附魔的物品
+    SetEntry(pNewProto->ItemId);
+
+    //生成随机属性的代码
+    SetItemRandomProperties(GenerateItemRandomPropertyId(pNewProto->ItemId));
+
+    for (int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+        SetSpellCharges(i, pNewProto->Spells[i].SpellCharges);
+
+
+    //335随机附魔mod的代码
+    core_rollPossibleEnchant(GetOwner(), this);
+
+
+    SetState(ITEM_CHANGED);
+    //执行绑定动作
+    SetBinding(true);
+    //StoreItem(dest, pNewItem, true);
+
+    //执行装备物品效果
+    GetOwner()->FlushItem(GetBagSlot(), GetSlot(), true);
+
+    //更新到客户端
+    if (Player* pOwner = GetOwner())
+    {
+        SendUpdateToPlayer(pOwner);
+    }
+
+    return true;
+}
+
+
+void Item::core_rollPossibleEnchant(Player* player, Item* item)
+{
+    uint32 itemQuality = item->GetTemplate()->Quality;
+    uint32 itemClass = item->GetTemplate()->Class;
+
+    /* eliminates enchanting anything that isn't a recognized quality */
+    /* eliminates enchanting anything but weapons/armor */
+    if ((itemQuality > 5 || itemQuality < 1) || (itemClass != 2 && itemClass != 4))
+    {
+        return;
+    }
+
+    //int slotRand[3] = { -1, -1, -1 };
+    //uint32 slotEnch[3] = { 7, 8, 9 };
+    int slotRand[1] = { -1 };
+    uint32 slotEnch[1] = { 11 };
+
+    // Fetching the configuration values as float
+    float enchantChance1 = 100.0f;
+    //float enchantChance2 = 50.0f;
+    //float enchantChance3 = 30.0f;
+
+    if (rand_chance() < enchantChance1)
+        slotRand[0] = core_getRandEnchantment(item);
+    //if (slotRand[0] != -1 && rand_chance() < enchantChance2)
+    //    slotRand[1] = core_getRandEnchantment(item);
+    //if (slotRand[1] != -1 && rand_chance() < enchantChance3)
+    //    slotRand[2] = core_getRandEnchantment(item);
+
+    //for (int i = 0; i < 3; i++)
+    //{
+    if (slotRand[0] != -1)
+    {
+        if (sSpellItemEnchantmentStore.LookupEntry(slotRand[0]))
+        {   //Make sure enchantment id exists
+            player->ApplyEnchantment(item, EnchantmentSlot(slotEnch[0]), false);
+            item->SetEnchantment(EnchantmentSlot(slotEnch[0]), slotRand[0], 0, 0);
+            player->ApplyEnchantment(item, EnchantmentSlot(slotEnch[0]), true);
+        }
+    }
+    //}
+
+}
+
+uint32 Item::core_getRandEnchantment(Item* item)
+{
+    uint32 itemClass = item->GetTemplate()->Class;
+    uint32 itemQuality = item->GetTemplate()->Quality;
+    uint32 itemLevel = item->GetTemplate()->ItemLevel;
+    std::string classQueryString = "";
+    int rarityRoll = -1;
+    uint8 tier = 0;
+
+    switch (itemClass)
+    {
+    case 2:
+        classQueryString = "WEAPON";
+        break;
+    case 4:
+        classQueryString = "ARMOR";
+        break;
+    }
+
+    if (classQueryString == "")
+        return -1;
+
+    switch (itemQuality)
+    {
+    case 0:
+        rarityRoll = 0;
+        break;
+    case 1:
+        rarityRoll = itemLevel + (rand_norm() * 5);//改为：40级以上白色装备才有机会到tier2
+        break;
+    case 2:
+        rarityRoll = itemLevel + (rand_norm() * 10);//原来是45+ (rand_norm() * 20) 改为：35级以上绿色装备才有机会到tier2，55以上绿装有机会到3，70以上蓝装有机会到4，83以上蓝装有机会到5
+        break;
+    case 3:
+        rarityRoll = itemLevel + (rand_norm() * 15);//原来是65+ (rand_norm() * 15) 改为：30级以上蓝色装备才有机会到tier2，50以上蓝装有机会到3，65以上蓝装有机会到4，78以上蓝装有机会到5
+        break;
+    case 4:
+        rarityRoll = itemLevel + (rand_norm() * 20);//原来是80+ (rand_norm() * 14) 改为：25级以上紫色装备才有机会到tier2，45以上紫装有机会到3，60以上紫装有机会到4，73以上紫装有机会到5
+        break;
+    case 5:
+        rarityRoll = itemLevel + (rand_norm() * 25);//原来是93 改为：20级以上橙色装备才有机会到tier2，40以上橙装有机会到3，55以上橙装有机会到4，68以上橙装有机会到5
+        break;
+    }
+    //LOG_ERROR("xx", "rarityRoll {} ", rarityRoll);//测试
+
+    if (rarityRoll < 0)
+        return -1;
+
+    if (rarityRoll <= 44)
+        tier = 1;
+    else if (rarityRoll > 44 && rarityRoll <= 64)
+        tier = 2;
+    else if (rarityRoll > 64 && rarityRoll <= 79)
+        tier = 3;
+    else if (rarityRoll > 79 && rarityRoll <= 92)
+        tier = 4;
+    else
+        tier = 5;
+
+    //LOG_ERROR("xx", "tier {} ", tier);//测试
+    //LOG_ERROR("xx", "exclusiveSubClass {} ", item->GetTemplate()->SubClass);//测试
+    //LOG_ERROR("xx", "class {} ", classQueryString);//测试
+
+    //QueryResult result = WorldDatabase.Query("SELECT `enchantID` FROM `item_enchantment_random_tiers` WHERE `tier`={} AND `exclusiveSubClass`=NULL AND exclusiveSubClass='{}' OR `class`='{}' OR `class`='ANY' ORDER BY RAND() LIMIT 1", tier, item->GetTemplate()->SubClass, classQueryString, classQueryString);
+    QueryResult result = WorldDatabase.Query("SELECT `enchantID` FROM `item_enchantment_random_tiers` WHERE `tier`={} AND((`exclusiveSubClass`=NULL or exclusiveSubClass = '{}') or (`class`='{}' OR `class`='ANY')) ORDER BY RAND() LIMIT 1", tier, item->GetTemplate()->SubClass, classQueryString, classQueryString);
+
+    if (!result)
+        return 0;
+
+    //LOG_ERROR("xx", "tierinfuction {} ", result->Fetch()[0].Get<uint32>());//测试
+
+    return result->Fetch()[0].Get<uint32>();
 }
 
 bool Item::IsBindedNotWith(Player const* player) const

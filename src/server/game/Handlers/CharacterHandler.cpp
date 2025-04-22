@@ -791,6 +791,37 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
     m_playerLoading = true;
     ObjectGuid playerGuid = holder.GetGuid();
 
+    //判断是否有bot登录在这个角色上(当前session好像已经是新登录玩家的session了，不是之前bot的，所以写法有问题！)
+//LOG_ERROR("xx", "HandlePlayerLoginFromDB {}", playerGuid.GetCounter());//测试,角色登录打印到这里了
+    Player* oldchar = ObjectAccessor::FindPlayer(playerGuid);
+    if (oldchar)
+    {
+        //LOG_ERROR("xx", "player already logged in {}", playerGuid.GetCounter());//测试
+        if (oldchar->GetSession()->IsBot())
+        {
+            //LOG_ERROR("xx", "bot already logged in {}", playerGuid.GetCounter());//测试
+            //WorldSession* botWorldSessionPtr = oldchar->GetSession();
+            //WorldPackets::Character::LogoutRequest data = WorldPacket(CMSG_LOGOUT_REQUEST);
+            //botWorldSessionPtr->HandleLogoutRequestOpcode(data);
+            //sScriptMgr->OnPlayerbotLogoutThis(oldchar);
+            //botWorldSessionPtr->LogoutPlayer(true);
+            //delete botWorldSessionPtr;
+            //oldchar好像已经是玩家，无法获取之前的playerbotmgr
+
+            //尝试使用命令的方式让自己角色的机器人下线
+            //经过多次尝试，以下代码可以实现真人登录前先踢掉自己的机器人，以免出现这个版本playerbot的bug：技能页空白
+
+            ChatHandler chH = ChatHandler(oldchar->GetSession());
+            std::string cmd = ".botchk";
+            //LOG_ERROR("xx", "xx {} ", cmd.c_str());//测试
+            chH.ParseCommands(cmd.c_str(), true);//加true表示这是内部调用，忽略帐号等级
+
+        }
+    }
+
+    //------------
+
+
     Player* pCurrChar = new Player(this);
     // for send server info and strings (config)
     ChatHandler chH = ChatHandler(pCurrChar->GetSession());

@@ -356,6 +356,9 @@ public:
 
     Corpse* GetCorpse(ObjectGuid const guid);
     Creature* GetCreature(ObjectGuid const guid);
+
+    ObjectGuid GetCreatureGUIDFromSpawnId(uint32 spawnId, Map* map);
+
     GameObject* GetGameObject(ObjectGuid const guid);
     Transport* GetTransport(ObjectGuid const guid);
     DynamicObject* GetDynamicObject(ObjectGuid const guid);

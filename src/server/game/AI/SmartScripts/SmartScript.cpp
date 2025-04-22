@@ -59,6 +59,16 @@ SmartScript::SmartScript()
     isProcessingTimedActionList = false;
     mCurrentPriority = 0;
     mEventSortingRequired = false;
+
+    // Xinef: Fix Combat Movement
+    mActualCombatDist = 0;
+    mMaxCombatDist = 0;
+
+    smartCasterActualDist = 0.0f;
+    smartCasterMaxDist = 0.0f;
+    smartCasterPowerType = POWER_MANA;
+    //end ------
+
     _allowPhaseReset = true;
 }
 
@@ -130,6 +140,12 @@ void SmartScript::OnReset()
     ProcessEventsFor(SMART_EVENT_RESET);
     mLastInvoker.Clear();
     mCounterList.clear();
+
+    // Xinef: Fix Combat Movement
+    RestoreMaxCombatDist();
+    RestoreCasterMaxDist();
+    //end ------
+
 }
 
 void SmartScript::ProcessEventsFor(SMART_EVENT e, Unit* unit, uint32 var0, uint32 var1, bool bvar, SpellInfo const* spell, GameObject* gob)
@@ -648,7 +664,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
             if (e.action.cast.targetsLimit)
                 Acore::Containers::RandomResize(targets, e.action.cast.targetsLimit);
 
-            bool failedSpellCast = false, successfulSpellCast = false;
+            //bool failedSpellCast = false, successfulSpellCast = false;
 
             for (WorldObject* target : targets)
             {
@@ -682,6 +698,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                     if (e.action.cast.castFlags & SMARTCAST_INTERRUPT_PREVIOUS)
                         me->InterruptNonMeleeSpells(false);
 
+                    /*
                     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(e.action.cast.spell);
                     float distanceToTarget = me->GetDistance(target->ToUnit());
                     float spellMaxRange = me->GetSpellMaxRangeForTarget(target->ToUnit(), spellInfo);
@@ -730,6 +747,32 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                         CAST_AI(SmartAI, me->AI())->SetCombatMove(true);
                         continue;
                     }
+                    */
+
+
+                    // Flag usable only if caster has max dist set.
+                    //if ((e.action.cast.castFlags & SMARTCAST_COMBAT_MOVE) && GetCasterMaxDist() > 0.0f && me->GetMaxPower(GetCasterPowerType()) > 0)
+                    if (me->GetMaxPower(GetCasterPowerType()) > 0)//这样写好像就不会副本里卡远程怪了，无论smart_scripts表是否设置了action_type=11时，action_param2（castFlags）:SMARTCAST_COMBAT_MOVE (施法时阻止战斗移动，仅允许移动在情况:范围超距，法力过低，LOS不在视野时)
+                    {
+                        // Check mana case only and operate movement accordingly, LoS and range is checked in targetet movement generator.
+                        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(e.action.cast.spell);
+                        int32 currentPower = me->GetPower(GetCasterPowerType());
+
+                        if ((spellInfo && (currentPower < spellInfo->CalcPowerCost(me, spellInfo->GetSchoolMask()) || me->IsSpellProhibited(spellInfo->GetSchoolMask()))) || me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SILENCED))
+                        {
+                            //当蓝不够发技能，或者被沉默时，强制移动到目标跟前
+                            SetCasterActualDist(0);
+                            CAST_AI(SmartAI, me->AI())->SetForcedCombatMove(0);
+                        }
+                        else if (GetCasterActualDist() == 0.0f && me->GetPowerPct(GetCasterPowerType()) > 30.0f)
+                        {
+                            //如果在目标跟前，蓝还有30%以上，移动到能施法的最远距离
+                            RestoreCasterMaxDist();
+                            CAST_AI(SmartAI, me->AI())->SetForcedCombatMove(GetCasterActualDist());
+                        }
+                    }
+
+                    //end---
 
                     TriggerCastFlags triggerFlags = TRIGGERED_NONE;
                     if (e.action.cast.castFlags & SMARTCAST_TRIGGERED)
@@ -740,6 +783,12 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                             triggerFlags = TRIGGERED_FULL_MASK;
                     }
 
+                    //测试
+                    me->CastSpell(target->ToUnit(), e.action.cast.spell, triggerFlags);
+                    //end ----
+
+
+                    /*
                     SpellCastResult result = me->CastSpell(target->ToUnit(), e.action.cast.spell, triggerFlags);
                     bool spellCastFailed = (result != SPELL_CAST_OK && result != SPELL_FAILED_SPELL_IN_PROGRESS);
 
@@ -758,12 +807,14 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                         failedSpellCast = true;
                     else
                         successfulSpellCast = true;
+                    */
 
                     LOG_DEBUG("scripts.ai", "SmartScript::ProcessAction:: SMART_ACTION_CAST: Unit {} casts spell {} on target {} with castflags {}",
                               me->GetGUID().ToString(), e.action.cast.spell, target->GetGUID().ToString(), e.action.cast.castFlags);
                 }
             }
 
+            /*
             // If there is at least 1 failed cast and no successful casts at all, retry again on next loop
             if (failedSpellCast && !successfulSpellCast)
             {
@@ -771,6 +822,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                 // Don't execute linked events
                 return;
             }
+            */
 
             break;
         }
@@ -985,8 +1037,19 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
             if (!IsSmart())
                 break;
 
+            // Xinef: Fix Combat Movement
             bool move = e.action.combatMove.move;
-            CAST_AI(SmartAI, me->AI())->SetCombatMove(move);
+
+            if (move && GetMaxCombatDist() && e.GetEventType() == SMART_EVENT_MANA_PCT)
+            {
+                SetActualCombatDist(0);
+                CAST_AI(SmartAI, me->AI())->SetForcedCombatMove(0);
+            }
+            else
+                CAST_AI(SmartAI, me->AI())->SetCombatMove(move);
+
+            //end -----
+
             LOG_DEBUG("sql.sql", "SmartScript::ProcessAction:: SMART_ACTION_ALLOW_COMBAT_MOVEMENT: Creature {} bool on = {}",
                            me->GetGUID().ToString(), e.action.combatMove.move);
             break;
@@ -2574,6 +2637,17 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
 
             break;
         }
+        case SMART_ACTION_SET_CASTER_COMBAT_DIST:
+        {
+            if (e.action.casterDistance.reset)
+                RestoreCasterMaxDist();
+            else
+                SetCasterActualDist(e.action.casterDistance.dist);
+
+            if (me->GetVictim() && me->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
+                me->GetMotionMaster()->MoveChase(me->GetVictim(), GetCasterActualDist());
+            break;
+        }
         case SMART_ACTION_SET_SIGHT_DIST:
         {
             for (WorldObject* const target : targets)
@@ -3509,7 +3583,8 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
         case SMART_TARGET_FARTHEST:
             if (me)
             {
-                if (Unit* u = me->AI()->SelectTarget(SelectTargetMethod::MinDistance, 0, FarthestTargetSelector(me, e.target.farthest.maxDist, e.target.farthest.playerOnly, e.target.farthest.isInLos, e.target.farthest.minDist)))
+                //if (Unit* u = me->AI()->SelectTarget(SelectTargetMethod::MinDistance, 0, FarthestTargetSelector(me, e.target.farthest.maxDist, e.target.farthest.playerOnly, e.target.farthest.isInLos, e.target.farthest.minDist)))
+                if (Unit* u = me->AI()->SelectTarget(SelectTargetMethod::MinDistance, 0, FarthestTargetSelector(me, e.target.farthest.maxDist, e.target.farthest.playerOnly, e.target.farthest.isInLos)))
                     targets.push_back(u);
             }
             break;
@@ -3703,8 +3778,8 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
                 for (WorldObject* unit : units)
                     if (IsPlayer(unit) && baseObject->IsInRange(unit, float(e.target.playerRange.minDist), float(e.target.playerRange.maxDist)))
                         targets.push_back(unit);
-            if (e.target.playerRange.maxCount)
-                Acore::Containers::RandomResize(targets, e.target.playerRange.maxCount);
+            //if (e.target.playerRange.maxCount)
+            //    Acore::Containers::RandomResize(targets, e.target.playerRange.maxCount);
             break;
         }
         case SMART_TARGET_PLAYER_DISTANCE:
@@ -4011,6 +4086,17 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
         default:
             break;
     }
+}
+
+void SmartScript::GetPlayerInDist(ObjectVector& targets, float dist) const
+{
+    WorldObject* obj = GetBaseObject();
+    if (!obj)
+        return;
+
+    Acore::AllWorldObjectsInRange u_check(obj, dist);
+    Acore::PlayerListSearcher<Acore::AllWorldObjectsInRange> searcher(obj, targets, u_check);
+    Cell::VisitAllObjects(obj, searcher, dist);
 }
 
 void SmartScript::GetWorldObjectsInDist(ObjectVector& targets, float dist) const
@@ -4653,7 +4739,8 @@ void SmartScript::ProcessEvent(SmartScriptHolder& e, Unit* unit, uint32 var0, ui
         {
             uint32 playerCount = 0;
             ObjectVector targets;
-            GetWorldObjectsInDist(targets, static_cast<float>(e.event.nearPlayer.radius));
+            //GetWorldObjectsInDist(targets, static_cast<float>(e.event.nearPlayer.radius));//明明应该是看附近的玩家数量，这里却是看附近的object的数量，所以是错误的
+            GetPlayerInDist(targets, static_cast<float>(e.event.nearPlayer.radius));//换成这个新写的函数就ok了
 
             if (!targets.empty())
             {
@@ -4661,9 +4748,11 @@ void SmartScript::ProcessEvent(SmartScriptHolder& e, Unit* unit, uint32 var0, ui
                 {
                     if (IsPlayer(target))
                         playerCount++;
-                }
+
                     if (playerCount >= e.event.nearPlayer.minCount)
-                        ProcessAction(e, unit);
+                        ProcessAction(e, target->ToUnit());
+                }
+
             }
             RecalcTimer(e, e.event.nearPlayer.repeatMin, e.event.nearPlayer.repeatMax);
             break;
@@ -5176,8 +5265,45 @@ void SmartScript::OnInitialize(WorldObject* obj, AreaTrigger const* at)
 
     GetScript();//load copy of script
 
+    /*
     for (SmartScriptHolder& event : mEvents)
         InitTimer(event);//calculate timers for first time use
+    */
+
+       //测试
+    uint32 maxDisableDist = 0;
+    uint32 minEnableDist = 0;
+    for (SmartAIEventList::iterator i = mEvents.begin(); i != mEvents.end(); ++i)
+    {
+        InitTimer((*i));//calculate timers for first time use
+        if (i->GetEventType() == SMART_EVENT_RANGE && i->GetActionType() == SMART_ACTION_ALLOW_COMBAT_MOVEMENT)
+        {
+            if (i->action.combatMove.move == 1 && i->event.minMaxRepeat.rangeMin > minEnableDist)
+                minEnableDist = i->event.minMaxRepeat.rangeMin;
+            else if (i->action.combatMove.move == 0 && (i->event.minMaxRepeat.rangeMax < maxDisableDist || maxDisableDist == 0))
+                maxDisableDist = i->event.minMaxRepeat.rangeMax;
+        }
+
+        // Xinef: if smartcast combat move flag is present
+        if (i->GetActionType() == SMART_ACTION_CAST && (i->action.cast.castFlags & SMARTCAST_COMBAT_MOVE))
+        {
+            if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(i->action.cast.spell))
+            {
+                float maxRange = spellInfo->GetMaxRange(spellInfo->IsPositive());
+                float minRange = spellInfo->GetMinRange(spellInfo->IsPositive());
+
+                if (maxRange > 0 && minRange <= maxRange)
+                {
+                    smartCasterMaxDist = minRange + ((maxRange - minRange) * 0.65f);
+                    smartCasterPowerType = (Powers)spellInfo->PowerType;
+                }
+            }
+        }
+    }
+    if (maxDisableDist > 0 && minEnableDist >= maxDisableDist)
+        mMaxCombatDist = uint32(maxDisableDist + ((minEnableDist - maxDisableDist) / 2));
+
+    //end ----
 
     ProcessEventsFor(SMART_EVENT_AI_INIT);
     InstallEvents();

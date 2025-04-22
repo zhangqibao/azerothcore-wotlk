@@ -212,6 +212,10 @@ public:
     // Xinef
     void SetWPPauseTimer(uint32 time) { mWPPauseTimer = time; }
 
+    //fix move
+    void SetForcedCombatMove(float dist);
+    //end -------
+
 private:
     bool mIsCharmed;
     uint32 mFollowCreditType;

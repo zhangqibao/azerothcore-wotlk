@@ -158,7 +158,7 @@ class spell_item_runescroll_of_fortitude : public SpellScript
 
         if (Unit* target = GetHitUnit())
         {
-            if (target->GetLevel() < 70)
+            if (target->GetLevel() < 60)//默认是70
                 return;
 
             target->CastSpell(target, SPELL_FORTITUDE, true);

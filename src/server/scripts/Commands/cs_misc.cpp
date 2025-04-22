@@ -47,6 +47,7 @@
 #include "Tokenize.h"
 #include "WeatherMgr.h"
 #include "WorldSessionMgr.h"
+#include "AuctionHouseBotMgr.h"
 
 /// @todo: this import is not necessary for compilation and marked as unused by the IDE
 //  however, for some reasons removing it would cause a damn linking issue
@@ -109,14 +110,43 @@ public:
             { "commands",          HandleCommandsCommand,          SEC_PLAYER,             Console::Yes },
             { "die",               HandleDieCommand,               SEC_GAMEMASTER,         Console::No  },
             { "revive",            HandleReviveCommand,            SEC_GAMEMASTER,         Console::Yes },
+            { "reviveall",         HandleGroupReviveCommand,       SEC_GAMEMASTER,         Console::No },
             { "dismount",          HandleDismountCommand,          SEC_PLAYER,             Console::No  },
             { "guid",              HandleGUIDCommand,              SEC_GAMEMASTER,         Console::No  },
             { "help",              HandleHelpCommand,              SEC_PLAYER,             Console::Yes },
             { "cooldown",          HandleCooldownCommand,          SEC_GAMEMASTER,         Console::No  },
             { "distance",          HandleGetDistanceCommand,       SEC_ADMINISTRATOR,      Console::No  },
             { "recall",            HandleRecallCommand,            SEC_GAMEMASTER,         Console::No  },
+            { "recallself",        HandleRecallSelfCommand,        SEC_GAMEMASTER,         Console::No  },
             { "save",              HandleSaveCommand,              SEC_PLAYER,             Console::No  },
             { "saveall",           HandleSaveAllCommand,           SEC_GAMEMASTER,         Console::Yes },
+
+            { "yh on",             HandleYHONCommand,              SEC_GAMEMASTER,         Console::No  },//硬核模式命令
+            { "yh off",            HandleYHOFFCommand,             SEC_GAMEMASTER,         Console::No  },//硬核模式命令
+            { "yh1 on",            HandleYH1ONCommand,             SEC_GAMEMASTER,         Console::No  },//乌龟模式命令
+            { "yh1 off",           HandleYH1OFFCommand,            SEC_GAMEMASTER,         Console::No  },//乌龟模式命令
+            { "yh2 on",            HandleYH2ONCommand,             SEC_GAMEMASTER,         Console::No  },//流浪者模式命令
+            { "yh2 off",           HandleYH2OFFCommand,            SEC_GAMEMASTER,         Console::No  },//流浪者模式命令
+            { "yh3 on",            HandleYH3ONCommand,             SEC_GAMEMASTER,         Console::No  },//专家模式命令
+            { "yh3 off",           HandleYH3OFFCommand,            SEC_GAMEMASTER,         Console::No  },//专家模式命令
+            { "yh4 on",            HandleYH4ONCommand,             SEC_GAMEMASTER,         Console::No  },//保留模式命令
+            { "yh4 off",           HandleYH4OFFCommand,            SEC_GAMEMASTER,         Console::No  },//保留模式命令
+            { "again",             HandleZhuanshengCommand,        SEC_GAMEMASTER,         Console::No  },//转生命令
+            { "moshi",             HandleMoshiChaxunCommand,       SEC_PLAYER,             Console::No  },//模式查询命令
+
+            { "ahbot reload",      HandleAHBotReloadCommand,       SEC_GAMEMASTER,         Console::No  },//ahbot命令
+            { "ahbot update",      HandleAHBotUpdateCommand,       SEC_GAMEMASTER,         Console::No  },//ahbot命令
+
+            { "hero5 on",          HandleHero5ONCommand,           SEC_PLAYER,         Console::No  },
+            { "hero5 off",         HandleHero5OFFCommand,          SEC_PLAYER,         Console::No  },
+            { "hero10 on",         HandleHero10ONCommand,           SEC_PLAYER,         Console::No  },
+            { "hero10 off",        HandleHero10OFFCommand,          SEC_PLAYER,         Console::No  },
+            { "hero25 on",         HandleHero25ONCommand,           SEC_PLAYER,         Console::No  },
+            { "hero25 off",        HandleHero25OFFCommand,          SEC_PLAYER,         Console::No  },
+
+            { "buff",              HandleBuffCommand,               SEC_GAMEMASTER,         Console::No  },
+            { "fuhuo",              HandleFuhuoCommand,               SEC_GAMEMASTER,         Console::No  },
+
             { "kick",              HandleKickPlayerCommand,        SEC_GAMEMASTER,         Console::Yes },
             { "unstuck",           HandleUnstuckCommand,           SEC_GAMEMASTER,         Console::Yes },
             { "linkgrave",         HandleLinkGraveCommand,         SEC_ADMINISTRATOR,      Console::No  },
@@ -124,6 +154,7 @@ public:
             { "showarea",          HandleShowAreaCommand,          SEC_GAMEMASTER,         Console::No  },
             { "hidearea",          HandleHideAreaCommand,          SEC_ADMINISTRATOR,      Console::No  },
             { "additem",           HandleAddItemCommand,           SEC_GAMEMASTER,         Console::Yes },
+            { "deleteitem",        HandleDeleteItemCommand,        SEC_GAMEMASTER,         Console::Yes },
             { "additem set",       HandleAddItemSetCommand,        SEC_GAMEMASTER,         Console::No  },
             { "wchange",           HandleChangeWeather,            SEC_ADMINISTRATOR,      Console::No  },
             { "maxskill",          HandleMaxSkillCommand,          SEC_GAMEMASTER,         Console::No  },
@@ -766,13 +797,29 @@ public:
             }
 
             Map* map = targetPlayer->GetMap();
+
+            //测试，让GM能传送到玩家所在任意副本id地下城
+            uint32 instanceId = 0;
+            uint32 teleFlags = TELE_TO_GM_MODE;
+
+            InstancePlayerBind* pbind = sInstanceSaveMgr->PlayerGetBoundInstance(targetPlayer->GetGUID(), map->GetId(), targetPlayer->GetDungeonDifficulty());
+            if (pbind)//如果目标玩家有个人副本id，就先把自己的该副本解绑
+            {
+                instanceId = pbind->save->GetInstanceId();
+                sInstanceSaveMgr->PlayerUnbindInstance(_player->GetGUID(), map->GetId(), targetPlayer->GetDungeonDifficulty(), true, _player);
+            }
+
             if (map->IsBattlegroundOrArena())
             {
                 // only allow if gm mode is on
                 if (!_player->IsGameMaster())
                 {
-                    handler->SendErrorMessage(LANG_CANNOT_GO_TO_BG_GM, nameLink);
-                    return false;
+                    _player->SetGameMaster(true);//直接打开GM模式
+                    if (!_player->IsGameMaster())
+                    {
+                        handler->SendErrorMessage(LANG_CANNOT_GO_TO_BG_GM, nameLink.c_str());
+                        return false;
+                    }
                 }
 
                 if (!_player->GetMap()->IsBattlegroundOrArena())
@@ -801,8 +848,12 @@ public:
                     // we are not in group, let's verify our GM mode
                     if (!_player->IsGameMaster())
                     {
-                        handler->SendErrorMessage(LANG_CANNOT_GO_TO_INST_GM, nameLink);
-                        return false;
+                        _player->SetGameMaster(true);//直接打开GM模式
+                        if (!_player->IsGameMaster())
+                        {
+                            handler->SendErrorMessage(LANG_CANNOT_GO_TO_INST_GM, nameLink.c_str());
+                            return false;
+                        }
                     }
                 }
 
@@ -1165,7 +1216,18 @@ public:
         {
             auto targetPlayer = target->GetConnectedPlayer();
             targetPlayer->RemoveAurasDueToSpell(27827); // Spirit of Redemption
-            targetPlayer->ResurrectPlayer(!AccountMgr::IsPlayerAccount(targetPlayer->GetSession()->GetSecurity()) ? 1.0f : 0.5f);
+
+            if (targetPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
+            {
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "EffectSelfResurrect");//测试
+                //专家模式的玩家改为用GM命令可以复活
+                targetPlayer->ResurrectPlayerByGM(1.0f);
+            }
+            else
+            {
+                targetPlayer->ResurrectPlayer(!AccountMgr::IsPlayerAccount(targetPlayer->GetSession()->GetSecurity()) ? 1.0f : 0.5f);
+            }
+
             targetPlayer->SpawnCorpseBones();
             targetPlayer->SaveToDB(false, false);
         }
@@ -1177,6 +1239,66 @@ public:
 
         return true;
     }
+
+    static bool HandleGroupReviveCommand(ChatHandler* handler, Optional<PlayerIdentifier> target)
+    {
+        Player* pPlayer = handler->GetPlayer();
+        if (!target)
+        {
+            handler->SendErrorMessage(LANG_NO_CHAR_SELECTED);
+            return false;
+        }
+
+        if (target->IsConnected())
+        {
+            auto targetPlayer = target->GetConnectedPlayer();
+            Group* pGroup = targetPlayer->GetGroup();
+            if (!pGroup)
+            {
+                handler->SendErrorMessage(LANG_NOT_IN_GROUP);
+                return false;
+            }
+
+            for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+            {
+                if (Player* pMember = itr->GetSource())
+                {
+                    if (pMember == pPlayer && !pPlayer->isDead())
+                        continue;
+
+                    if (pMember->IsInWorld())
+                    {
+                        if (pMember->isDead())
+                        {
+                            if (pMember->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
+                            {
+                                //专家模式玩家无法通过该命令被复活
+                                continue;
+                            }
+                            else
+                            {
+                                pMember->RemoveAurasDueToSpell(27827); // Spirit of Redemption
+                                pMember->ResurrectPlayer(0.5f);
+                            }
+                            pMember->SpawnCorpseBones();
+                            pMember->SaveToDB(false, false);
+                        }
+
+                    }
+                    else
+                    {
+                        CharacterDatabaseTransaction trans(nullptr);
+                        Player::OfflineResurrect(target->GetGUID(), trans);
+                    }
+                }
+            }
+
+
+        }
+
+        return true;
+    }
+
 
     static bool HandleDismountCommand(ChatHandler* handler)
     {
@@ -1323,6 +1445,74 @@ public:
         return true;
     }
 
+    // Teleport self to last position
+    static bool HandleRecallSelfCommand(ChatHandler* handler, Optional<PlayerIdentifier> target)
+    {
+        target = PlayerIdentifier::FromSelf(handler);
+        if (!target || !target->IsConnected())
+        {
+            return false;
+        }
+        auto pPlayer = target->GetConnectedPlayer();
+
+        if (pPlayer->IsBeingTeleported())
+        {
+            handler->SendErrorMessage(LANG_IS_TELEPORTED, handler->playerLink(target->GetName()).c_str());
+            return false;
+        }
+
+        // stop flight if need
+        if (pPlayer->IsInFlight())
+        {
+            pPlayer->GetMotionMaster()->MovementExpired();
+            pPlayer->CleanupAfterTaxiFlight();
+        }
+
+        uint32 mapId;
+        float x, y, z, o;
+        x = pPlayer->m_recallX;
+        y = pPlayer->m_recallY;
+        z = pPlayer->m_recallZ;
+        o = pPlayer->m_recallO;
+        mapId = pPlayer->m_recallMap;
+
+        //禁止直接返回到新的副本中(这里存在漏洞，如果玩家保存副本boss前的点位后，出本重置，然后跑进本里用熊猫点返回还是能回到boss面前)
+        //需要在重置副本的地方，判断pPlayer->m_recallMap如果是副本，就清除该点位
+        MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
+        InstanceSave* save = sInstanceSaveMgr->PlayerGetInstanceSave(pPlayer->GetGUID(), mapId, pPlayer->GetDifficulty(mapEntry->IsRaid()));
+        if (mapEntry && mapEntry->IsDungeon())
+        {
+
+            // if the player is in an instance and it has been reset in the meantime teleport him to the entrance
+            if (!save)
+            {
+                AreaTriggerTeleport const* at = sObjectMgr->GetGoBackTrigger(mapId);
+                if (at)
+                {
+                    return pPlayer->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
+                }
+                else if (mapId == 533) // Naxxramas
+                {
+                    // There is no exit areatrigger for Naxx, but exit destination for
+                    // all dungeons is stored in WorldSafeLocs.db2 in 1.13 classic client.
+                    return pPlayer->TeleportTo(0, 3362.15f, -3379.35f, 144.782f, 6.28319f);
+                }
+
+            }
+            else
+            {
+                return pPlayer->TeleportTo(mapId, x, y, z, o);
+            }
+        }
+        else
+        {
+            return pPlayer->TeleportTo(mapId, x, y, z, o);
+        }
+
+        pPlayer->TeleportTo(mapId, x, y, z, o);
+        return true;
+    }
+
     static bool HandleSaveCommand(ChatHandler* handler)
     {
         Player* player = handler->GetSession()->GetPlayer();
@@ -1360,6 +1550,853 @@ public:
         handler->SendSysMessage(LANG_PLAYERS_SAVED);
         return true;
     }
+
+    //硬核模式命令函数
+    static bool HandleYHONCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelON(true, true);
+        }
+        else
+        {
+            //如果是玩家使用道具启动模式，判断玩家等级是否小于6
+            if (player->GetLevel() > 5 && player->GetClass() != CLASS_DEATH_KNIGHT)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage(21738);
+                return false;
+            }
+            else
+                player->SetYHModelON(true, true);
+        }
+
+        return true;
+
+    }
+
+    static bool HandleYHOFFCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelON(false, true);
+        }
+        else
+        {
+            player->SetYHModelON(false, true);
+        }
+
+        return true;
+
+    }
+
+    static bool HandleYH1ONCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS1ON(true, true);
+        }
+        else
+        {
+            //如果是玩家使用道具启动模式，判断玩家等级是否小于6
+            if (player->GetLevel() > 5)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage(21738);
+                return false;
+            }
+            else
+                player->SetYHModelPLUS1ON(true, true);
+        }
+
+        return true;
+
+    }
+
+    static bool HandleYH1OFFCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS1ON(false, true);
+        }
+        else
+        {
+            player->SetYHModelPLUS1ON(false, true);
+        }
+
+        return true;
+
+    }
+
+    static bool HandleYH2ONCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS2ON(true, true);
+        }
+        else
+        {
+            //如果是玩家使用道具启动模式，判断玩家等级是否小于6
+            if (player->GetLevel() > 5)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage(21738);
+                return false;
+            }
+            else
+                player->SetYHModelPLUS2ON(true, true);
+        }
+
+        return true;
+
+    }
+
+    static bool HandleYH2OFFCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS2ON(false, true);
+        }
+        else
+        {
+            player->SetYHModelPLUS2ON(false, true);
+        }
+
+        return true;
+    }
+
+    static bool HandleYH3ONCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS3ON(true, true);
+        }
+        else
+        {
+            //如果是玩家使用道具启动模式，判断玩家等级是否小于6
+            if (player->GetLevel() > 5)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage(21738);
+                return false;
+            }
+            else
+                player->SetYHModelPLUS3ON(true, true);
+        }
+        return true;
+
+    }
+
+
+    static bool HandleYH3OFFCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS3ON(false, true);
+        }
+        else
+        {
+            player->SetYHModelPLUS3ON(false, true);
+        }
+        return true;
+
+    }
+
+    static bool HandleYH4ONCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS4ON(true, true);
+        }
+        else
+        {
+            //如果是玩家使用道具启动模式，判断玩家等级是否小于6
+            if (player->GetLevel() > 5)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage(21738);
+                return false;
+            }
+            else
+                player->SetYHModelPLUS4ON(true, true);
+        }
+        return true;
+    }
+
+    static bool HandleYH4OFFCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Player* target = handler->getSelectedPlayer();
+        if (handler->GetSession()->GetSecurity() > SEC_PLAYER)
+        {
+            if (target)
+                target->SetYHModelPLUS4ON(false, true);
+        }
+        else
+        {
+            player->SetYHModelPLUS4ON(false, true);
+        }
+        return true;
+    }
+
+
+    static bool HandleMoshiChaxunCommand(ChatHandler* handler)
+    {
+        Player* pPlayer = (handler->GetSession()->GetSecurity() < SEC_GAMEMASTER) ? handler->GetSession()->GetPlayer() : handler->getSelectedPlayer();
+
+        //获得角色当前的flag
+        if (pPlayer)
+        {
+            if (pPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)
+                handler->PSendSysMessage(21664, pPlayer->GetName());
+            else
+                handler->PSendSysMessage(21665, pPlayer->GetName());
+
+            if (pPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS1)
+                handler->PSendSysMessage(21680, pPlayer->GetName());
+            else
+                handler->PSendSysMessage(21681, pPlayer->GetName());
+
+            if (pPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2)
+                handler->PSendSysMessage(21686, pPlayer->GetName());
+            else
+                handler->PSendSysMessage(21687, pPlayer->GetName());
+
+            if (pPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
+                handler->PSendSysMessage(21692, pPlayer->GetName());
+            else
+                handler->PSendSysMessage(21693, pPlayer->GetName());
+
+            if (sWorld->getBoolConfig(CONFIG_BOOL_REBORN_START_CHALLENGE_ENABLE))
+            {
+                if (pPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS4)
+                    handler->PSendSysMessage(21698, pPlayer->GetName());
+                else
+                    handler->PSendSysMessage(21699, pPlayer->GetName());
+            }
+
+        }
+
+        return true;
+
+    }
+
+    //英雄本模式命令函数
+    // characters.instance_mode_mask 字段
+    //什么都不选是0，只选5人英雄是1；
+    //选了5人英雄+10人普通是1；选了5人英雄+10人英雄是33
+    //选了5人英雄+25人普通是17；选了5人英雄+25人英雄是49
+    //选了5人普通+10人普通是0；选了5人普通+10人英雄是32
+    //选了5人普通+25人普通是16；选了5人普通+25人英雄是48
+    //所以16进制转10进制数字为下面罗列，相加就是这个字段的含义
+    //5人普通=0
+    //10人普通=0 
+    //25人普通=16  
+    //5人英雄=1
+    //10人英雄=32
+    //25人英雄=48
+
+    static bool HandleHero5ONCommand(ChatHandler* handler)
+    {
+        handler->GetSession()->HandleSetDungeonDifficultyOpcodePlus(DUNGEON_DIFFICULTY_HEROIC);
+        handler->SendSysMessage(21722);//对话框里的提醒
+        return true;
+    }
+    static bool HandleHero5OFFCommand(ChatHandler* handler)
+    {
+        handler->GetSession()->HandleSetDungeonDifficultyOpcodePlus(DUNGEON_DIFFICULTY_NORMAL);
+        handler->SendSysMessage(21721);//对话框里的提醒
+        return true;
+    }
+
+    static bool HandleHero10ONCommand(ChatHandler* handler)
+    {
+        handler->GetSession()->HandleSetRaidDifficultyOpcodePlus(RAID_DIFFICULTY_10MAN_HEROIC);
+        handler->SendSysMessage(21724);//对话框里的提醒
+        return true;
+    }
+    static bool HandleHero10OFFCommand(ChatHandler* handler)
+    {
+        handler->GetSession()->HandleSetRaidDifficultyOpcodePlus(RAID_DIFFICULTY_10MAN_NORMAL);
+        handler->SendSysMessage(21723);//对话框里的提醒
+        return true;
+    }
+
+    static bool HandleHero25ONCommand(ChatHandler* handler)
+    {
+        handler->GetSession()->HandleSetRaidDifficultyOpcodePlus(RAID_DIFFICULTY_25MAN_HEROIC);
+        handler->SendSysMessage(21726);//对话框里的提醒
+        return true;
+    }
+    static bool HandleHero25OFFCommand(ChatHandler* handler)
+    {
+        handler->GetSession()->HandleSetRaidDifficultyOpcodePlus(RAID_DIFFICULTY_25MAN_NORMAL);
+        handler->SendSysMessage(21725);//对话框里的提醒
+        return true;
+    }
+
+
+    static bool HandleBuffCommand(ChatHandler* handler)
+    {
+        if (m_buffspells.size() > 0)
+        {
+            for (const auto& buffspells : m_buffspells)
+            {
+                //if (handler->GetSession()->GetPlayer()->GetItemCount(buffspells.first, false))
+                if (handler->GetSession()->GetPlayer()->GetItemCount(buffspells.first, true))//银行里也可以
+                {
+                    handler->GetSession()->GetPlayer()->AddAura(buffspells.second, handler->GetSession()->GetPlayer());
+                    //如果玩家有宠物，给宠物也上buff
+                    if (Pet* _pet = handler->GetSession()->GetPlayer()->GetPet())
+                    {
+                        _pet->AddAura(buffspells.second, _pet);
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    static bool HandleFuhuoCommand(ChatHandler* handler, Optional<PlayerIdentifier> target)
+    {
+        //这个命令是卷轴专用的，只能对自己使用
+        target = PlayerIdentifier::FromTargetOrSelf(handler);
+        if (!target)
+        {
+            return false;
+        }
+
+        if (target->IsConnected())
+        {
+            auto targetPlayer = target->GetConnectedPlayer();
+
+            if (targetPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
+            {
+                //专家模式的玩家改为用GM命令可以复活
+                targetPlayer->ResurrectPlayerByGM(1.0f);
+            }
+            else
+            {
+                targetPlayer->ResurrectPlayer(!AccountMgr::IsPlayerAccount(targetPlayer->GetSession()->GetSecurity()) ? 1.0f : 0.5f);
+            }
+            targetPlayer->SpawnCorpseBones();
+            targetPlayer->SaveToDB(false, false);
+
+        }
+        else
+        {
+            CharacterDatabaseTransaction trans(nullptr);
+            Player::OfflineResurrect(target->GetGUID(), trans);
+        }
+
+        return true;
+    }
+
+    static bool HandleZhuanshengCommand(ChatHandler* handler, uint16 num = 0)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (num)
+        {
+
+            //判断玩家当前的转生石和远古转生数量是否符合要求
+            uint16 _zsstoneall = player->GetItemCount(70630, true);
+            uint16 _ygzsstone = player->GetItemCount(70629, false);
+            //LOG_ERROR("xx", "num {}  ", num);//测试
+            //LOG_ERROR("xx", "_zsstoneall {}  ", _zsstoneall);//测试
+            //LOG_ERROR("xx", "_ygzsstone {}  ", _ygzsstone);//测试
+
+            //当输入的转生次数小于等于转生石，提示已使用过
+            //写法有问题，先使用后面的转生卷，会导致前面的转生卷无法使用
+            /*
+            if (num <= (_zsstoneall + _ygzsstone))
+            {
+                //LOG_ERROR("xx", "numxx {}  ", num);//测试
+                handler->PSendSysMessage(21731);
+                return true;
+            }
+            */
+
+
+            //如果输入的转生次数不是下一次的，提示请按顺序转生
+            switch (num)
+            {
+            case 1:
+                if (_zsstoneall != 0)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90200, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90200, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 2:
+                if (_zsstoneall != 1)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90201, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90201, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 3:
+                if (_zsstoneall != 2)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90202, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90202, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 4:
+                if (_zsstoneall != 3)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90203, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90203, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 5:
+                if (_zsstoneall != 4)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90204, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90204, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 6:
+                if (_zsstoneall != 5)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90205, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90205, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 7:
+                if (_zsstoneall != 6)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90206, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90206, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 8:
+                if (_zsstoneall != 7)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90207, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90207, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 9:
+                if (_zsstoneall != 8)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90208, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90208, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 10:
+                if (_zsstoneall != 9)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90209, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90209, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 11:
+                if (_ygzsstone != 0)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90210, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90210, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 12:
+                if (_ygzsstone != 1)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90211, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90211, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 13:
+                if (_ygzsstone != 2)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90212, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90212, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 14:
+                if (_ygzsstone != 3)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90213, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90213, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 15:
+                if (_ygzsstone != 4)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90214, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90214, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 16:
+                if (_ygzsstone != 5)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90215, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90215, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 17:
+                if (_ygzsstone != 6)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90216, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90216, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 18:
+                if (_ygzsstone != 7)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90217, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90217, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 19:
+                if (_ygzsstone != 8)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90218, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90218, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            case 20:
+                if (_ygzsstone != 9)
+                {
+                    handler->PSendSysMessage(21739);
+                    //补转生卷
+                    ItemPosCountVec dest;
+                    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 90219, 1) == EQUIP_ERR_OK)
+                    {
+                        Item* item = player->StoreNewItem(dest, 90219, true);
+                        player->SendNewItem(item, 1, true, false, false, false);
+                    }
+                    return true;
+                }
+                break;
+            }
+
+        }
+
+
+
+        //if (player->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)//改成不需要硬核模式也可以转生
+        //{
+            //判断拥有转生石的数量
+        uint32 zsstone = player->GetItemCount(70630, true);
+        //判断拥有远古转生石的数量
+        uint32 ygzsstone = player->GetItemCount(70629, true);
+
+        if (zsstone >= 10 && ygzsstone >= 10)//如果两种转生石都拿满了，提示错误
+        {
+            handler->PSendSysMessage(21713);
+        }
+        else if (zsstone < 10 && (ygzsstone >= 10 || ygzsstone < 10))//转生石没满，远古满了（理论不可能出现）和远古没满，给转生石
+        {
+            //判断包里是否有位置
+            ItemPosCountVec dest;
+            if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 70630, 1) == EQUIP_ERR_OK)
+            {
+
+                //重生去光环(火焰节之韧，合剂效果的光环不会清除)
+                player->RemoveAllAurasOnDeath();
+
+                //重置角色等级为初始等级、天赋
+                // set starting level
+                uint32 start_level = sWorld->getIntConfig(CONFIG_START_PLAYER_LEVEL);
+
+                player->SetLevel(start_level);
+
+                player->InitStatsForLevel(true);
+                player->InitTalentForLevel();
+
+                player->UpdateAllAttackSpeeds();//更新攻速和施法速度
+
+                //清空多天赋记录
+                //CharacterDatabase.Execute("delete from `character_mtalent` WHERE `guid` = '{}'", player->GetGUID().GetCounter());
+
+                player->SetUInt32Value(PLAYER_XP, 0);
+
+                // reset level for pet
+                if (Pet* pet = player->GetPet())
+                    pet->SynchronizeLevelWithOwner();
+
+                //重置角色技能，不再重置技能，否则专业技能都被重置了，另外对法系职业不公平，近战平砍就很高了
+                //player->ResetSpells();
+
+                //生成转生石
+                ItemPosCountVec dest;
+                if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 70630, 1) == EQUIP_ERR_OK)
+                {
+                    Item* item = player->StoreNewItem(dest, 70630, true);
+                    player->SendNewItem(item, 1, true, false, false, false);
+                }
+
+                //脱下身上等级不符的装备（这个放到最后，以防止包被装备塞满了，转生石无法发到包里）
+                for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+                {
+                    player->AutoUnequipItemFromSlot(i);
+                }
+
+
+                handler->PSendSysMessage(21712);
+
+                //下线重新登录，以保证数据正常
+                //player->GetSession()->LogoutPlayer(true);//下线,还不能下线，会导致崩溃
+
+            }
+            else//如果包里没位置了，提示失败
+            {
+                handler->PSendSysMessage(21714);
+            }
+
+        }
+        else if (zsstone >= 10 && ygzsstone < 10)//转生石满了，远古没满，给远古
+        {
+            //判断包里是否有位置
+            ItemPosCountVec dest;
+            if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 70629, 1) == EQUIP_ERR_OK)
+            {
+
+                //重生去光环(火焰节之韧，合剂效果的光环不会清除)
+                player->RemoveAllAurasOnDeath();
+
+                //脱下身上等级不符的装备（这个放到最后，以防止包被装备塞满了，转生石无法发到包里）
+                for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+                {
+                    player->AutoUnequipItemFromSlot(i);
+                }
+
+                //重置角色等级为初始等级、天赋
+                // set starting level
+                uint32 start_level = sWorld->getIntConfig(CONFIG_START_PLAYER_LEVEL);
+
+                PlayerLevelInfo info;
+                sObjectMgr->GetPlayerLevelInfo(player->getRace(true), player->getClass(), start_level, &info);
+
+                PlayerClassLevelInfo classInfo;
+                sObjectMgr->GetPlayerClassLevelInfo(player->getClass(), start_level, &classInfo);
+
+                player->SetLevel(start_level);
+
+                // save base values (bonuses already included in stored stats
+                for (uint8 i = STAT_STRENGTH; i < MAX_STATS; ++i)
+                    player->SetCreateStat(Stats(i), info.stats[i]);
+
+                player->SetCreateHealth(classInfo.basehealth);
+                player->SetCreateMana(classInfo.basemana);
+
+
+                player->InitTalentForLevel();
+
+                player->UpdateAllAttackSpeeds();//更新攻速和施法速度
+
+                player->SetUInt32Value(PLAYER_XP, 0);
+
+                // reset level for pet
+                if (Pet* pet = player->GetPet())
+                    pet->SynchronizeLevelWithOwner();
+
+                //生成远古转生石
+                ItemPosCountVec dest;
+                if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 70629, 1) == EQUIP_ERR_OK)
+                {
+                    Item* item = player->StoreNewItem(dest, 70629, true);
+                    player->SendNewItem(item, 1, true, false, false, false);
+                }
+
+
+
+                handler->PSendSysMessage(21712);
+                //player->GetSession()->LogoutPlayer(true);//下线，还不能下线，会导致崩溃
+
+            }
+            else//如果包里没位置了，提示失败
+            {
+                handler->PSendSysMessage(21714);
+            }
+
+        }
+
+        //}
+
+        return true;
+
+    }
+
+
+    static bool HandleAHBotUpdateCommand(ChatHandler* handler)
+    {
+        sAuctionHouseBotMgr->Update(true);
+        handler->SendSysMessage("[AHBot] Update finished.");
+        return true;
+    }
+
+    static bool HandleAHBotReloadCommand(ChatHandler* handler)
+    {
+        sAuctionHouseBotMgr->Load();
+        handler->SendSysMessage("[AHBot] Reload finished.");
+        return true;
+    }
+
 
     // kick player
     static bool HandleKickPlayerCommand(ChatHandler* handler, Optional<PlayerIdentifier> target, Optional<std::string_view> reason)
@@ -1725,6 +2762,11 @@ public:
                 }
             }
 
+            //GM删除物品记录日志
+            //添加删除日志
+            Player* _p = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+            LOG_INFO("loot", "GM Destroy GM:{}[{}] destroy Item{}x{} from player {}[{}]", _p->GetName(), _p->GetGUID().GetCounter(), itemId, -count, playerTarget->GetName(), playerTarget->GetGUID().GetCounter());
+
             // output successful amount of destroyed items
             playerTarget->DestroyItemCount(itemId, -count, true, false);
             handler->PSendSysMessage(LANG_REMOVEITEM, itemId, -count, handler->GetNameLink(playerTarget));
@@ -1766,10 +2808,17 @@ public:
         {
             p->SendNewItem(item, count, false, true);
 
+            //让外部lua可以调用这个script，以进行随机附魔操作
+            sScriptMgr->OnPlayerCreateItem(p, item, count);
+
             if (p != playerTarget)
             {
                 playerTarget->SendNewItem(item, count, true, false);
             }
+
+            //添加GM给物品的日志
+            LOG_INFO("loot", "GM give  GM:{}[{}] gives {}x{} to {}[{}] [loot from GM]", p->GetName(), p->GetGUID().GetCounter(), item->GetEntry(), count, playerTarget->GetName(), playerTarget->GetGUID().GetCounter());
+
         }
 
         if (noSpaceForCount)
@@ -1777,6 +2826,67 @@ public:
 
         return true;
     }
+
+    static bool HandleDeleteItemCommand(ChatHandler* handler, Optional<PlayerIdentifier> player, ItemTemplate const* itemTemplate, Optional<int32> _count)
+    {
+        if (!sObjectMgr->GetItemTemplate(itemTemplate->ItemId))
+        {
+            handler->SendErrorMessage(LANG_COMMAND_ITEMIDINVALID, itemTemplate->ItemId);
+            return false;
+        }
+
+        uint32 itemId = itemTemplate->ItemId;
+        int32 count = 1;
+
+        if (_count)
+            count = *_count;
+
+        if (!count || count < 0)
+            count = 1;
+
+        if (!player)
+            player = PlayerIdentifier::FromTargetOrSelf(handler);
+
+        if (!player)
+            return false;
+
+        Player* playerTarget = player->GetConnectedPlayer();
+
+        if (!playerTarget)
+            return false;
+
+
+        // Only have scam check on player accounts
+        //if (playerTarget->GetSession()->GetSecurity() == SEC_PLAYER)
+        //{
+        if (!playerTarget->HasItemCount(itemId, 0))
+        {
+            // output that player don't have any items to destroy
+            handler->SendErrorMessage(LANG_REMOVEITEM_FAILURE, handler->GetNameLink(playerTarget).c_str(), itemId);
+            return false;
+        }
+
+        if (!playerTarget->HasItemCount(itemId, count))
+        {
+            // output that player don't have as many items that you want to destroy
+            handler->SendErrorMessage(LANG_REMOVEITEM_ERROR, handler->GetNameLink(playerTarget).c_str(), itemId);
+            return false;
+        }
+        //}
+
+        //GM删除物品记录日志
+        //添加删除日志
+        Player* _p = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+        LOG_INFO("loot", "GM Destroy GM:{}[{}] destroy Item{}x{} from player {}[{}]", _p->GetName(), _p->GetGUID().GetCounter(), itemId, -count, playerTarget->GetName(), playerTarget->GetGUID().GetCounter());
+
+        // output successful amount of destroyed items
+        playerTarget->DestroyItemCount(itemId, count, true, false);
+
+        handler->PSendSysMessage(LANG_REMOVEITEM, itemId, count, handler->GetNameLink(playerTarget).c_str());
+        return true;
+
+    }
+
 
     static bool HandleAddItemSetCommand(ChatHandler* handler, Variant<Hyperlink<itemset>, uint32> itemSetId)
     {

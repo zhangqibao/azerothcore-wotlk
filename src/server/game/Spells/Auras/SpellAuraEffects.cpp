@@ -7020,6 +7020,139 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
     // ignore negative values (can be result apply spellmods to aura damage
     int32 damage = std::max(m_amount, 0);
 
+    //对DK剑的回血技能做特殊处理
+
+    if (caster)
+    {
+
+        if (caster->IsPlayer() && GetSpellInfo()->Id == 17625)
+        {
+            //LOG_ERROR("xx", "damage {} ", damage);//测试
+
+            //所有情况下的回血封顶
+            if (damage > 1000.0f)
+            {
+                damage = 1000.0f;
+            }
+
+            //判断玩家当前的地图是否是团本、战场，就设定回血上限
+            if (caster->GetMap()->GetId())
+            {
+                if (caster->GetMap()->GetId() && (caster->GetMap()->IsRaid() || caster->GetMap()->IsBattlegroundOrArena()))
+                {
+
+                    //如果是英雄模式
+                    if (caster->GetMap()->IsHeroic())
+                    {
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                    }
+
+
+                    switch (caster->GetMap()->GetId())
+                    {
+                    case 309://ZUG
+                    case 409://MC
+                    case 509://安其拉废墟
+                    case 249://黑龙
+                    case 469://BWL
+                    case 531://安其拉神庙
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                        break;
+                    case 30://奥特兰克山谷
+                    case 489://战歌峡谷
+                    case 529://阿拉希盆地
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                        break;
+                    case 533://NAXX
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxxxxxxxx %u", pCaster->GetGUIDLow());//测试
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                        break;
+                    default:
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (caster->IsInCombat() && !caster->GetMap()->IsDungeon())//如果玩家在副本外进入战斗，设置回血上限
+            {
+                //判断玩家是否在战斗中，且选择的目标是玩家，就设定回血上限
+                if (((Player*)caster)->GetSession()->GetPlayer()->GetSelectedUnit())
+                {
+                    if (caster->IsPlayer() && ((Player*)caster)->GetSession()->GetPlayer()->GetSelectedUnit()->IsPlayer())
+                    {
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx1 %u", pCaster->GetGUIDLow());//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx11 %u", target->GetGUIDLow());//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx11 %u", ((Player*)pCaster)->GetSession()->GetPlayer()->GetSelectedUnit()->GetGUIDLow());//测试
+                        //return;
+                    }
+                }
+
+                //判断玩家是否在战斗中，且攻击的目标是玩家，就设定回血上限
+                if (caster->GetVictim())
+                {
+
+                    if (caster->IsPlayer() && caster->GetVictim()->IsPlayer())
+                    {
+                        if (damage > 500.0f)
+                        {
+                            damage = 500.0f;
+                        }
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx2");//测试
+                        //return;
+                    }
+
+
+                    //判断玩家是否在战斗中，且目标是世界boss，就设定回血上限
+                    if (caster->GetVictim()->ToCreature())
+                    {
+                        switch (caster->GetVictim()->GetEntry())
+                        {
+                        case 12397:
+                        case 14890:
+                        case 14888:
+                        case 14887:
+                        case 14889:
+                        case 6109:
+                            //防止单刷野外boss，设定上限
+                            if (damage > 500.0f)
+                            {
+                                damage = 500.0f;
+                            }
+
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx3");//测试
+                            //return;
+                            break;
+                        }
+
+                    }
+                }
+            }
+
+
+
+        }
+    }
+    //dk剑处理 end------------
+
     if (GetAuraType() == SPELL_AURA_OBS_MOD_HEALTH)
     {
         // Taken mods

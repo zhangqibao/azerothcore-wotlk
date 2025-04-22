@@ -197,6 +197,8 @@ public:
     void SetInitialWorldSettings() override;
     void LoadConfigSettings(bool reload = false) override;
 
+    void SendGMTicketText(char const* text);
+
     /// Are we in the middle of a shutdown?
     [[nodiscard]] bool IsShuttingDown() const override { return _shutdownTimer > 0; }
     [[nodiscard]] uint32 GetShutDownTimeLeft() const override { return _shutdownTimer; }

@@ -141,7 +141,7 @@ Map* MapMgr::FindMap(uint32 mapid, uint32 instanceId) const
     return ((MapInstanced*)map)->FindInstanceMap(instanceId);
 }
 
-Map::EnterState MapMgr::PlayerCannotEnter(uint32 mapid, Player* player, bool loginCheck)
+Map::EnterState MapMgr::PlayerCannotEnter(uint32 mapid, Player* player, bool loginCheck, bool bb)
 {
     MapEntry const* entry = sMapStore.LookupEntry(mapid);
     if (!entry)
@@ -244,7 +244,7 @@ Map::EnterState MapMgr::PlayerCannotEnter(uint32 mapid, Player* player, bool log
             instaceIdToCheck = save->GetInstanceId();
 
         // instaceIdToCheck can be 0 if save not found - means no bind so the instance is new
-        if (!player->CheckInstanceCount(instaceIdToCheck))
+        if (!player->CheckInstanceCount(instaceIdToCheck, bb))
         {
             player->SendTransferAborted(mapid, TRANSFER_ABORT_TOO_MANY_INSTANCES);
             return Map::CANNOT_ENTER_TOO_MANY_INSTANCES;

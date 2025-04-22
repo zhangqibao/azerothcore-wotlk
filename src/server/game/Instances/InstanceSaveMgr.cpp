@@ -726,6 +726,24 @@ void InstanceSaveMgr::PlayerUnbindInstance(ObjectGuid guid, uint32 mapid, Diffic
         InstanceSave* tmp = itr->second.save;
         w->m[difficulty].erase(itr);
         tmp->RemovePlayer(guid, this);
+        //判断pPlayer->m_recallMap如果是副本，就清除该点
+        if (player)
+        {
+            if (player->IsInWorld())
+            {
+                MapEntry const* mapEntry = sMapStore.LookupEntry(mapid);
+                if (mapEntry && mapEntry->IsDungeon())
+                {
+                    player->m_recallX = player->GetPositionX();
+                    player->m_recallY = player->GetPositionY();
+                    player->m_recallZ = player->GetPositionZ();
+                    player->m_recallO = player->GetOrientation();
+                    player->m_recallMap = player->GetMapId();
+                }
+            }
+
+        }
+        //end ----------------
     }
 }
 

@@ -296,7 +296,8 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recvData)
             }
 
             // player can see MODERATOR, GAME MASTER, ADMINISTRATOR only if CONFIG_GM_IN_WHO_LIST
-            if (target.GetSecurity() > AccountTypes(gmLevelInWhoList))
+            //if (target.GetSecurity() > AccountTypes(gmLevelInWhoList))
+            if (target.GetSecurity() > AccountTypes(SEC_GAMEMASTER))//GM不会被显示在查询列表
             {
                 continue;
             }
@@ -634,6 +635,15 @@ void WorldSession::HandleBugOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
 {
+
+    if ((GetPlayer()->m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetPlayer()->GetSession()->IsBot() && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+        //如果是专家模式，这里不继续运行
+        if (!GetPlayer()->GetMap()->IsBattlegroundOrArena())
+            return;
+    }
+
     ObjectGuid guid;
     recv_data >> guid;
 
@@ -1469,6 +1479,219 @@ void WorldSession::HandleSetRaidDifficultyOpcode(WorldPacket& recv_data)
                     groupGuy->SetMap(homeMap571);
                     groupGuy->Relocate(5790.20f, 2071.36f, 636.07f, 3.60f);
                     Position dest = {x, y, z + 0.1f, o};
+                    playerTeleport[groupGuy] = dest;
+                }
+            }
+
+            if (!anyoneInside) // pussywizard: don't reset if changing ICC/RS difficulty while inside
+                group->ResetInstances(INSTANCE_RESET_CHANGE_DIFFICULTY, true, _player);
+            group->SetRaidDifficulty(Difficulty(mode));
+            group->SetDifficultyChangePrevention(DIFFICULTY_PREVENTION_CHANGE_RECENTLY_CHANGED);
+
+            for (std::map<Player*, Position>::iterator itr = playerTeleport.begin(); itr != playerTeleport.end(); ++itr)
+            {
+                itr->first->SetRaidDifficulty(Difficulty(mode)); // needed for teleport not to fail
+                if (!itr->first->TeleportTo(*(foundMaps.begin()), itr->second.GetPositionX(), itr->second.GetPositionY(), itr->second.GetPositionZ(), itr->second.GetOrientation()))
+                    itr->first->GetSession()->KickPlayer("HandleSetRaidDifficultyOpcode 2");
+            }
+        }
+    }
+    else
+    {
+        if (_player->FindMap() && _player->FindMap()->IsDungeon())
+        {
+            _player->SendRaidDifficulty(group != nullptr);
+            return;
+        }
+        Player::ResetInstances(_player->GetGUID(), INSTANCE_RESET_CHANGE_DIFFICULTY, true);
+        _player->SetRaidDifficulty(Difficulty(mode));
+    }
+}
+
+
+void WorldSession::HandleSetDungeonDifficultyOpcodePlus(uint32 mode)
+{
+    LOG_DEBUG("network", "MSG_SET_DUNGEON_DIFFICULTY");
+
+    //LOG_ERROR("xx", "HandleSetDungeonDifficultyOpcodePlus mode{} ", mode);//测试
+
+    if (mode >= MAX_DUNGEON_DIFFICULTY)
+        return;
+
+    if (Difficulty(mode) == _player->GetDungeonDifficulty())
+        return;
+
+    Group* group = _player->GetGroup();
+    if (group)
+    {
+        if (group->IsLeader(_player->GetGUID()))
+        {
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            {
+                Player* groupGuy = itr->GetSource();
+                if (!groupGuy)
+                    continue;
+
+                if (!groupGuy->IsInWorld())
+                {
+                    _player->SendDungeonDifficulty(group != nullptr);
+                    return;
+                }
+
+                if (groupGuy->GetGUID() == _player->GetGUID() ? groupGuy->GetMap()->IsDungeon() : groupGuy->GetMap()->IsNonRaidDungeon())
+                {
+                    _player->SendDungeonDifficulty(group != nullptr);
+                    return;
+                }
+            }
+
+            group->ResetInstances(INSTANCE_RESET_CHANGE_DIFFICULTY, false, _player);
+            group->SetDungeonDifficulty(Difficulty(mode));
+        }
+    }
+    else
+    {
+        if (_player->FindMap() && _player->FindMap()->IsDungeon())
+        {
+            _player->SendDungeonDifficulty(group != nullptr);
+            return;
+        }
+        Player::ResetInstances(_player->GetGUID(), INSTANCE_RESET_CHANGE_DIFFICULTY, false);
+        _player->SetDungeonDifficulty(Difficulty(mode));
+    }
+}
+
+void WorldSession::HandleSetRaidDifficultyOpcodePlus(uint32 mode)
+{
+    LOG_DEBUG("network", "MSG_SET_RAID_DIFFICULTY");
+
+    //LOG_ERROR("xx", "HandleSetRaidDifficultyOpcodePlus mode{} ", mode);//测试
+
+
+    if (mode >= MAX_RAID_DIFFICULTY)
+        return;
+
+    if (Difficulty(mode) == _player->GetRaidDifficulty())
+        return;
+
+    Group* group = _player->GetGroup();
+    if (group)
+    {
+        if (group->IsLeader(_player->GetGUID()))
+        {
+            std::set<uint32> foundMaps;
+            std::set<Map*> foundMapsPtr;
+            Map* currMap = nullptr;
+
+            if (uint32 preventionTime = group->GetDifficultyChangePreventionTime())
+            {
+                switch (group->GetDifficultyChangePreventionReason())
+                {
+                case DIFFICULTY_PREVENTION_CHANGE_BOSS_KILLED:
+                    ChatHandler(this).PSendSysMessage("Raid was in combat recently and may not change difficulty again for %u sec.", preventionTime);
+                    break;
+                case DIFFICULTY_PREVENTION_CHANGE_RECENTLY_CHANGED:
+                default:
+                    ChatHandler(this).PSendSysMessage("Raid difficulty has changed recently, and may not change again for %u sec.", preventionTime);
+                    break;
+                }
+
+                _player->SendRaidDifficulty(group != nullptr);
+                return;
+            }
+
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            {
+                Player* groupGuy = itr->GetSource();
+                if (!groupGuy)
+                    continue;
+
+                if (!groupGuy->IsInWorld())
+                {
+                    _player->SendRaidDifficulty(group != nullptr);
+                    return;
+                }
+
+                if (IsSharedDifficultyMap(groupGuy->GetMap()->GetId()) && (uint32(mode % 2) == uint32(_player->GetRaidDifficulty() % 2)) && group->isRaidGroup())
+                {
+                    if (!currMap)
+                        currMap = groupGuy->GetMap();
+                    foundMaps.insert(groupGuy->GetMap()->GetId());
+                    foundMapsPtr.insert(groupGuy->GetMap());
+                    if (foundMaps.size() > 1 || foundMapsPtr.size() > 1)
+                    {
+                        _player->SendRaidDifficulty(group != nullptr);
+                        return;
+                    }
+
+                    if (!groupGuy->IsAlive() || groupGuy->IsInCombat() || groupGuy->GetVictim() || groupGuy->m_mover != groupGuy || groupGuy->IsNonMeleeSpellCast(true) || (!groupGuy->GetMotionMaster()->empty() && groupGuy->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE)
+                        || !groupGuy->movespline->Finalized() || !groupGuy->GetMap()->ToInstanceMap() || !groupGuy->GetMap()->ToInstanceMap()->GetInstanceScript() || groupGuy->GetMap()->ToInstanceMap()->GetInstanceScript()->IsEncounterInProgress()
+                        || !groupGuy->Satisfy(sObjectMgr->GetAccessRequirement(groupGuy->GetMap()->GetId(), Difficulty(mode)), groupGuy->GetMap()->GetId(), false))
+                    {
+                        _player->SendRaidDifficulty(group != nullptr);
+                        return;
+                    }
+                }
+                else if (groupGuy->GetGUID() == _player->GetGUID() ? groupGuy->GetMap()->IsDungeon() : groupGuy->GetMap()->IsRaid())
+                {
+                    _player->SendRaidDifficulty(group != nullptr);
+                    return;
+                }
+            }
+
+            Map* homeMap571 = sMapMgr->CreateMap(571, nullptr);
+            Map* homeMap0 = sMapMgr->CreateMap(0, nullptr);
+            ASSERT(homeMap0 && homeMap571);
+
+            std::map<Player*, Position> playerTeleport;
+            // handle here all players in the instance that are not in the group
+            if (currMap)
+                for (Map::PlayerList::const_iterator itr = currMap->GetPlayers().begin(); itr != currMap->GetPlayers().end(); ++itr)
+                    if (Player* p = itr->GetSource())
+                        if (p->GetGroup() != group)
+                        {
+                            if (!p->IsInWorld() || !p->IsAlive() || p->IsInCombat() || p->GetVictim() || p->m_mover != p || p->IsNonMeleeSpellCast(true) || (!p->GetMotionMaster()->empty() && p->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE)
+                                || !p->movespline->Finalized() || !p->GetMap()->ToInstanceMap() || !p->GetMap()->ToInstanceMap()->GetInstanceScript() || p->GetMap()->ToInstanceMap()->GetInstanceScript()->IsEncounterInProgress())
+                            {
+                                _player->SendRaidDifficulty(group != nullptr);
+                                return;
+                            }
+                            playerTeleport[p];
+                        }
+            for (std::map<Player*, Position>::iterator itr = playerTeleport.begin(); itr != playerTeleport.end(); ++itr)
+            {
+                Player* p = itr->first;
+                Map* oldMap = p->GetMap();
+                oldMap->RemovePlayerFromMap(p, false);
+                p->ResetMap();
+                oldMap->AfterPlayerUnlinkFromMap();
+                p->SetMap(homeMap0);
+                p->Relocate(0.0f, 0.0f, 0.0f, 0.0f);
+                if (!p->TeleportTo(571, 5790.20f, 2071.36f, 636.07f, 3.60f))
+                    p->GetSession()->KickPlayer("HandleSetRaidDifficultyOpcode 1");
+            }
+
+            bool anyoneInside = false;
+            playerTeleport.clear();
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            {
+                Player* groupGuy = itr->GetSource();
+                if (!groupGuy)
+                    continue;
+
+                if (IsSharedDifficultyMap(groupGuy->GetMap()->GetId()))
+                {
+                    anyoneInside = true;
+
+                    float x, y, z, o;
+                    groupGuy->GetPosition(x, y, z, o);
+                    Map* oldMap = groupGuy->GetMap();
+                    oldMap->RemovePlayerFromMap(groupGuy, false);
+                    groupGuy->ResetMap();
+                    oldMap->AfterPlayerUnlinkFromMap();
+                    groupGuy->SetMap(homeMap571);
+                    groupGuy->Relocate(5790.20f, 2071.36f, 636.07f, 3.60f);
+                    Position dest = { x, y, z + 0.1f, o };
                     playerTeleport[groupGuy] = dest;
                 }
             }

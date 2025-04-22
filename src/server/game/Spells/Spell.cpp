@@ -519,6 +519,14 @@ void SpellCastTargets::Update(Unit* caster)
     }
 }
 
+bool Spell::HandleCommand(std::string_view text, Player* pl)
+{
+    //LOG_ERROR("xx", "xxitemxx m_commandtext: {} ", text);//测试
+    ChatHandler(pl->GetSession()).ParseCommands(text, true);//加true表示这是内部调用，忽略帐号等级
+
+    return true;
+}
+
 class SpellEvent : public BasicEvent
 {
     public:
@@ -2125,7 +2133,174 @@ void Spell::SelectEffectTypeImplicitTargets(uint8 effIndex)
             if (targetMask & TARGET_FLAG_ITEM_MASK)
             {
                 if (Item* itemTarget = m_targets.GetItemTarget())
-                    AddItemTarget(itemTarget, 1 << effIndex);
+                {
+                    switch (m_spellInfo->Effects[effIndex].Effect)
+                    {
+                    case SPELL_EFFECT_DISENCHANT:
+                        //重铸卷轴代码
+                        if (m_CastItem)
+                        {
+                            //判断技能如果是10694，且是随机附魔卷轴调用的，就对物品执行随机附魔，否则正常执行原代码
+                            if (m_spellInfo->Id && m_spellInfo->Id == 10694 && (m_CastItem->GetEntry() == 69999 || m_CastItem->GetEntry() == 69996 || m_CastItem->GetEntry() == 69989))
+                            {
+                                ItemTemplate const* pNewItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                if (!pNewItemProto)
+                                    break;
+                                uint32 removeItemId = m_targets.GetItemTarget()->GetEntry();
+                                Item* item = m_targets.GetItemTarget();
+                                if (item && item->GetEntry() == removeItemId)
+                                {
+                                    //判断物品是否是蓝色品质的装备或武器、饰品项链等，否则不进行后续操作，但这里的判断是使用卷轴之后的，卷轴还是会消耗
+                                    if (pNewItemProto->Class != 2 && pNewItemProto->Class != 4)
+                                        break;
+                                    if (pNewItemProto->Quality < 2)
+                                        break;
+
+                                    //如果pNewItemProto->DisenchantID==1，就是分解出最低级材料，就允许重铸，不允许提取
+
+                                    if (!item->FlushEntry(pNewItemProto))
+                                    {
+                                        break;
+                                    }
+
+                                }
+
+                            }
+
+                            //判断技能如果是10694，且是赫拉迪姆水晶调用的，就对物品提取魔法元素，否则正常执行原代码
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && (m_CastItem->GetEntry() == 69998 || m_CastItem->GetEntry() == 69988 || m_CastItem->GetEntry() == 69987))
+                            {
+                                ItemTemplate const* pOldItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    if (pOldItemProto->Quality < 3)
+                                        break;
+
+                                    //如果pNewItemProto->DisenchantID==1，就是分解出最低级材料，就允许重铸，不允许提取
+                                    if (pOldItemProto->DisenchantID == 1 && m_targets.GetItemTarget()->GetEntry() > 70000)//改成非自创物品entry<70000的，允许用水晶提取，水晶有成本，允许还好
+                                        break;
+
+                                    //从物品 m_targets.getItemTarget() 中提取，存放到物品 m_CastItem 中
+                                    if (!item->ExtractEntry(pOldItemProto))
+                                    {
+                                        break;
+                                    }
+                                }
+
+
+                            }
+                            //判断技能如果是10694，且是充能赫拉迪姆水晶调用的，就对物品注入魔法元素，否则正常执行原代码
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && m_CastItem->GetEntry() == 69997)
+                            {
+                                ItemTemplate const* pNewItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                ItemTemplate const* pOldItemProto = sObjectMgr->GetItemTemplate(m_CastItem->GetEntry());
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    //从物品 m_CastItem 中提取，存放到物品 m_targets.getItemTarget() 中
+                                    if (!item->LoadEntry(m_CastItem, pOldItemProto, pNewItemProto))
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            //判断技能如果是10694，且是摧毁物品水晶调用的，就对删除物品，否则正常执行原代码
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && m_CastItem->GetEntry() == 69979)
+                            {
+                                ItemTemplate const* pOldItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    //如果pNewItemProto->DisenchantID==1，就是分解出最低级材料，就允许重铸，不允许提取
+                                    if (pOldItemProto->DisenchantID == 1 && m_targets.GetItemTarget()->GetEntry() > 70000)//改成非自创物品entry<70000的，允许用水晶提取，水晶有成本，允许还好
+                                        break;
+
+                                    //从物品 m_targets.getItemTarget() 中提取，存放到物品 m_CastItem 中
+                                    if (!item->ExtractEntryEmpty(pOldItemProto))
+                                    {
+                                        break;
+                                    }
+                                }
+
+                            }
+
+                            //判断技能如果是10694，且是解绑卷轴调用的，就对物品解除绑定，否则正常执行原代码
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && m_CastItem->GetEntry() == 69995)
+                            {
+                                ItemTemplate const* pNewItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    if (pNewItemProto->ItemLevel < 66 && pNewItemProto->RequiredLevel != 0 && (pNewItemProto->Class == 2 || pNewItemProto->Class == 4) && pNewItemProto->Quality < 4)
+                                    {
+                                        //解除物品绑定
+                                        item->SetUnBindingEntry();
+                                    }
+                                }
+
+                            }
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && m_CastItem->GetEntry() == 69994)
+                            {
+                                ItemTemplate const* pNewItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    if (pNewItemProto->ItemLevel < 76 && pNewItemProto->RequiredLevel != 0 && (pNewItemProto->Class == 2 || pNewItemProto->Class == 4) && pNewItemProto->Quality < 5)
+                                    {
+                                        //解除物品绑定
+                                        item->SetUnBindingEntry();
+                                    }
+                                }
+
+                            }
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && m_CastItem->GetEntry() == 69993)
+                            {
+                                ItemTemplate const* pNewItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    if (pNewItemProto->RequiredLevel != 0 && (pNewItemProto->Class == 2 || pNewItemProto->Class == 4) && pNewItemProto->Quality < 5)
+                                    {
+                                        //解除物品绑定
+                                        item->SetUnBindingEntry();
+                                    }
+                                }
+
+                            }
+                            //如果是符文卷轴触发的，就调用符文附魔
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && (m_CastItem->GetEntry() == 69986 || m_CastItem->GetEntry() == 69985 || m_CastItem->GetEntry() == 69984 || m_CastItem->GetEntry() == 69983))
+                            {
+                                ItemTemplate const* pNewItemProto = m_targets.GetItemTarget()->GetTemplate();
+                                ItemTemplate const* pOldItemProto = sObjectMgr->GetItemTemplate(m_CastItem->GetEntry());
+                                Item* item = m_targets.GetItemTarget();
+                                if (item)
+                                {
+                                    //从物品 m_CastItem 中提取符文栏的附魔，存放到物品 m_targets.getItemTarget() 中
+                                    if (!item->LoadEntryFW(m_CastItem, pOldItemProto, pNewItemProto))
+                                    {
+                                        break;
+                                    }
+                                }
+
+                            }
+                            //如果是赫拉迪姆宝珠触发的，什么都不做
+                            else if (m_spellInfo->Id && m_spellInfo->Id == 10694 && (m_CastItem->GetEntry() == 69978))
+                            {
+                                //什么都不做，装备合成lua去做后续工作
+                            }
+
+                        }
+                        //----重铸卷轴代码end----
+                        else
+                            AddItemTarget(itemTarget, 1 << effIndex);
+                        break;
+                    default:
+                        AddItemTarget(itemTarget, 1 << effIndex);
+                        break;
+                    }
+                }
+
                 return;
             }
             if (targetMask & TARGET_FLAG_GAMEOBJECT_MASK)
@@ -2981,6 +3156,335 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         }
     }
 
+    //如果玩家带有赫拉迪姆魔盒，且第一个栏位放了武器，这里每次攻击都尝试调用该武器的触发特效
+//判断是否拥有赫拉迪姆魔盒
+
+bool triggerWeaponProcsPlus = true;//默认让所有技能都可以触发魔盒特效
+if (triggerWeaponProcsPlus && m_caster->IsPlayer() && !m_caster->ToPlayer()->GetSession()->IsBot())
+{
+    if (m_spellInfo && m_spellInfo->SpellIconID == 15)//如果是拦截技能，不触发
+        triggerWeaponProcsPlus = false;
+    //魔盒第一格放的武器如果带火舌图腾类似的必出特效，会造成循环调用的死循环，报错ERROR: Spell 16344 too deep in cast chain for cast. Cast not allowed for prevent overflow stack crash.
+    //这里先禁止掉这些技能的触发
+    if (m_spellInfo && m_spellInfo->SpellIconID == 679)//如果是火舌武器技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->SpellIconID == 681)//如果是冰封武器技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->SpellIconID == 688)//如果是石化武器技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && (m_spellInfo->Id == 7712 || m_spellInfo->Id == 7714 || m_spellInfo->Id == 7715 || m_spellInfo->Id == 7716 || m_spellInfo->Id == 7717 || m_spellInfo->Id == 7718 || m_spellInfo->Id == 7719))//如果是火焰打击技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->Id == 16614)//如果是闪电打击，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->Id == 55736)//如果是严寒射击，不触发
+        triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && m_spellInfo->Id == 15494)//如果是反对者铸铁之怒，不触发
+    //    triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && (m_spellInfo->Id == 15600 || m_spellInfo->Id == 15601))//如果是正义之手，不触发
+    //    triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && (m_spellInfo->Id == 18943 || m_spellInfo->Id == 18941))//如果是两次攻击，不触发
+    //    triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && m_spellInfo->Id == 21919)//如果是痛击之刃，不触发
+    //    triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->SpellIconID == 2709)//如果是DK的骨疽技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->Id == 13897)//如果是附魔：灼热器 技能，不触发
+        triggerWeaponProcsPlus = false;
+    /*
+    //不再禁止，改为直接改技能，增加3秒CD，避免自己调用自己死循环，同时避免魔盒乐趣减少
+    if (m_spellInfo && (m_spellInfo->Id == 18817 || m_spellInfo->Id == 16414 || m_spellInfo->Id == 24585
+        || m_spellInfo->Id == 18084 || m_spellInfo->Id == 21170 || m_spellInfo->Id == 26693
+        || m_spellInfo->Id == 34107 || m_spellInfo->Id == 34696 || m_spellInfo->Id == 71838
+        ))//如果是吸血技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && m_spellInfo->Id == 18818)//如果是骨火的群攻技能，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && (m_spellInfo->Id == 16559 || m_spellInfo->Id == 16560))//如果是烈焰之怒技能，不触发
+        triggerWeaponProcsPlus = false;
+   */
+
+    if (m_spellInfo && (m_spellInfo->Id == 50401))//如果是冰锋符文，不触发
+        triggerWeaponProcsPlus = false;
+    if (m_spellInfo && (m_spellInfo->SpellIconID == 118))//如果是枯萎凋零，不触发
+        triggerWeaponProcsPlus = false;
+
+    //if (m_spellInfo && (m_spellInfo->Id == 20004))//如果是生命偷取，不触发
+    //    triggerWeaponProcsPlus = false;
+
+    if (m_spellInfo && (m_spellInfo->Id == 54181))//如果是邪能共效，不触发
+        triggerWeaponProcsPlus = false;
+
+    if (m_spellInfo && (m_spellInfo->Id == 50475))//如果是 鲜血灵气，不触发
+        triggerWeaponProcsPlus = false;
+
+    if (m_spellInfo && (m_spellInfo->Id == 50903))//如果是 冰虫腿甲强化片，不触发
+        triggerWeaponProcsPlus = false;
+
+    if (m_spellInfo && (m_spellInfo->Id == 50463))//如果是 浸血打击，不触发
+        triggerWeaponProcsPlus = false;
+
+    if (m_spellInfo && (m_spellInfo->Id == 51460))//如果是骨蛆技能触发的骨蛆效果 ，不触发（宕机罪魁祸首，因为天赋，DK每个技能都会调用到这里）
+        triggerWeaponProcsPlus = false;
+
+
+    //if (m_spellInfo && (m_spellInfo->Id == 59913))//如果是迅捷的正义之手，不触发
+    //    triggerWeaponProcsPlus = false;
+
+    //if (m_spellInfo && m_spellInfo->SpellIconID == 247 && (m_spellInfo->SpellFamilyFlags[0] & 0x2000))//如果是盗贼的速效毒药，不触发（非100%几率，可以允许）
+    //    triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && (m_spellInfo->Id == 16610 || m_spellInfo->Id == 15279))//如果是野猪之皮和尖刺水晶技能，不触发
+    //    triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && m_spellInfo->SpellIconID == 555 && (m_spellInfo->SpellFamilyFlags[0] & 0x8))//如果是惩戒光环，不触发
+    //    triggerWeaponProcsPlus = false;
+    //if (m_spellInfo && m_spellInfo->SpellIconID == 53 && (m_spellInfo->SpellFamilyFlags[0] & 0x100))//荆棘术，不触发
+    //    triggerWeaponProcsPlus = false;
+
+    //ImplicitTargetA 22,18   15,16 的是AOE目标
+    //EffectAura_1 == SPELL_AURA_DAMAGE_SHIELD 15 的是被动伤害技能
+    //EffectRadiusIndex_1 这个代表AOE的半径范围 AOE技能的的共同点是这个值大于0
+
+    //LOG_ERROR("xx", "xxxx22 ");//测试
+
+
+    /*
+    //不再禁止，改为直接改技能，增加3秒CD，避免自己调用自己死循环，同时避免魔盒乐趣减少
+
+    //魔盒的设计初心是提高游戏乐趣，并不是为了A怪方便，如果A怪导致了服务器出问题，只能禁掉AOE或反弹伤害的魔盒触发
+    if (m_spellInfo->Effects[0].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD || m_spellInfo->Effects[1].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD || m_spellInfo->Effects[2].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD
+         || m_spellInfo->Effects[0].HasRadius() || m_spellInfo->Effects[1].HasRadius() || m_spellInfo->Effects[2].HasRadius()
+        )
+    {
+        //LOG_ERROR("xx", "xxxx ");//测试
+        triggerWeaponProcsPlus = false;
+    }
+    */
+
+    //for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+    //{
+    //    //如果该技能是反弹伤害类型的，不触发魔盒第一格
+    //    if (m_spellInfo->Effects[i].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD)
+    //    {
+    //        triggerWeaponProcsPlus = false;
+    //    }
+    //    //如果该技能是AOE类型的，不触发魔盒第一格
+    //    if (m_spellInfo->Effects[i].HasRadius())
+    //    {
+    //        triggerWeaponProcsPlus = false;
+    //    }
+    //}
+
+
+}
+
+if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
+{
+    if (m_spellInfo && triggerWeaponProcsPlus)
+    {
+        //LOG_ERROR("xx", "hldmstart {}", m_spellInfo->Id);//测试，调试看是什么技能触发了bug
+
+        //uint32 hldmbox = ((Player*)m_caster)->GetItemCount(91666, true);
+        //if (hldmbox)
+        if (((Player*)m_caster)->getHLDM())
+        {
+            //如果有魔盒，看银行中第一个位置的装备slot:39
+            Item* hldmitem = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
+            if (hldmitem && (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR))
+            {
+                /*
+                if(m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex==1)//瞬发技能，就调用只能被动触发的函数
+                    ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                else//非瞬发技能，调用主动使用可变被动触发的函数
+                    ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem);
+                */
+
+                //只有超过200的伤害或治疗，才会触发,这里的伤害或治疗,如果风暴护手这种物品触发，是PVE战袍,VIP卡加成之前的，无法伤加成
+                //火舌图腾则是PVE战袍,VIP卡加成之前的，有法伤加成
+                //如果是奥爆是加成之后的，神圣新星伤害是加成后的，治疗是加成前的（法伤加成后的效果）
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_damage %f", m_damage);//测试
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_healing %f", m_healing);//测试
+                //if (m_damage > 75.0f || m_healing > 75.0f)//上面屏蔽了萨满图腾和火舌武器等的特效，漏洞已经解决，这里就没必要控制伤害了,烈焰之怒伤害最高是170，不是必出，就不限制了
+                //{
+                /*
+                    //只有法术伤害才能调用主动使用可变被动触发的函数
+                    if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
+                    {
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx %f", m_damage);//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "x2xx %f", m_healing);//测试
+                        if (m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex == 1)//瞬发技能
+                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem,true);
+                        else
+                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, false);
+                    }
+                    else
+                    {
+                        ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                    }
+                */
+                //后期法系收益比物理高，这里改为物理伤害也可以触发
+                if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
+                {
+                    if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
+                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
+                    else
+                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
+                }
+                else
+                {
+                    //LOG_ERROR("xx", "melee1 {}", m_spellInfo->Id);//测试
+                    if (roll_chance_f(20.0f))
+                    {
+                        //LOG_ERROR("xx", "melee2 {}", m_spellInfo->Id);//测试
+
+                        if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
+                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
+                        else
+                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
+                    }
+                    else
+                    {
+                        ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                    }
+                }
+                //}
+
+            }
+        }
+    }
+
+}
+
+//看玩家是否装备了远古能量徽记
+if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
+{
+    //如果玩家拥有远古能量徽记
+    //uint32 yuanguhuijinum = ((Player*)m_caster)->GetItemCount(91150, false) + ((Player*)m_caster)->GetItemCount(91151, false) + ((Player*)m_caster)->GetItemCount(91152, false) +
+    //    ((Player*)m_caster)->GetItemCount(91153, false) + ((Player*)m_caster)->GetItemCount(91154, false) + ((Player*)m_caster)->GetItemCount(91155, false) +
+    //    ((Player*)m_caster)->GetItemCount(91156, false) + ((Player*)m_caster)->GetItemCount(91157, false) + ((Player*)m_caster)->GetItemCount(91158, false) + ((Player*)m_caster)->GetItemCount(91159, false);
+    //if (yuanguhuijinum > 0)
+    if (((Player*)m_caster)->getYGNL())
+    {
+        Item* yuanguhuiji1 = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 12);
+        Item* yuanguhuiji2 = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 13);
+
+        //看玩家是否装备职业对应的远古能量徽记
+        float chance = 15.0f;
+        if (((Player*)m_caster)->GetClass())
+        {
+            switch (((Player*)m_caster)->GetClass())
+            {
+            case CLASS_PRIEST:
+                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91154 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91154)
+                {
+                    if (m_spellInfo && (m_spellInfo->SpellIconID == 241 || m_spellInfo->SpellIconID == 540))//如果是强效治疗术或治疗祷言
+                    {
+                        //几率触发心灵专注
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(14751, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 14751, true);
+                            ((Player*)m_caster)->SendClearCooldown(14751, ((Player*)m_caster));
+                        }
+                        //几率触发无尽祝福
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(34210, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 34210, true);
+                            ((Player*)m_caster)->SendClearCooldown(34210, ((Player*)m_caster));
+                        }
+
+
+                    }
+                }
+                break;
+            case CLASS_PALADIN:
+                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91157 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91157)
+                {
+                    if (m_spellInfo && (m_spellInfo->SpellIconID == 70))//如果是圣光术
+                    {
+                        //几率触发神恩术
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(20216, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 20216, true);
+                            ((Player*)m_caster)->SendClearCooldown(20216, ((Player*)m_caster));
+                        }
+                    }
+                }
+                break;
+            case CLASS_SHAMAN:
+                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91156 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91156)
+                {
+                    if (m_spellInfo && (m_spellInfo->SpellIconID == 13 || m_spellInfo->SpellIconID == 963 || m_spellInfo->SpellIconID == 62 || m_spellInfo->SpellIconID == 165))//如果是治疗波或治疗链，闪电箭，闪电链
+                    {
+                        //几率触发自然迅捷16188
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(16188, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 16188, true);
+                            ((Player*)m_caster)->SendClearCooldown(16188, ((Player*)m_caster));
+                        }
+                    }
+                }
+                break;
+            case CLASS_MAGE:
+                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91153 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91153)
+                {
+                    if (m_spellInfo && (m_spellInfo->SpellIconID == 188 || m_spellInfo->SpellIconID == 185 || m_spellInfo->SpellIconID == 2294))//如果是寒冰箭或火球术或奥术冲击
+                    {
+                        //几率触发气定神闲
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(12043, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 12043, true);
+                            ((Player*)m_caster)->SendClearCooldown(12043, ((Player*)m_caster));
+                        }
+                    }
+                }
+                break;
+            case CLASS_WARLOCK:
+                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91152 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91152)
+                {
+                    if (m_spellInfo && (m_spellInfo->SpellIconID == 213))//如果是暗影箭
+                    {
+                        //几率触发暗影冥思 17941
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(17941, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 17941, true);
+                            ((Player*)m_caster)->SendClearCooldown(17941, ((Player*)m_caster));
+                        }
+                    }
+                }
+                break;
+            case CLASS_DRUID:
+                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91155 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91155)
+                {
+                    if (m_spellInfo && (m_spellInfo->SpellIconID == 962 || m_spellInfo->SpellIconID == 197 || m_spellInfo->SpellIconID == 1485 || m_spellInfo->SpellIconID == 263))//如果是治疗之触\愈合\星火术\愤怒
+                    {
+                        //几率触发自然迅捷17116
+                        if (roll_chance_f(chance))
+                        {
+                            ((Player*)m_caster)->SendClearCooldown(17116, ((Player*)m_caster));
+                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 17116, true);
+                            ((Player*)m_caster)->SendClearCooldown(17116, ((Player*)m_caster));
+                        }
+                    }
+                }
+                break;
+            case CLASS_WARRIOR:
+            case CLASS_ROGUE:
+            case CLASS_HUNTER:
+                break;
+
+
+            }
+        }
+
+    }
+
+}
+
+
     if (m_caster)
     {
         if (missInfo != SPELL_MISS_EVADE && !m_caster->IsFriendlyTo(effectUnit) && (!m_spellInfo->IsPositive() || m_spellInfo->HasEffect(SPELL_EFFECT_DISPEL)))
@@ -3662,7 +4166,230 @@ SpellCastResult Spell::prepare(SpellCastTargets const* targets, AuraEffect const
 
     if (m_caster->IsPlayer())
         if (m_caster->ToPlayer()->GetCommandStatus(CHEAT_CASTTIME))
-            m_casttime = 0;
+        {
+            //只能在创造物品时去除施法时间
+            switch (m_spellInfo->Effects[0].Effect)
+            {
+            case SPELL_EFFECT_CREATE_ITEM:
+            {
+                m_casttime = 0;
+            }
+            }
+        }
+
+    //如果是虚空龙坐骑，取消施法时间
+    if (m_CastItem)
+    {
+        //LOG_ERROR("xx", "m_spellInfo->Id: {} m_CastItem {}", m_spellInfo->Id, m_CastItem->GetEntry());//测试
+
+        //判断技能如果是17450，且是虚空龙的缰绳调用的
+        if (m_spellInfo->Id && m_spellInfo->Id == 900103 && (m_CastItem->GetEntry() == 90021))
+        {
+            //去除施法时间
+            //m_casttime = 0;
+            //m_preCastSpell = 11319;
+
+            if (((Player*)m_caster)->GetMap()->IsDungeon() || ((Player*)m_caster)->GetAreaId() == 2177 || ((Player*)m_caster)->GetAreaId() == 1741 || ((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())
+            {
+                if (m_caster->IsPlayer())
+                {
+                    if (((Player*)m_caster)->IsOutdoors())
+                    {
+                        if (((Player*)m_caster)->IsMounted())
+                        {
+                            ((Player*)m_caster)->Dismount();
+                            ((Player*)m_caster)->RemoveAura(23241);
+                            SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                            finish(false);
+                            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                        }
+                        else
+                        {
+                            //((Player*)m_caster)->AddAura(26056, ((Player*)m_caster));//绿色坦克，有问题换地区会下马
+                            ((Player*)m_caster)->AddAura(23241, ((Player*)m_caster));//绿色迅猛龙
+                            SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                            finish(false);
+                            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                        }
+
+                    }
+                }
+            }
+
+        }
+        //判断技能如果是17450，且是幽灵狮鹫调用的，就提前调用15秒隐形技能
+        if (m_spellInfo->Id && m_spellInfo->Id == 17450 && (m_CastItem->GetEntry() == 90023))
+        {
+            m_preCastSpell = 11392;//隐形术15秒
+            //m_caster->CastSpell(m_caster, 12438, true);//缓落10s
+            //m_caster->CastSpell(m_caster, 50085, true);//缓落40s
+        }
+
+        //判断技能如果是26655，且是新物品红色其拉作战坦克调用的，就取消施法时间,26655本来就是瞬发技能
+        if (m_spellInfo->Id && m_spellInfo->Id == 26655 && (m_CastItem->GetEntry() == 90030))
+        {
+            if (m_caster->GetAreaId() != 2177 && m_caster->GetAreaId() != 1741 && !((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())//竞技场内不释放这些buff
+            {
+                //去除施法时间
+                m_casttime = 0;
+                m_caster->CastSpell(m_caster, 11319, true);
+                m_caster->CastSpell(m_caster, 6615, true);
+            }
+
+        }
+        //判断技能如果是17450，且是幽灵狮鹫缰绳调用的，就先施放缓落术
+        //if (m_spellInfo->Id && m_spellInfo->Id == 17450 && (m_CastItem->GetEntry() == 90023))
+        //{
+        //    //施放缓落术
+        //    m_caster->CastSpell(m_caster, 12438, true);
+        //}
+        //判断技能如果是8373，且是洞穴坦克调用的，就先施放xxx
+        if (m_spellInfo->Id && m_spellInfo->Id == 26657 && (m_CastItem->GetEntry() == 90031))
+        {
+            //战斗中禁止使用
+            if (!m_caster->IsInCombat())
+            {
+                if (m_caster->GetAreaId() != 2177 && m_caster->GetAreaId() != 1741 && !((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())//竞技场内不释放这些buff
+                {
+
+                    //释放水上行走
+                    m_caster->CastSpell(m_caster, 11319, true);
+                    //pPlayerCaster->CastSpell(pPlayerCaster, 12438, true);
+                    //释放月神之光-无敌（10秒）
+                    m_caster->CastSpell(m_caster, 6724, true);
+                    //释放自由行动（30秒）
+                    m_caster->CastSpell(m_caster, 6615, true);
+                    //释放免疫伤害（45秒）
+                    //pPlayerCaster->CastSpell(pPlayerCaster, 1302, true);
+
+                }
+
+            }
+
+        }
+
+        if (!sWorld->getBoolConfig(CONFIG_BOOL_ITEMUSEINBG_ENABLE))
+        {
+            //禁止新道具buff在战场使用
+            //if (m_spellInfo->Id && (m_spellInfo->Id != 17450 && m_spellInfo->Id != 900101 && m_spellInfo->Id != 26655 && m_spellInfo->Id != 26657 && m_spellInfo->Id != 17707 && m_spellInfo->Id != 8690 && m_spellInfo->Id != 26263 && m_spellInfo->Id != 900103) && m_CastItem->GetEntry() > 69900 && ( ((Player*)m_caster)->GetAreaId() == 2177 || ((Player*)m_caster)->GetAreaId() == 1741 || ((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())  )
+            if (m_spellInfo->Id && (m_spellInfo->Id != 17450 && m_spellInfo->Id != 900101 && m_spellInfo->Id != 26655 && m_spellInfo->Id != 26657 && m_spellInfo->Id != 17707
+                && m_spellInfo->Id != 8690 && m_spellInfo->Id != 26263 && m_spellInfo->Id != 900103) && m_CastItem->GetEntry() > 69900 && ((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())
+            {
+                SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                finish(false);
+                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+            }
+        }
+
+        if (!sWorld->getBoolConfig(CONFIG_BOOL_ITEMUSEINARENA_ENABLE))
+        {
+            //禁止新道具buff在竞技场使用
+            //if (m_spellInfo->Id && (m_spellInfo->Id != 17450 && m_spellInfo->Id != 900101 && m_spellInfo->Id != 26655 && m_spellInfo->Id != 26657 && m_spellInfo->Id != 17707 && m_spellInfo->Id != 8690 && m_spellInfo->Id != 26263 && m_spellInfo->Id != 900103) && m_CastItem->GetEntry() > 69900 && ( ((Player*)m_caster)->GetAreaId() == 2177 || ((Player*)m_caster)->GetAreaId() == 1741 || ((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())  )
+            if (m_spellInfo->Id && (m_spellInfo->Id != 17450 && m_spellInfo->Id != 900101 && m_spellInfo->Id != 26655 && m_spellInfo->Id != 26657 && m_spellInfo->Id != 17707
+                && m_spellInfo->Id != 8690 && m_spellInfo->Id != 26263 && m_spellInfo->Id != 900103) && m_CastItem->GetEntry() > 69900 && (((Player*)m_caster)->GetAreaId() == 2177 || ((Player*)m_caster)->GetAreaId() == 1741))
+            {
+                SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                finish(false);
+                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+            }
+        }
+
+
+
+        //判断技能如果是900101，且是筋斗云调用的，就先施放xxx
+        if (m_spellInfo->Id && m_spellInfo->Id == 900101 && (m_CastItem->GetEntry() == 90033))
+        {
+            //战斗中禁止使用
+            if (!m_caster->IsInCombat())
+            {
+                //判断是非组队情况下，正常执行
+                if (m_caster->IsPlayer())
+                {
+                    if (((Player*)m_caster)->GetMap()->IsDungeon())
+                    {
+                        if ((!((Player*)m_caster)->GetGroup() && ((Player*)m_caster)->m_InstanceValid == true))
+                        {
+                            //donothing
+                        }
+                        else
+                        {
+                            if (((Player*)m_caster)->IsMounted())
+                            {
+                                ((Player*)m_caster)->Dismount();
+                                ((Player*)m_caster)->RemoveAura(42777);
+                                SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                                finish(false);
+                                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                            }
+                            else
+                            {
+                                if (m_caster->GetAreaId() != 2177 && m_caster->GetAreaId() != 1741 && !((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())//竞技场内不释放这些buff
+                                {
+                                    //释放水上行走
+                                    m_caster->CastSpell(m_caster, 11319, true);
+                                    //pPlayerCaster->CastSpell(pPlayerCaster, 12438, true);
+                                    //释放月神之光-无敌（10秒）
+                                    m_caster->CastSpell(m_caster, 6724, true);
+                                    //释放自由行动（30秒）
+                                    m_caster->CastSpell(m_caster, 6615, true);
+                                }
+
+                                ((Player*)m_caster)->AddAura(42777, ((Player*)m_caster));//幽灵虎
+                                SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                                finish(false);
+                                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                            }
+
+                        }
+                    }
+                    else if (((Player*)m_caster)->GetMap()->IsBattlegroundOrArena() || m_caster->GetAreaId() == 2177 || m_caster->GetAreaId() == 1741)
+                    {
+                        if (((Player*)m_caster)->IsMounted())
+                        {
+                            ((Player*)m_caster)->Dismount();
+                            ((Player*)m_caster)->RemoveAura(42777);
+                            SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                            finish(false);
+                            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                        }
+                        else
+                        {
+                            if (m_caster->GetAreaId() != 2177 && m_caster->GetAreaId() != 1741 && !((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())//竞技场内不释放这些buff
+                            {
+                                //释放水上行走
+                                m_caster->CastSpell(m_caster, 11319, true);
+                                //pPlayerCaster->CastSpell(pPlayerCaster, 12438, true);
+                                //释放月神之光-无敌（10秒）
+                                m_caster->CastSpell(m_caster, 6724, true);
+                                //释放自由行动（30秒）
+                                m_caster->CastSpell(m_caster, 6615, true);
+                            }
+
+                            ((Player*)m_caster)->AddAura(42777, ((Player*)m_caster));//幽灵虎
+                            SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                            finish(false);
+                            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                        }
+                    }
+
+                    //释放水上行走
+                    m_caster->CastSpell(m_caster, 11319, true);
+                    //pPlayerCaster->CastSpell(pPlayerCaster, 12438, true);
+                    //释放月神之光-无敌（10秒）
+                    m_caster->CastSpell(m_caster, 6724, true);
+                    //释放自由行动（30秒）
+                    m_caster->CastSpell(m_caster, 6615, true);
+
+
+                }
+
+            }
+
+        }
+
+
+    }
+
 
     // don't allow channeled spells / spells with cast time to be casted while moving
     // (even if they are interrupted on moving, spells with almost immediate effect get to have their effect processed before movement interrupter kicks in)
@@ -3808,6 +4535,78 @@ SpellCastResult Spell::prepare(SpellCastTargets const* targets, AuraEffect const
     return SPELL_CAST_OK;
 }
 
+void Spell::fakecancel(bool bySelf)
+{
+    if (m_spellState == SPELL_STATE_FINISHED)
+        return;
+
+    uint32 oldState = m_spellState;
+    bool autoRepeat = m_autoRepeat;
+    m_spellState = SPELL_STATE_FINISHED;
+
+    m_autoRepeat = false;
+    switch (oldState)
+    {
+    case SPELL_STATE_PREPARING:
+        CancelGlobalCooldown();
+        if (m_caster->GetTypeId() == TYPEID_PLAYER)
+        {
+            if (m_caster->ToPlayer()->NeedSendSpectatorData())
+                ArenaSpectator::SendCommand_Spell(m_caster->FindMap(), m_caster->GetGUID(), "SPE", m_spellInfo->Id, bySelf ? 99998 : 99999);
+        }
+        [[fallthrough]]; /// @todo: Not sure whether the fallthrough was a mistake (forgetting a break) or intended. This should be double-checked.
+    case SPELL_STATE_DELAYED:
+        SendInterrupted(0);
+        // xinef: fixes bugged gcd reset in some cases
+        if (!autoRepeat)
+            SendCastResult(SPELL_CAST_OK);
+        break;
+
+    case SPELL_STATE_CASTING:
+        if (!bySelf)
+        {
+            for (std::list<TargetInfo>::const_iterator ihit = m_UniqueTargetInfo.begin(); ihit != m_UniqueTargetInfo.end(); ++ihit)
+                if ((*ihit).missCondition == SPELL_MISS_NONE)
+                    if (Unit* unit = m_caster->GetGUID() == ihit->targetGUID ? m_caster : ObjectAccessor::GetUnit(*m_caster, ihit->targetGUID))
+                        unit->RemoveOwnedAura(m_spellInfo->Id, m_originalCasterGUID, 0, AURA_REMOVE_BY_CANCEL);
+
+            SendChannelUpdate(0);
+            SendInterrupted(0);
+            SendCastResult(SPELL_CAST_OK);
+        }
+
+        if (m_caster->GetTypeId() == TYPEID_PLAYER && m_caster->ToPlayer()->NeedSendSpectatorData())
+            ArenaSpectator::SendCommand_Spell(m_caster->FindMap(), m_caster->GetGUID(), "SPE", m_spellInfo->Id, bySelf ? 99998 : 99999);
+
+        // spell is canceled-take mods and clear list
+        if (Player* player = m_caster->GetSpellModOwner())
+            player->RemoveSpellMods(this);
+
+        m_appliedMods.clear();
+        break;
+    default:
+        break;
+    }
+
+    SetReferencedFromCurrent(false);
+    if (m_selfContainer && *m_selfContainer == this)
+        *m_selfContainer = nullptr;
+
+    // Do not remove current far sight object (already done in Spell::EffectAddFarsight) to prevent from reset viewpoint to player
+    if (!(bySelf && m_spellInfo->HasEffect(SPELL_EFFECT_ADD_FARSIGHT)))
+    {
+        m_caster->RemoveDynObject(m_spellInfo->Id);
+    }
+
+    if (m_spellInfo->IsChanneled()) // if not channeled then the object for the current cast wasn't summoned yet
+        m_caster->RemoveGameObject(m_spellInfo->Id, true);
+
+    //set state back so finish will be processed
+    m_spellState = oldState;
+
+    finish(false);
+}
+
 void Spell::cancel(bool bySelf)
 {
     if (m_spellState == SPELL_STATE_FINISHED)
@@ -3900,6 +4699,106 @@ void Spell::cast(bool skipCheck)
 
 void Spell::_cast(bool skipCheck)
 {
+    //如果是由物品触发的技能，并且物品表里带有GM命令，这里进行拦截并执行
+    if (m_CastItem && m_caster->IsPlayer())
+    {
+        ItemTemplate const* proto = m_CastItem->GetTemplate();
+        //测试打印信息
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxxx");//测试成功
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "oooo%u", proto->Spells[i].SpellId);//测试成功
+        if (proto->Spells[0].SpellId == 8213)//如果物品触发的技能是美味风蛇
+        {
+            if (proto)
+            {
+                if (proto->commandtext.size() > 0)
+                {
+                    if (m_caster->IsInWorld())
+                    {
+                        //只能对自己施法
+                        if (Unit* selectunit = ((Player*)m_caster)->GetSession()->GetPlayer()->GetSelectedUnit())
+                        {
+                            ObjectGuid selGuid = selectunit->GetGUID();
+                            if (selGuid != ((Player*)m_caster)->GetSession()->GetPlayer()->GetGUID())
+                            {
+                                ((Player*)m_caster)->GetSession()->GetPlayer()->SetSelection(((Player*)m_caster)->GetSession()->GetPlayer()->GetGUID());
+                            }
+                        }
+                        else
+                        {
+                            ((Player*)m_caster)->GetSession()->GetPlayer()->SetSelection(((Player*)m_caster)->GetSession()->GetPlayer()->GetGUID());
+                        }
+
+                        //不再执行以后的命令.
+                        SendSpellCooldown();//加技能冷却
+                        SendSpellGo();//发送技能冷却、技能使用效果等信息到客户端
+                        TakeCastItem();//结算物品使用次数
+                        finish(true);
+
+                        //命令放后面，以免失败了无法补物品
+                        //LOG_ERROR("xx", "commandtext1: {} ", proto->commandtext.c_str());//测试
+                        HandleCommand(proto->commandtext.c_str(), ((Player*)m_caster)->GetSession()->GetPlayer());//这个会对所有对象施法，执行命令的地方未传入目标，是在命令函数里自行获取目标的，位置D:\mangoscode\vmangos\core\src\game\Commands\CharacterCommands.cpp
+
+
+
+                        return;
+                    }
+
+                }
+            }
+
+        }
+        if (proto->Spells[0].SpellId == 8373)//如果物品触发的技能是8373，就执行物品的命令栏的命令
+        {
+            //LOG_ERROR("xx", "here SpellId: {} ", proto->Spells[0].SpellId);//测试
+            if (proto)
+            {
+                if (proto->commandtext.size() > 0)
+                {
+                    if (m_caster->IsInWorld())
+                    {
+                        //只能对自己施法
+                        if (Unit* selectunit = ((Player*)m_caster)->GetSession()->GetPlayer()->GetSelectedUnit())
+                        {
+                            ObjectGuid selGuid = selectunit->GetGUID();
+                            if (selGuid != ((Player*)m_caster)->GetSession()->GetPlayer()->GetGUID())
+                            {
+                                ((Player*)m_caster)->GetSession()->GetPlayer()->SetSelection(((Player*)m_caster)->GetSession()->GetPlayer()->GetGUID());
+                            }
+                        }
+                        else
+                        {
+                            ((Player*)m_caster)->GetSession()->GetPlayer()->SetSelection(((Player*)m_caster)->GetSession()->GetPlayer()->GetGUID());
+                        }
+
+                        fakecancel();
+
+
+                        //不再执行以后的命令.
+                        SendSpellCooldown();//加技能冷却
+                        SendSpellGo();//发送技能冷却、技能使用效果等信息到客户端
+                        TakeCastItem();//结算物品使用次数
+                        finish(true);
+
+                        //命令放后面，以免失败了无法补物品
+                        //LOG_ERROR("xx", "commandtext2: {} ", proto->commandtext.c_str());//测试
+                        HandleCommand(proto->commandtext.c_str(), ((Player*)m_caster)->GetSession()->GetPlayer());//这个会对所有对象施法，执行命令的地方未传入目标，是在命令函数里自行获取目标的，位置D:\mangoscode\vmangos\core\src\game\Commands\CharacterCommands.cpp
+                        //finish(true); 
+                        //return;
+
+
+
+                        return;
+                    }
+
+                }
+            }
+
+        }
+
+
+    }
+    //物品触发技能结束----------
+
     // update pointers base at GUIDs to prevent access to non-existed already object
     if (!UpdatePointers())
     {
@@ -5889,9 +6788,14 @@ SpellCastResult Spell::CheckCast(bool strict)
 
     if (m_caster->IsPlayer() /*&& VMAP::VMapFactory::createOrGetVMapMgr()->isLineOfSightCalcEnabled()*/) // pussywizard: optimization (commented)
     {
-        if (m_spellInfo->HasAttribute(SPELL_ATTR0_ONLY_OUTDOORS) &&
+        //如果是黑色其拉坦克，就允许室内使用
+        //if (m_spellInfo->Id != 26655)
+        if (m_spellInfo->Id != 26657)
+        {
+            if (m_spellInfo->HasAttribute(SPELL_ATTR0_ONLY_OUTDOORS) &&
                 !m_caster->IsOutdoors())
-            return SPELL_FAILED_ONLY_OUTDOORS;
+                return SPELL_FAILED_ONLY_OUTDOORS;
+        }
 
         if (m_spellInfo->HasAttribute(SPELL_ATTR0_ONLY_INDOORS) &&
                 m_caster->IsOutdoors())
@@ -6883,11 +7787,87 @@ SpellCastResult Spell::CheckCast(bool strict)
                     InstanceTemplate const* it = sObjectMgr->GetInstanceTemplate(m_caster->GetMapId());
                     if (it)
                         allowMount = it->AllowMount;
+
+                    ItemTemplate const* proto = m_CastItem ? m_CastItem->GetTemplate() : nullptr;
+                    //LOG_ERROR("xx", "kkm_spellInfo->Id {} ", m_spellInfo->Id);//测试
+                    switch (m_spellInfo->Id)
+                    {
+                    case 10795:
+                    case 17450:
+                        //LOG_ERROR("xx", "zuoqi: {} ", 17450);//测试
+                        //判断如果物品触发技能为10795或17450（迅猛龙坐骑）时
+                        //把技能表里读出的effectMiscValue1的值替换为item_template表里的commandtext的值
+
+                        if (proto)
+                        {
+                            if (proto->commandtext.size() > 0)
+                            {
+                                //*((int32 *)&m_spellInfo->EffectMiscValue[0]) = std::stoi(proto->commandtext);//这句有时候会让其他玩家召唤出虚空龙坐骑
+                                ((int32&)m_spellInfo->Effects[0].MiscValue) = std::stoi(proto->commandtext);
+                            }
+
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "oooo%u", std::stoi(proto->commandtext));//测试
+                        }
+                        else
+                        {
+                            //如果是正常的坐骑调用，恢复到正确的模型
+                            std::string _tmpzuoqiid = "7706";
+                            ((int32&)m_spellInfo->Effects[0].MiscValue) = std::stoi(_tmpzuoqiid);
+                        }
+                        break;
+                    case 900103:
+                        if (proto)
+                        {
+                            if (proto->commandtext.size() > 0)
+                            {
+                                //*((int32 *)&m_spellInfo->EffectMiscValue[0]) = std::stoi(proto->commandtext);//这句有时候会让其他玩家召唤出虚空龙坐骑
+                                ((int32&)m_spellInfo->Effects[0].MiscValue) = std::stoi(proto->commandtext);
+                            }
+
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "oooo%u", std::stoi(proto->commandtext));//测试
+                        }
+                        else
+                        {
+                            //如果是正常的坐骑调用，恢复到正确的模型
+                            std::string _tmpzuoqiid = "90001";
+                            ((int32&)m_spellInfo->Effects[0].MiscValue) = std::stoi(_tmpzuoqiid);
+                        }
+                        break;
+
+                    case 26655://给室外的虫子变色用
+                        //LOG_ERROR("xx", "xxx1 ");//测试
+                        if (proto)
+                        {
+                            if (proto->commandtext.size() > 0)
+                            {
+                                //LOG_ERROR("xx", "commandtext {}", proto->commandtext);//测试
+                                ((int32&)m_spellInfo->Effects[0].MiscValue) = std::stoi(proto->commandtext);
+                            }
+
+                        }
+                        else
+                        {
+                            //如果是正常的坐骑调用，恢复到正确的模型
+                            std::string _tmpzuoqiid = "15711";
+                            ((int32&)m_spellInfo->Effects[0].MiscValue) = std::stoi(_tmpzuoqiid);
+                        }
+                        allowMount = true;
+                        break;
+                    case 26657://室内坐骑
+                    case 900101://云朵
+                        allowMount = true;
+                        break;
+                    }
+
+
                     if (m_caster->IsPlayer() && !allowMount && !m_spellInfo->AreaGroupId)
                         return SPELL_FAILED_NO_MOUNTS_ALLOWED;
 
+                    /*
+                    //禁掉变形不允许上马的设定
                     if (m_caster->IsInDisallowedMountForm())
                         return SPELL_FAILED_NOT_SHAPESHIFT;
+                    */
 
                     // xinef: dont allow to cast mounts in specific transforms
                     if (m_caster->getTransForm())
@@ -7422,7 +8402,7 @@ SpellCastResult Spell::CheckItems()
     else
     {
         uint32 itemid = m_CastItem->GetEntry();
-        if (!player->HasItemCount(itemid))
+        if (!player->HasItemCount(itemid, 1, true))//是因为这里没有写银行，只检查包里是否有物品，所以过不去，改成包含检查银行
             return SPELL_FAILED_ITEM_NOT_READY;
 
         ItemTemplate const* proto = m_CastItem->GetTemplate();
@@ -7794,16 +8774,82 @@ SpellCastResult Spell::CheckItems()
                     uint32 item_quality = itemProto->Quality;
                     // 2.0.x addon: Check player enchanting level against the item disenchanting requirements
                     uint32 item_disenchantskilllevel = itemProto->RequiredDisenchantSkill;
-                    if (item_disenchantskilllevel == uint32(-1))
+
+                    //LOG_ERROR("xx", "item_disenchantskilllevel{} ", item_disenchantskilllevel);//测试，实施附魔到装备没有打印到这里,因为这里是分解技能
+
+//重铸卷轴代码
+                    if (m_CastItem)
+                    {
+                        //判断技能如果是10694，且是随机附魔卷轴调用的，就对物品执行随机附魔，否则正常执行原代码
+                        if (m_spellInfo->Id && m_spellInfo->Id == 10694 && (m_CastItem->GetEntry() == 69999 || m_CastItem->GetEntry() == 69996 || m_CastItem->GetEntry() == 69989 || m_CastItem->GetEntry() == 69998 || m_CastItem->GetEntry() == 69988 || m_CastItem->GetEntry() == 69987 ||
+                            m_CastItem->GetEntry() == 69997 || m_CastItem->GetEntry() == 69995 || m_CastItem->GetEntry() == 69994 || m_CastItem->GetEntry() == 69993 ||
+                            m_CastItem->GetEntry() == 69979 || //摧毁物品水晶
+                            m_CastItem->GetEntry() == 69978 || //赫拉迪姆宝珠
+                            m_CastItem->GetEntry() == 69986 || m_CastItem->GetEntry() == 69985 || m_CastItem->GetEntry() == 69984 || m_CastItem->GetEntry() == 69983))
+                        {
+                            //不执行技能等级判断
+
+                            //禁止有随机属性的物品被水晶提取,被符文石打，被水晶附魔
+                            if (m_CastItem->GetEntry() == 69998 || m_CastItem->GetEntry() == 69988 || m_CastItem->GetEntry() == 69987
+                                || m_CastItem->GetEntry() == 69983 || m_CastItem->GetEntry() == 69984 || m_CastItem->GetEntry() == 69985 || m_CastItem->GetEntry() == 69986
+                                || m_CastItem->GetEntry() == 69997)
+                            {
+                                if (itemProto->RandomSuffix != 0 || itemProto->Quality < 3)
+                                {
+                                    return SPELL_FAILED_CANT_BE_DISENCHANTED;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (item_disenchantskilllevel == uint32(-1))
+                                return SPELL_FAILED_CANT_BE_DISENCHANTED;
+                            if (item_disenchantskilllevel > player->GetSkillValue(SKILL_ENCHANTING))
+                                return SPELL_FAILED_LOW_CASTLEVEL;
+
+                        }
+                    }
+                    else
+                    {
+
+                        if (item_disenchantskilllevel == uint32(-1))
+                            return SPELL_FAILED_CANT_BE_DISENCHANTED;
+                        if (item_disenchantskilllevel > player->GetSkillValue(SKILL_ENCHANTING))
+                            return SPELL_FAILED_LOW_CASTLEVEL;
+                    }
+
+
+                    //if (item_quality > 4 || item_quality < 2)
+                    //    return SPELL_FAILED_CANT_BE_DISENCHANTED;
+                    //改为允许橙装被分解
+                    if (item_quality < 2)
                         return SPELL_FAILED_CANT_BE_DISENCHANTED;
-                    if (item_disenchantskilllevel > player->GetSkillValue(SKILL_ENCHANTING))
-                        return SPELL_FAILED_LOW_CASTLEVEL;
-                    if (item_quality > 4 || item_quality < 2)
-                        return SPELL_FAILED_CANT_BE_DISENCHANTED;
+
                     if (itemProto->Class != ITEM_CLASS_WEAPON && itemProto->Class != ITEM_CLASS_ARMOR)
                         return SPELL_FAILED_CANT_BE_DISENCHANTED;
-                    if (!itemProto->DisenchantID)
-                        return SPELL_FAILED_CANT_BE_DISENCHANTED;
+
+                    //重铸卷轴代码，仅允许重铸和符文石，不允许提取和附加
+                    if (m_CastItem)
+                    {
+                        //判断技能如果是10694，且是随机附魔卷轴调用的，就对物品执行随机附魔，否则正常执行原代码
+                        if (m_spellInfo->Id && m_spellInfo->Id == 10694 && (m_CastItem->GetEntry() == 69999 || m_CastItem->GetEntry() == 69996 || m_CastItem->GetEntry() == 69989 ||
+                            m_CastItem->GetEntry() == 69979 || //摧毁物品水晶
+                            m_CastItem->GetEntry() == 69978 || //赫拉迪姆宝珠
+                            m_CastItem->GetEntry() == 69986 || m_CastItem->GetEntry() == 69985 || m_CastItem->GetEntry() == 69984 || m_CastItem->GetEntry() == 69983))
+                        {
+                            //允许继续
+                        }
+                        else
+                        {
+                            if (!itemProto->DisenchantID)
+                                return SPELL_FAILED_CANT_BE_DISENCHANTED;
+                        }
+                    }
+                    else
+                    {
+                        if (!itemProto->DisenchantID)
+                            return SPELL_FAILED_CANT_BE_DISENCHANTED;
+                    }
                     break;
                 }
             case SPELL_EFFECT_PROSPECTING:

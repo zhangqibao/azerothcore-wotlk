@@ -1158,6 +1158,81 @@ bool Player::SatisfyQuestStatus(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestConditions(Quest const* qInfo, bool msg)
 {
+    uint32 questID = qInfo->GetQuestId();
+    if (questID)
+    {
+        //几个模式的奖励任务，在这里判断角色模式是否匹配
+        switch (questID)
+        {
+        case 29891:
+            //case 30317://转生任务，取消掉限制，让普通模式也可以接到
+        case 30306:
+            //case 30307://这个任务改为新人奖励传家宝了
+                //硬核模式奖励任务，判断角色是否为硬核模式
+            if (!(GetExtraFlags() & PLAYER_EXTRA_YH_MODEL))
+            {
+                return false;
+            }
+            break;
+        case 30311:
+            //乌龟模式奖励任务，判断角色是否为乌龟模式
+            if (!(GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS1))
+            {
+                return false;
+            }
+            break;
+        case 30313:
+            //流浪者模式奖励任务，判断角色是否为流浪者模式
+            if (!(GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2))
+            {
+                return false;
+            }
+            break;
+        case 30315:
+            //专家模式奖励任务，判断角色是否为专家模式
+            if (!(GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
+            {
+                return false;
+            }
+            break;
+        case 30319:
+            //技艺模式奖励任务，判断角色是否为技艺模式
+            if (!(GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS4) || !sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+            {
+                return false;
+            }
+            break;
+        case 29890:
+        case 30310:
+        case 30312:
+        case 30314:
+        case 30318:
+            //LOG_ERROR("xx", "PLAYER_FIELD_LIFETIME_HONORABLE_KILLS {}  ", uint32(GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS)));//测试
+            if (!sWorld->getBoolConfig(CONFIG_BOOL_REBORN_START_CHALLENGE_ENABLE))
+            {
+                //LOG_ERROR("xx", "SatisfyQuestConditions ");//测试
+                //几个模式挑战启动任务，判断是否用有转生石或PVP杀人超过1个或银行买了新的格子，是就不允许显示模式挑战任务
+                if (GetItemCount(70630, true) > 0 || uint32(GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS)) > 1 || GetBankBagSlotCount() > 0 || getClass() == CLASS_DEATH_KNIGHT || GetTotalPlayedTime() > 3600)
+                {
+                    return false;
+                }
+
+                if (questID == 30318)
+                {
+                    //根据开关参数屏蔽技艺模式任务
+                    if (!sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+                    {
+                        return false;
+                    }
+                }
+
+
+            }
+            break;
+
+        }
+    }
+
     ConditionList conditions = sConditionMgr->GetConditionsForNotGroupedEntry(CONDITION_SOURCE_TYPE_QUEST_AVAILABLE, qInfo->GetQuestId());
     if (!sConditionMgr->IsObjectMeetToConditions(this, conditions))
     {

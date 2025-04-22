@@ -154,6 +154,10 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
                 // adjust time (depends on /played)
                 if (myItems[i]->IsBOPTradable())
                     myItems[i]->SetUInt32Value(ITEM_FIELD_CREATE_PLAYED_TIME, trader->GetTotalPlayedTime() - (_player->GetTotalPlayedTime() - myItems[i]->GetUInt32Value(ITEM_FIELD_CREATE_PLAYED_TIME)));
+
+                //发生物品交易，添加交易物品log，要放在MoveItemToInventory前面，否则堆叠数量会因为和包里的叠加后，数量有问题
+                LOG_INFO("loot", "Trades player:{}[{}] loot {}x{} from player:{}[{}]", trader->GetName(), trader->GetGUID().GetCounter(), myItems[i]->GetEntry(), myItems[i]->GetCount(), _player->GetName(), _player->GetGUID().GetCounter());
+
                 // store
                 trader->MoveItemToInventory(traderDst, myItems[i], true, true);
             }
@@ -165,6 +169,10 @@ void WorldSession::moveItems(Item* myItems[], Item* hisItems[])
                 // adjust time (depends on /played)
                 if (hisItems[i]->IsBOPTradable())
                     hisItems[i]->SetUInt32Value(ITEM_FIELD_CREATE_PLAYED_TIME, _player->GetTotalPlayedTime() - (trader->GetTotalPlayedTime() - hisItems[i]->GetUInt32Value(ITEM_FIELD_CREATE_PLAYED_TIME)));
+
+                //发生物品交易，添加交易物品log，要放在MoveItemToInventory前面，否则堆叠数量会因为和包里的叠加后，数量有问题
+                LOG_INFO("loot", "Trades player:{}[{}] loot {}x{} from player:{}[{}]", _player->GetName(), _player->GetGUID().GetCounter(), hisItems[i]->GetEntry(), hisItems[i]->GetCount(), trader->GetName(), trader->GetGUID().GetCounter());
+
                 // store
                 _player->MoveItemToInventory(playerDst, hisItems[i], true, true);
             }
@@ -519,6 +527,24 @@ void WorldSession::HandleBeginTradeOpcode(WorldPacket& /*recvPacket*/)
     TradeData* my_trade = _player->m_trade;
     if (!my_trade)
         return;
+
+    //如果玩家是流浪者模式，禁止交易
+    if (((my_trade->GetTrader()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && my_trade->GetTrader()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+        || ((_player->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && _player->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL)))
+    {
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21735);
+        ChatHandler(my_trade->GetTrader()->GetSession()).PSendSysMessage(21735);
+        return;
+    }
+    /*
+    //如果玩家等级小于6，禁止使用交易
+    if (my_trade->GetTrader()->GetLevel() < 6 ||  GetPlayer()->GetLevel() < 6)
+    {
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21736);
+        ChatHandler(my_trade->GetTrader()->GetSession()).PSendSysMessage(21736);
+        return;
+    }
+    */
 
     my_trade->GetTrader()->GetSession()->SendTradeStatus(TRADE_STATUS_OPEN_WINDOW);
     SendTradeStatus(TRADE_STATUS_OPEN_WINDOW);

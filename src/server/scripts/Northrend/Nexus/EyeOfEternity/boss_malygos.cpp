@@ -746,8 +746,8 @@ public:
                     if (Unit* target = me->GetVictim())
                         AttackStart(target);
                     events.RescheduleEvent(EVENT_SPELL_ARCANE_PULSE, 0ms, 1);
-                    events.RescheduleEvent(EVENT_SPELL_STATIC_FIELD, 1s, 4s, 1);
-                    events.RescheduleEvent(EVENT_SPELL_PH3_SURGE_OF_POWER, 4s, 7s, 1);
+                    events.RescheduleEvent(EVENT_SPELL_STATIC_FIELD, 4s, 6s, 1);//静电力场，原来是1s, 4s
+                    events.RescheduleEvent(EVENT_SPELL_PH3_SURGE_OF_POWER, 10s, 12s, 1);//能量涌动，原来是4s; 7s，7-10，repeat7还是不行;改成10-12,repet 12s;
                     events.RescheduleEvent(EVENT_SPELL_ARCANE_STORM, 12s, 15s, 1);
                     break;
                 case EVENT_SPELL_ARCANE_PULSE:
@@ -764,7 +764,7 @@ public:
                     break;
                 case EVENT_SPELL_PH3_SURGE_OF_POWER:
                     me->CastSpell((Unit*)nullptr, SPELL_PH3_SURGE_OF_POWER, false);
-                    events.Repeat(7s);
+                    events.Repeat(12s);//这个事件持续的时间，原来是7s
                     break;
             }
 

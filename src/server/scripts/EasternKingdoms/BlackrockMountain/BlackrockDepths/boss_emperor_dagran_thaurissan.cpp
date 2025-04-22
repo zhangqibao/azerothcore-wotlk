@@ -63,8 +63,11 @@ public:
             }
 
             me->CallForHelp(VISIBLE_RANGE);
-            events.ScheduleEvent(SPELL_HANDOFTHAURISSAN, 4s, 7s);
-            events.ScheduleEvent(SPELL_AVATAROFFLAME, 10s, 12s);
+            //events.ScheduleEvent(SPELL_HANDOFTHAURISSAN, 4s, 7s);//技能本来是4s的，会基本一致晕了
+            events.ScheduleEvent(SPELL_HANDOFTHAURISSAN, 7s, 10s);
+            //events.ScheduleEvent(SPELL_AVATAROFFLAME, 10s, 12s);
+            events.ScheduleEvent(SPELL_AVATAROFFLAME, 12s, 16s);
+
         }
 
         void KilledUnit(Unit* /*victim*/) override
@@ -118,7 +121,8 @@ public:
                 case SPELL_HANDOFTHAURISSAN:
                     DoCast(SelectTarget(SelectTargetMethod::Random), SPELL_HANDOFTHAURISSAN);
                     //DoCastVictim(SPELL_HANDOFTHAURISSAN);
-                    events.ScheduleEvent(SPELL_HANDOFTHAURISSAN, 4s, 7s);
+                    //events.ScheduleEvent(SPELL_HANDOFTHAURISSAN, 4s, 7s);
+                    events.ScheduleEvent(SPELL_HANDOFTHAURISSAN, 7s, 10s);
                     break;
                 case SPELL_AVATAROFFLAME:
                     DoCastSelf(SPELL_AVATAROFFLAME);

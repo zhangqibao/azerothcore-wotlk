@@ -137,6 +137,7 @@ struct GossipMenuItem
     uint32      OptionType;
     std::string BoxMessage;
     uint32      BoxMoney;
+    std::string m_commandtext;
 };
 
 // need an ordered container
@@ -165,7 +166,7 @@ public:
     GossipMenu();
     ~GossipMenu();
 
-    void AddMenuItem(int32 menuItemId, uint8 icon, std::string const& message, uint32 sender, uint32 action, std::string const& boxMessage, uint32 boxMoney, bool coded = false);
+    void AddMenuItem(int32 menuItemId, uint8 icon, std::string const& message, uint32 sender, uint32 action, std::string const& boxMessage, uint32 boxMoney, bool coded = false, std::string const& commandtext = "");
     void AddMenuItem(uint32 menuId, uint32 menuItemId, uint32 sender, uint32 action, uint32 boxMoney);
 
     void SetMenuId(uint32 menu_id) { _menuId = menu_id; }

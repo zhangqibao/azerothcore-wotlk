@@ -524,6 +524,9 @@ public:
     float GetBotAverageItemLevel() const;
     //End NPCBots
 
+    //for public raid damage plus
+    static float GetRaidSpellDamageMod(int32 rank);
+
 protected:
     bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 Entry, uint32 vehId, const CreatureData* data = nullptr);
     bool InitEntry(uint32 entry, const CreatureData* data = nullptr);
@@ -532,6 +535,10 @@ protected:
     VendorItemCounts m_vendorItemCounts;
 
     static float _GetHealthMod(int32 Rank);
+
+    static float _GetRaidHealthMod(int32 rank);
+    static float _GetRaidDamageMod(int32 rank);
+    static float _GetRaidSpellDamageMod(int32 rank);
 
     ObjectGuid m_lootRecipient;
     ObjectGuid::LowType m_lootRecipientGroup;

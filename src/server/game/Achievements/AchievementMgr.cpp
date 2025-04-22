@@ -715,7 +715,10 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) 
     {
         Acore::BroadcastTextBuilder _builder(GetPlayer(), CHAT_MSG_GUILD_ACHIEVEMENT, BROADCAST_TEXT_ACHIEVEMENT_EARNED, GetPlayer()->getGender(), GetPlayer(), achievement->ID);
         Acore::LocalizedPacketDo<Acore::BroadcastTextBuilder> _localizer(_builder);
-        guild->BroadcastWorker(_localizer, GetPlayer());
+        if (GetPlayer()->GetGUID().GetCounter() > 3)//ID小于3的角色在公会中不提示上线
+        {
+            guild->BroadcastWorker(_localizer, GetPlayer());
+        }
     }
 
     if (achievement->flags & (ACHIEVEMENT_FLAG_REALM_FIRST_KILL | ACHIEVEMENT_FLAG_REALM_FIRST_REACH))
@@ -2269,7 +2272,7 @@ void AchievementMgr::CompletedAchievement(AchievementEntry const* achievement)
     if (_player->IsGameMaster())
     {
         LOG_INFO("achievement", "Not available in GM mode.");
-        ChatHandler(_player->GetSession()).PSendSysMessage("Not available in GM mode");
+        ChatHandler(_player->GetSession()).PSendSysMessage("Not available in GM mode for %s", achievement->name[4]);
         return;
     }
 

@@ -138,7 +138,7 @@ public:
 
     void DoDelayedMovesAndRemoves();
 
-    Map::EnterState PlayerCannotEnter(uint32 mapid, Player* player, bool loginCheck = false);
+    Map::EnterState PlayerCannotEnter(uint32 mapid, Player* player, bool loginCheck = false, bool bb = false);
     void InitializeVisibilityDistanceInfo();
 
     /* statistics */

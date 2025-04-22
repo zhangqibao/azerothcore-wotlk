@@ -191,6 +191,20 @@ void WorldSession::HandleAutoEquipItemOpcode(WorldPacket& recvData)
         return;
     }
 
+    //LOG_ERROR("xx", "HandleAutoStoreBagItemOpcode dstbag{} srcbag {} srcslot {}", dstbag,srcbag,srcslot);//测试,当直接把物品放在包的图标上，打印到这里，显示来源的包id，slotid（从0开始）
+    //如果从魔盒或坐骑生效的指定位置，直接拖到头像上的操作，这里进行禁止
+    //srcslot:23-38是默认背包格子，39-62是银行的前24格
+    if (srcslot > 38 && srcslot < 42 && srcbag == 255)//直接把物品拖到包的图标上存放，这个srcslot是魔盒允许的所有栏位id
+    {
+        //判断是否是装备，如果是就禁止
+        ItemTemplate const* _pProto = pSrcItem->GetTemplate();
+        if (_pProto && _pProto->Class == 2 || _pProto->Class == 4)//判断物品是否是装备类
+        {
+            _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, pSrcItem, nullptr);
+            return;
+        }
+    }
+
     uint16 src = pSrcItem->GetPos();
     uint16 dest = ((INVENTORY_SLOT_BAG_0 << 8) | eslot);
     if (dest == src) // prevent equip in same slot, only at cheat
@@ -338,6 +352,10 @@ void WorldSession::HandleDestroyItemOpcode(WorldPacket& recvData)
     }
     else
     {
+        //添加删除日志,放前面，不然删掉了item没了
+        if (_player && pItem)
+            LOG_INFO("loot", "Destroy player:{}[{}] destroy Item{}x{}", _player->GetName(), _player->GetGUID().GetCounter(), pItem->GetEntry(), pItem->GetCount());
+
         _player->DestroyItem(bag, slot, true);
     }
     _player->SendQuestGiverStatusMultiple();
@@ -664,7 +682,19 @@ void WorldSession::HandleItemQuerySingleOpcode(WorldPacket& recvData)
         queryData << pProto->LockID;
         queryData << int32(pProto->Material);
         queryData << pProto->Sheath;
-        queryData << pProto->RandomProperty;
+
+        if (sWorld->getBoolConfig(CONFIG_BOOL_RANDOMFM))
+        {
+            queryData << pProto->RandomProperty;
+        }
+        else
+        {
+            if (pProto->RandomProperty < 30000)
+                queryData << pProto->RandomProperty;
+            else
+                queryData << uint32(0);
+        }
+
         queryData << pProto->RandomSuffix;
         queryData << pProto->Block;
         queryData << pProto->ItemSet;
@@ -1192,6 +1222,31 @@ void WorldSession::HandleAutoStoreBagItemOpcode(WorldPacket& recvData)
     {
         _player->SendEquipError(msg, pItem, nullptr);
         return;
+    }
+
+    //LOG_ERROR("xx", "HandleAutoStoreBagItemOpcode dstbag{} srcbag {} srcslot {}", dstbag,srcbag,srcslot);//测试,当直接把物品放在包的图标上，打印到这里，显示来源的包id，slotid（从0开始）
+//如果从魔盒或坐骑生效的指定位置，直接拖到包的图标上的操作，这里进行禁止
+    if (srcslot > 22 && srcslot < 63 && srcbag == 255)//直接把物品拖到包的图标上存放，这个srcslot是魔盒允许的所有栏位id
+    {
+        //判断是否是赞助坐骑，如果是就禁止
+        if (m_zuoqis.size() > 0)
+        {
+            if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pItem->GetEntry()) != m_zuoqis.end())
+            {
+                _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, pItem, nullptr);
+                return;
+            }
+        }
+
+        //判断是否是装备，如果是就禁止
+        ItemTemplate const* _pProto = pItem->GetTemplate();
+        if (_pProto && _pProto->Class == 2 || _pProto->Class == 4)//判断物品是否是装备类
+        {
+            _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, pItem, nullptr);
+            return;
+        }
+
+
     }
 
     // no-op: placed in same slot

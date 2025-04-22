@@ -63,6 +63,7 @@
 #include "Util.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include "GuildMgr.h"
 
 /// @todo: this import is not necessary for compilation and marked as unused by the IDE
 //  however, for some reasons removing it would cause a damn linking issue
@@ -74,6 +75,22 @@
 #include "botdatamgr.h"
 #include "botmgr.h"
 //end npcbot
+
+//变身卡vector
+std::vector<uint32> m_bianshencards = { 70018,70020,70021,70022,70023,70024,70025,70026,70027,70028,70029,70030,70031,70032,70033,70034,70035,70036,70037,70038,70039,70040,70041,70042,70043,70044,70045,70046,70047,70048,70049,70121,70123,70125,70126,70127,70128,70129,70160,70159,70158,70157,70156,70155,70154,70153,70152,70151,70150,70149,70148,70147,70146,70145,70144,70143,70142,70141,70140,70139,70138,70073 };
+//声望崇拜证书vector
+std::vector<uint32> m_shengwangcards = { 92000,92001,92002,92003,92004,92005,92006,92007,92008,92009,92010,92011,92012,92013,92014,92015,92016,92017,92018,92019,92020,92021,92022 };
+//赞助坐骑vector
+std::vector<uint32> m_zuoqis = { 90013,90014,90016,90017,90023,90021,70501,70502,90018,90030,90031,70169,70168,70167,70166,70165,70164,70170,90033 };
+//专业技能spellvector
+std::vector<uint32> m_spellforskill = { 2018,2108,2259,2366,2368,2550,2575,2576,3100,3101,3102,3104,3273,3274,3413,3464,3538,3564,3570,3811,3908,3909,3910,4036,4037,4038,7411,7412,7413,7924,8613,8617,8618,9785,10248,10662,10768,10846,11611,11993,12180,12656,13920,18260 };
+//橙装戒指vector,对应entry和加成百分比数字
+std::vector<std::pair<uint32, uint32>> m_CZRingItems = { {71101,1},{71102,2},{71103,3},{71104,4},{71105,5},{71106,6},{71107,7},{71108,8},{71109,9},{71110,10},{71111,11},{71112,12},{71113,13},{71114,14},{71115,15},{71116,16},{71117,17},{71118,18},{71119,19},{71120,20},{71121,21},{71122,22},{71123,23},{71124,24},{71125,25},{71126,26},{71127,27},{71128,28},{71129,29},{71130,30},{71131,31},{71132,32},{71133,33},{71134,34},{71135,35},{71136,36},{71137,37},{71138,38},{71139,39},{71140,40},{71141,41},{71142,42},{71143,43},{71144,44},{71145,45},{71146,46},{71147,47},{71148,48},{71149,49},{71150,50},{71151,51},{71152,52},{71153,53},{71154,54},{71155,55},{71156,56},{71157,57},{71158,58},{71159,59},{71160,60},{71161,61},{71162,62},{71163,63},{71164,64},{71165,65},{71166,66},{71167,67},{71168,68},{71169,69},{71170,70},{71171,71},{71172,72},{71173,73},{71174,74},{71175,75},{71176,76},{71177,77},{71178,78},{71179,79},{71180,80},{71181,81},{71182,82},{71183,83},{71184,84},{71185,85},{71186,86},{71187,87},{71188,88},{71189,89},{71190,90},{71191,91},{71192,92},{71193,93},{71194,94},{71195,95},{71196,96},{71197,97},{71198,98},{71199,99},{71200,100} };
+
+
+//buff药水卷轴 vector
+std::vector<std::pair<uint32, uint32>> m_buffspells = { {70553,16610},{70587,15279},{70542,17038},{70594,24799},{70644,17540},{70504,22817},{70505,22818},{70506,22820},{70507,15366},{70513,22888},{70514,24425},{70515,16609},{70537,17626},{70538,17627},{70539,17628},{70540,17629},{70541,17538},{70543,11405},{70544,17539},{70545,23735},{70546,23736},{70547,23737},{70548,23738},{70549,23766},{70550,23767},{70551,23768},{70552,23769},{70580,10667},{70581,10668},{70582,10669},{70583,10692},{70584,10693},{70585,15233},{70586,15231},{70587,15279},{70588,24382},{70589,24417},{70590,24383},{70640,29534},{70641,26393},{70647,16323},{70648,16329},{70649,16327},{70680,24705},{70681,29334},{70682,29333},{70683,26035},{70684,29338},{70685,29235},{70686,29175},{70687,25947},{70534,8385} };
+
 
 /*********************************************************/
 /***                    STORAGE SYSTEM                 ***/
@@ -409,8 +426,51 @@ uint32 Player::GetItemCountWithLimitCategory(uint32 limitCategory, Item* skipIte
     return count;
 }
 
+
+//判断当前装备是否是橙装戒指
+bool Player::isCZRingItem(uint32 item) const
+{
+    if (m_CZRingItems.size() > 0)
+    {
+        for (const auto& CZRings : m_CZRingItems)
+        {
+            if (item == CZRings.first)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    return false;
+}
+
+//判断玩家是否装备了橙装戒指，返回戒指的百分比加成数值
+uint32 Player::GetCZRingItem() const
+{
+    if (m_CZRingItems.size() > 0)
+    {
+        for (const auto& CZRings : m_CZRingItems)
+        {
+            for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+            {
+                Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+
+                if (pItem && pItem->GetEntry() == CZRings.first)
+                {
+                    return CZRings.second;
+                }
+
+            }
+        }
+    }
+    return uint32(0);
+}
+
 Item* Player::GetItemByGuid(ObjectGuid guid) const
 {
+    if (!guid)
+        return nullptr;
+
     for (uint8 i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->GetGUID() == guid)
@@ -1819,6 +1879,29 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
             if (!sScriptMgr->OnPlayerCanEquipItem(const_cast<Player*>(this), slot, dest, pItem, swap, not_loading))
                 return EQUIP_ERR_CANT_DO_RIGHT_NOW;
 
+            //技艺模式禁止穿非自己制作的装备
+            if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS4) && sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+            {
+                //LOG_ERROR("xx", "GetGUID {}  ", GetGUID().GetCounter());//测试
+                if (pItem->GetGuidValue(ITEM_FIELD_CREATOR) != GetGUID())
+                {
+                    //LOG_ERROR("xx", "ITEM_FIELD_CREATOR {}  ", pItem->GetGuidValue(ITEM_FIELD_CREATOR).GetCounter());//测试
+                    //if (pItem->GetEntry() > 69900 || pItem->GetEntry() == 48677 || pItem->GetEntry() == 48683 || pItem->GetEntry() == 48685
+                    //    || pItem->GetEntry() == 48687 || pItem->GetEntry() == 48689 || pItem->GetEntry() == 48691)//例外的装备，战衣，PVE战袍等
+                    if (pItem->GetEntry() > 69900 || pProto->ItemLevel < 3)//例外的装备，战衣，PVE战袍等,以及新手装备
+                    {
+                        //什么都不做
+                    }
+                    else {
+                        ChatHandler(GetSession()).PSendSysMessage(21737);
+                        return EQUIP_ERR_CANT_DO_RIGHT_NOW;
+                    }
+
+                }
+
+            }
+            //end ---------------
+
             // item used
             if (pItem->m_lootGenerated)
                 return EQUIP_ERR_ALREADY_LOOTED;
@@ -2729,6 +2812,29 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
     return EquipItem(pos, _item, update);
 }
 
+
+Item* Player::FakeEquipItem(uint16 slot, Item* pItem, bool update)
+{
+    AddEnchantmentDurations(pItem);
+    AddItemDurations(pItem);
+
+    if (pItem && slot)
+    {
+        VisualizeItem(slot, pItem);
+
+        if (IsAlive())
+        {
+            ItemTemplate const* pProto = pItem->GetTemplate();
+
+            _ApplyItemMods(pItem, slot, true);
+
+        }
+
+    }
+
+    return pItem;
+}
+
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
@@ -2752,6 +2858,96 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
                 AddItemsSetItem(this, pItem);
 
             _ApplyItemMods(pItem, slot, true);
+
+
+            //每次更换装备时，都判断当前更换的装备是否是橙装戒指，如果是，就需要把所有装备更新一遍，否则装备的技能无法得到戒指加成提升
+            if (isCZRingItem(pItem->GetEntry()))
+            {
+                for (int i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+                {
+                    _ApplyItemMods(GetItemByPos(INVENTORY_SLOT_BAG_0, i), i, false);
+                    _ApplyItemMods(GetItemByPos(INVENTORY_SLOT_BAG_0, i), i, true);
+                }
+                UpdateAllStats();
+            }
+
+
+
+            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果------
+            //判断是否拥有赫拉迪姆魔盒
+            //uint32 hldmbox = GetItemCount(91666, true);
+            //if (hldmbox)
+            //获得玩家当前是否在战场或竞技场中
+            bool canusezuoqi = false;
+            if (IsInWorld() && isActiveObject())
+                if (GetMap() && GetAreaId() && GetAreaId())
+                    canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+
+            if (getHLDM() && canusezuoqi)
+            {
+
+                Item* pmhItem1 = GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
+
+
+                Item* pmhItem2 = GetItemByPos(INVENTORY_SLOT_BAG_0, 40);
+
+
+                Item* pmhItem3 = GetItemByPos(INVENTORY_SLOT_BAG_0, 41);
+
+
+                if (pmhItem1)
+                {
+                    ItemTemplate const* pmhProto1 = pmhItem1->GetTemplate();
+                    if (pmhProto1 && pmhProto1->Class == 2 || pmhProto1->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pmhProto1 && pmhProto1->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pmhProto1);
+                            AddItemsSetItem(this, pmhItem1);
+                        }
+                        _ApplyItemModsByHLDM(pmhItem1, 39, false);
+                        _ApplyItemModsByHLDM(pmhItem1, 39, true);
+                    }
+                    UpdateAllStats();
+                }
+                if (pmhItem2)
+                {
+                    ItemTemplate const* pmhProto2 = pmhItem2->GetTemplate();
+                    if (pmhProto2 && pmhProto2->Class == 2 || pmhProto2->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pmhProto2 && pmhProto2->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pmhProto2);
+                            AddItemsSetItem(this, pmhItem2);
+                        }
+                        _ApplyItemModsByHLDM(pmhItem2, 40, false);
+                        _ApplyItemModsByHLDM(pmhItem2, 40, true);
+                    }
+                    UpdateAllStats();
+
+                }
+                if (pmhItem3)
+                {
+                    ItemTemplate const* pmhProto3 = pmhItem3->GetTemplate();
+                    if (pmhProto3 && pmhProto3->Class == 2 || pmhProto3->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pmhProto3 && pmhProto3->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pmhProto3);
+                            AddItemsSetItem(this, pmhItem3);
+                        }
+                        _ApplyItemModsByHLDM(pmhItem3, 41, false);
+                        _ApplyItemModsByHLDM(pmhItem3, 41, true);
+                    }
+                    UpdateAllStats();
+                }
+            }
+
+            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果---end---
+
 
             if (pProto && IsInCombat() && (pProto->Class == ITEM_CLASS_WEAPON || pProto->InventoryType == INVTYPE_RELIC) && m_weaponChangeTimer == 0)
             {
@@ -2899,6 +3095,73 @@ void Player::VisualizeItem(uint8 slot, Item* pItem)
         SetVisibleItemSlot(slot, pItem);
 
     pItem->SetState(ITEM_CHANGED, this);
+}
+
+void Player::FlushItem(uint8 bag, uint8 slot, bool update)
+{
+
+    Item* pItem = GetItemByPos(bag, slot);
+    if (pItem)
+    {
+        if (update)//true，是执行装备物品的效果
+        {
+
+            if (bag == INVENTORY_SLOT_BAG_0)
+            {
+                if (slot < INVENTORY_SLOT_BAG_END)
+                {
+                    FakeEquipItem(slot, pItem, true);
+                }
+            }
+        }
+        else//false是执行下掉物品的效果
+        {
+            RemoveEnchantmentDurations(pItem);
+            RemoveItemDurations(pItem);
+            RemoveTradeableItem(pItem);
+
+            if (bag == INVENTORY_SLOT_BAG_0)
+            {
+                if (slot < INVENTORY_SLOT_BAG_END)
+                {
+                    ItemTemplate const* pProto = pItem->GetTemplate();
+
+                    _ApplyItemMods(pItem, slot, false);
+
+                    // remove item dependent auras and casts (only weapon and armor slots)
+                    if (slot < INVENTORY_SLOT_BAG_END && slot < EQUIPMENT_SLOT_END)
+                    {
+                        RemoveItemDependentAurasAndCasts(pItem);
+
+                        // remove held enchantments, update expertise
+                        if (slot == EQUIPMENT_SLOT_MAINHAND)
+                        {
+                            UpdateExpertise(BASE_ATTACK);
+                        }
+                        else if (slot == EQUIPMENT_SLOT_OFFHAND)
+                        {
+                            UpdateExpertise(OFF_ATTACK);
+                        }
+
+                        // update armor penetration - passive auras may need it
+                        switch (slot)
+                        {
+                        case EQUIPMENT_SLOT_MAINHAND:
+                        case EQUIPMENT_SLOT_OFFHAND:
+                        case EQUIPMENT_SLOT_RANGED:
+                            RecalculateRating(CR_ARMOR_PENETRATION);
+                        default:
+                            break;
+                        }
+
+                    }
+
+                }
+
+            }
+        }
+    }
+
 }
 
 void Player::RemoveItem(uint8 bag, uint8 slot, bool update, bool swap)
@@ -3126,6 +3389,11 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
 void Player::DestroyItemCount(uint32 itemEntry, uint32 count, bool update, bool unequip_check)
 {
     LOG_DEBUG("entities.player.items", "STORAGE: DestroyItemCount item = {}, count = {}", itemEntry, count);
+
+    //LOG_ERROR("xx", "DestroyItemCount1 ");//测试，玩家删除物品，没打印到这里
+    //添加删除日志
+    LOG_INFO("loot", "Destroy player:{}[{}] destroy Item{}x{}", GetName(), GetGUID().GetCounter(), itemEntry, count);
+
     uint32 remcount = 0;
 
     // in inventory
@@ -3406,6 +3674,10 @@ void Player::DestroyItemCount(Item* pItem, uint32& count, bool update)
 
     LOG_DEBUG("entities.player.items", "STORAGE: DestroyItemCount item ({}, Entry: {}) count = {}", pItem->GetGUID().ToString(), pItem->GetEntry(), count);
 
+    //LOG_ERROR("xx", "DestroyItemCount2 ");//测试，玩家删除物品，没打印到这里
+    //添加删除日志
+    LOG_INFO("loot", "Destroy player:{}[{}] destroy Item{}x{}", GetName(), GetGUID().GetCounter(), pItem->GetEntry(), count);
+
     if (pItem->GetCount() <= count)
     {
         count -= pItem->GetCount();
@@ -3560,6 +3832,12 @@ void Player::SwapItem(uint16 src, uint16 dst)
         return;
     }
 
+    //获得玩家当前是否在战场或竞技场中
+    bool canusezuoqi = false;
+    if (IsInWorld() && isActiveObject())
+        if (GetMap() && GetAreaId() && GetAreaId())
+            canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+
     // SRC checks
 
     if (GetLootGUID() == pSrcItem->GetGUID())                           // prevent swap looting item
@@ -3643,6 +3921,116 @@ void Player::SwapItem(uint16 src, uint16 dst)
                 return;
             }
 
+            //判断是否拥有赫拉迪姆魔盒
+//uint32 hldmbox = GetItemCount(91666, true);
+//if (hldmbox)
+            if (getHLDM() && canusezuoqi)
+            {
+                //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
+                if (src == 65319 || src == 65320 || src == 65321)
+                {
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pProto);
+                        }
+
+                        _ApplyItemModsByHLDM(pSrcItem, srcslot, false);
+                        UpdateAllStats();
+                    }
+
+
+                }
+
+                //如果目的地dst是赫拉迪姆魔盒的位子：银行前三个格子，激活物品属性并更新角色状态
+                if (dst == 65319 || dst == 65320 || dst == 65321)
+                {
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果生效，但实际是生效的
+                            AddItemsSetItem(this, pSrcItem);
+                        }
+
+                        _ApplyItemModsByHLDM(pSrcItem, dstslot, true);
+                        UpdateAllStats();
+                    }
+                }
+            }
+
+            //判断是否有赞助坐骑
+            if (m_zuoqis.size() > 0)
+            {
+                //uint32 zzmount = 0;
+                //for (auto zuoqis : m_zuoqis)
+                //{
+                //    zzmount += GetItemCount(zuoqis, true);
+                //}
+
+                if (canusezuoqi)//不需要再去判断是否有坐骑了，下面在操作这个item时都会做判断是否是赞助坐骑的
+                {
+                    //如果来源地src是除了赫拉迪姆魔盒的位子之外的位子：除了银行前三个格子，默认的银行和背包格子，删除物品属性并更新角色状态
+                    if (src > 65302 && src < 65343 && src != 65319 && src != 65320 && src != 65321)
+                    {
+                        //战斗中禁止使用魔盒
+                        if (IsInCombat())
+                        {
+                            //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                            SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                            return;
+                        }
+
+                        if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pSrcItem->GetEntry()) != m_zuoqis.end())
+                        {
+                            _ApplyItemModsByMount(pSrcItem, srcslot, false);
+                            UpdateAllStats();
+                        }
+
+                    }
+
+                    //如果目的地dst是除了赫拉迪姆魔盒的位子之外的位子：除了银行前三个格子，默认的银行和背包格子，激活物品属性并更新角色状态
+                    if (dst > 65302 && dst < 65319)
+                    {
+                        //战斗中禁止使用魔盒
+                        if (IsInCombat())
+                        {
+                            //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                            SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                            return;
+                        }
+
+                        if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pSrcItem->GetEntry()) != m_zuoqis.end())
+                        {
+                            _ApplyItemModsByMount(pSrcItem, dstslot, true);
+                            UpdateAllStats();
+                        }
+
+                    }
+                }
+            }
+
+
             RemoveItem(srcbag, srcslot, true);
             StoreItem(dest, pSrcItem, true);
             UpdateTitansGrip();
@@ -3659,12 +4047,126 @@ void Player::SwapItem(uint16 src, uint16 dst)
                 return;
             }
 
+            //判断是否拥有赫拉迪姆魔盒
+//uint32 hldmbox = GetItemCount(91666, true);
+//if (hldmbox)
+            if (getHLDM() && canusezuoqi)
+            {
+                //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
+                if (src == 65319 || src == 65320 || src == 65321)
+                {
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pProto);
+                        }
+
+                        _ApplyItemModsByHLDM(pSrcItem, srcslot, false);
+                        UpdateAllStats();
+                    }
+
+
+                }
+                //如果来源地是身上的装备位子
+                //if (IsEquipmentPos(src))
+                //{
+                //}
+
+                //如果目的地dst是赫拉迪姆魔盒的位子：银行前三个格子，激活物品属性并更新角色状态
+                if (dst == 65319 || dst == 65320 || dst == 65321)
+                {
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果生效，但实际是生效的
+                            AddItemsSetItem(this, pSrcItem);
+                        }
+
+                        _ApplyItemModsByHLDM(pSrcItem, dstslot, true);
+                        UpdateAllStats();
+                    }
+                }
+            }
+
+            //判断是否有赞助坐骑
+            if (m_zuoqis.size() > 0)
+            {
+                //uint32 zzmount = 0;
+                //for (auto zuoqis : m_zuoqis)
+                //{
+                //    zzmount += GetItemCount(zuoqis, true);
+                //}
+
+                //判断是否有赞助坐骑
+                if (canusezuoqi)
+                {
+                    //如果来源地src是除了赫拉迪姆魔盒的位子之外的位子：除了银行前三个格子，默认的银行和背包格子，删除物品属性并更新角色状态
+                    if (src > 65302 && src < 65343 && src != 65319 && src != 65320 && src != 65321)
+                    {
+                        //战斗中禁止使用魔盒
+                        if (IsInCombat())
+                        {
+                            //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                            SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                            return;
+                        }
+
+                        if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pSrcItem->GetEntry()) != m_zuoqis.end())
+                        {
+                            _ApplyItemModsByMount(pSrcItem, srcslot, false);
+                            UpdateAllStats();
+                        }
+
+                    }
+
+                    //如果目的地dst是除了赫拉迪姆魔盒的位子之外的位子：除了银行前三个格子，默认的银行和背包格子，激活物品属性并更新角色状态
+                    if (dst > 65321 && dst < 65343)
+                    {
+                        //战斗中禁止使用魔盒
+                        if (IsInCombat())
+                        {
+                            //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                            SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                            return;
+                        }
+                        if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pSrcItem->GetEntry()) != m_zuoqis.end())
+                        {
+                            _ApplyItemModsByMount(pSrcItem, dstslot, true);
+                            UpdateAllStats();
+                        }
+
+                    }
+                }
+
+            }
+
+
             RemoveItem(srcbag, srcslot, true);
             BankItem(dest, pSrcItem, true);
             UpdateTitansGrip();
             ItemRemovedQuestCheck(pSrcItem->GetEntry(), pSrcItem->GetCount());
         }
-        else if (IsEquipmentPos(dst))
+        else if (IsEquipmentPos(dst))//到身上
         {
             uint16 dest;
             InventoryResult msg = CanEquipItem(dstslot, dest, pSrcItem, false);
@@ -3673,6 +4175,45 @@ void Player::SwapItem(uint16 src, uint16 dst)
                 SendEquipError(msg, pSrcItem, nullptr);
                 return;
             }
+
+            //判断是否拥有赫拉迪姆魔盒
+//uint32 hldmbox = GetItemCount(91666, true);
+//if (hldmbox)
+            if (getHLDM() && canusezuoqi)
+            {
+                //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
+                if (src == 65319 || src == 65320 || src == 65321)
+                {
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+
+                    //LOG_ERROR("xx", "xxx3 dst {}", dst);//测试
+                    //LOG_ERROR("xx", "xxx3 src {}", src);//测试
+                    //清除魔盒中的装备效果
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pProto);
+                        }
+
+                        _ApplyItemModsByHLDM(pSrcItem, srcslot, false);
+                        UpdateAllStats();
+                    }
+
+
+                }
+
+
+            }
+
 
             RemoveItem(srcbag, srcslot, true);
             EquipItem(dest, pSrcItem, true);
@@ -3730,6 +4271,315 @@ void Player::SwapItem(uint16 src, uint16 dst)
             return;
         }
     }
+
+    //和一个非空栏的物品进行位置交换
+
+
+//判断是否拥有赫拉迪姆魔盒
+//uint32 hldmbox = GetItemCount(91666, true);
+//if (hldmbox)
+    if (getHLDM() && canusezuoqi)
+    {
+        //这个src包含了srcbag和srcslot两个信息
+        if ((src == 65319 || src == 65320 || src == 65321) && (dst == 65319 || dst == 65320 || dst == 65321))
+        {
+            //如果位置内部更换，什么都不做
+        }
+        //else if (IsEquipmentPos(dst) && (src == 65319 || src == 65320 || src == 65321) )
+        //{
+        //    SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, nullptr, nullptr);
+        //    return;
+        //}
+        //else if (IsEquipmentPos(src) && (dst == 65319 || dst == 65320 || dst == 65321) )
+        //{
+        //    SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, nullptr, nullptr);
+        //    return;
+        //}
+        else
+        {
+            //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
+            if (src == 65319 || src == 65320 || src == 65321)
+            {
+                //战斗中禁止使用魔盒
+                if (IsInCombat())
+                {
+                    //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                    SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                    return;
+                }
+                //LOG_ERROR("xx", "xxx1 dst {}", dst);//测试
+                //LOG_ERROR("xx", "xxx1 src {}", src);//测试
+
+                //如果目的地是身上的位置，判断来源的物品能否装备到身上
+                if (IsEquipmentPos(dst))
+                {
+                    uint16 xdest;
+                    InventoryResult msg = CanEquipItem(dstslot, xdest, pSrcItem, false);
+                    if (msg != EQUIP_ERR_OK)
+                    {
+                        SendEquipError(msg, pSrcItem, nullptr);
+
+                    }
+                    else
+                    {
+                        //如果来源地已经有了一个装备，需要清除该装备的属性加成
+                        ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                        if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                        {
+                            if (pProto && pProto->ItemSet)
+                            {
+                                //游戏里看不到套装效果变化，但实际是变化过了的
+                                RemoveItemsSetItem(this, pProto);
+                            }
+
+                            _ApplyItemModsByHLDM(pSrcItem, srcslot, false);
+                            UpdateAllStats();
+                        }
+
+                        //如果目的地已经有了一个装备，需要加载该装备的属性加成
+                        ItemTemplate const* _dest_pProto = pDstItem->GetTemplate();
+                        if (_dest_pProto && _dest_pProto->Class == 2 || _dest_pProto->Class == 4)//判断物品是否是装备类
+                        {
+                            if (_dest_pProto && _dest_pProto->ItemSet)
+                            {
+                                //游戏里看不到套装效果生效，但实际是生效的
+                                AddItemsSetItem(this, pDstItem);
+                            }
+
+                            _ApplyItemModsByHLDM(pDstItem, dstslot, true);//有些外域装备在这里不生效，因为不是用的物品的spell，是用的stat字段
+                            UpdateAllStats();
+                        }
+
+                    }
+                }
+                else
+                {
+                    //如果来源地已经有了一个装备，需要清除该装备的属性加成
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, pProto);
+                        }
+
+                        _ApplyItemModsByHLDM(pSrcItem, srcslot, false);
+                        UpdateAllStats();
+                    }
+
+                    //如果目的地已经有了一个装备，需要加载该装备的属性加成
+                    ItemTemplate const* _dest_pProto = pDstItem->GetTemplate();
+                    if (_dest_pProto && _dest_pProto->Class == 2 || _dest_pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (_dest_pProto && _dest_pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果生效，但实际是生效的
+                            AddItemsSetItem(this, pDstItem);
+                        }
+
+                        _ApplyItemModsByHLDM(pDstItem, dstslot, true);//有些外域装备在这里不生效，因为不是用的物品的spell，是用的stat字段
+                        UpdateAllStats();
+                    }
+                }
+
+
+
+            }
+
+            //如果目的地dst是赫拉迪姆魔盒的位子：银行前三个格子，激活物品属性并更新角色状态
+            if (dst == 65319 || dst == 65320 || dst == 65321)
+            {
+                //战斗中禁止使用魔盒
+                if (IsInCombat())
+                {
+                    //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                    SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                    return;
+                }
+                //LOG_ERROR("xx", "xxx2 dst {}", dst);//测试
+                //LOG_ERROR("xx", "xxx2 src {}", src);//测试
+
+                //如果来源是身上的位置，判断目的地的物品能否装备到身上
+                if (IsEquipmentPos(src))
+                {
+                    uint16 xdest;
+                    InventoryResult msg = CanEquipItem(srcslot, xdest, pDstItem, false);
+                    if (msg != EQUIP_ERR_OK)
+                    {
+                        SendEquipError(msg, pDstItem, nullptr);
+
+                    }
+                    else
+                    {
+
+                        //如果目的地已经有了一个装备，需要清除该装备的属性加成
+                        ItemTemplate const* _dest_pProto = pDstItem->GetTemplate();
+                        if (_dest_pProto && _dest_pProto->Class == 2 || _dest_pProto->Class == 4)//判断物品是否是装备类
+                        {
+                            if (_dest_pProto && _dest_pProto->ItemSet)
+                            {
+                                //游戏里看不到套装效果变化，但实际是变化过了的
+                                RemoveItemsSetItem(this, _dest_pProto);
+                            }
+                            //LOG_ERROR("xx", "k1 ");//测试
+                            _ApplyItemModsByHLDM(pDstItem, dstslot, false);
+                            //LOG_ERROR("xx", "k2 ");//测试
+                            UpdateAllStats();
+                        }
+
+
+                        //如果来源地已经有了一个装备，需要加载该装备的属性加成
+                        ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                        if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                        {
+                            if (pProto && pProto->ItemSet)
+                            {
+                                //游戏里看不到套装效果生效，但实际是生效的
+                                AddItemsSetItem(this, pSrcItem);
+                            }
+
+                            //LOG_ERROR("xx", "k3 ");//测试
+                            _ApplyItemModsByHLDM(pSrcItem, srcslot, true);
+                            //LOG_ERROR("xx", "k4 ");//测试
+                            UpdateAllStats();
+                        }
+
+                    }
+                }
+                else
+                {
+                    //如果目的地已经有了一个装备，需要清除该装备的属性加成
+                    ItemTemplate const* _dest_pProto = pDstItem->GetTemplate();
+                    if (_dest_pProto && _dest_pProto->Class == 2 || _dest_pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (_dest_pProto && _dest_pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果变化，但实际是变化过了的
+                            RemoveItemsSetItem(this, _dest_pProto);
+                        }
+                        //LOG_ERROR("xx", "k1 ");//测试
+                        _ApplyItemModsByHLDM(pDstItem, dstslot, false);
+                        //LOG_ERROR("xx", "k2 ");//测试
+                        UpdateAllStats();
+                    }
+
+
+                    //如果来源地已经有了一个装备，需要加载该装备的属性加成
+                    ItemTemplate const* pProto = pSrcItem->GetTemplate();
+                    if (pProto && pProto->Class == 2 || pProto->Class == 4)//判断物品是否是装备类
+                    {
+                        if (pProto && pProto->ItemSet)
+                        {
+                            //游戏里看不到套装效果生效，但实际是生效的
+                            AddItemsSetItem(this, pSrcItem);
+                        }
+
+                        //LOG_ERROR("xx", "k3 ");//测试
+                        _ApplyItemModsByHLDM(pSrcItem, srcslot, true);
+                        //LOG_ERROR("xx", "k4 ");//测试
+                        UpdateAllStats();
+                    }
+                }
+
+
+
+
+
+            }
+        }
+
+    }
+
+    //判断是否有赞助坐骑
+    if (m_zuoqis.size() > 0)
+    {
+        //uint32 zzmount = 0;
+        //for (auto zuoqis : m_zuoqis)
+        //{
+        //    zzmount += GetItemCount(zuoqis, true);
+        //}
+
+        //判断是否有赞助坐骑
+        if (canusezuoqi)
+        {
+            //LOG_ERROR("xx", "src {} disable {} ", src, pSrcItem->GetEntry());//测试
+            //LOG_ERROR("xx", "srcbag {} disable {} ", srcbag, pSrcItem->GetEntry());//测试
+            //LOG_ERROR("xx", "srcslot {} disable {} ", srcslot, pSrcItem->GetEntry());//测试
+
+
+
+
+
+            //这个src包含了srcbag和srcslot两个信息
+            if (src > 65302 && src < 65343 && src != 65319 && src != 65320 && src != 65321 && dst > 65302 && dst < 65343 && dst != 65319 && dst != 65320 && dst != 65321)
+            {
+                //如果位置内部更换，什么都不做
+            }
+            else
+            {
+                //如果来源地src是这些位置：除了赫拉迪姆魔盒的位子之外的位子：除了银行前三个格子，默认的银行和背包格子，删除物品属性并更新角色状态
+                if (src > 65302 && src < 65343 && src != 65319 && src != 65320 && src != 65321)
+                {
+                    //LOG_ERROR("xx", "from {} disable {} ", src, pSrcItem->GetEntry());//测试
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pSrcItem->GetEntry()) != m_zuoqis.end())
+                    {
+                        _ApplyItemModsByMount(pSrcItem, srcslot, false);
+                        UpdateAllStats();
+                    }
+
+                    //如果目的地已经有了一个坐骑，需要加载该坐骑的属性加成
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pDstItem->GetEntry()) != m_zuoqis.end())
+                    {
+                        _ApplyItemModsByMount(pDstItem, srcslot, true);
+                        UpdateAllStats();
+                    }
+
+                }
+
+                //如果目的地dst是这些位置：除了赫拉迪姆魔盒的位子之外的位子：除了银行前三个格子，默认的银行和背包格子，激活物品属性并更新角色状态
+                if (dst > 65302 && dst < 65343 && dst != 65319 && dst != 65320 && dst != 65321)
+                {
+                    //战斗中禁止使用魔盒
+                    if (IsInCombat())
+                    {
+                        //GetSession()->SendNotification(21715);//屏幕中间的提醒
+                        SendEquipError(EQUIP_ERR_NOT_IN_COMBAT, pSrcItem, pDstItem);
+                        return;
+                    }
+
+                    //如果目的地已经有了一个坐骑，需要清除该坐骑的属性加成
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pDstItem->GetEntry()) != m_zuoqis.end())
+                    {
+                        _ApplyItemModsByMount(pDstItem, dstslot, false);
+                        UpdateAllStats();
+                    }
+
+
+                    //LOG_ERROR("xx", "dst {} enable {} ", dst, pSrcItem->GetEntry());//测试
+                    //LOG_ERROR("xx", "src {} pDstItem is  {} ", src, pDstItem->GetEntry());//测试
+
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), pSrcItem->GetEntry()) != m_zuoqis.end())
+                    {
+                        _ApplyItemModsByMount(pSrcItem, dstslot, true);
+                        UpdateAllStats();
+                    }
+
+                }
+            }
+
+        }
+
+    }
+
 
     // Remove item enchantments for now and restore it later
     // Needed for swap sanity checks
@@ -4683,6 +5533,352 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
     }
 }
 
+void Player::ApplyEnchantmentByHLDM(Item* item, bool apply)
+{
+    for (uint32 slot = 0; slot < MAX_ENCHANTMENT_SLOT; ++slot)
+        ApplyEnchantmentByHLDM(item, EnchantmentSlot(slot), apply);
+}
+
+void Player::ApplyEnchantmentByHLDM(Item* item, EnchantmentSlot slot, bool apply, bool apply_dur, bool ignore_condition)
+{
+    if (!item)
+        return;
+
+    if (slot >= MAX_ENCHANTMENT_SLOT)
+        return;
+
+    uint32 enchant_id = item->GetEnchantmentId(slot);
+    if (!enchant_id)
+        return;
+
+    SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+    if (!pEnchant)
+        return;
+
+    if (!ignore_condition && pEnchant->EnchantmentCondition && !EnchantmentFitsRequirements(pEnchant->EnchantmentCondition, -1))
+        return;
+
+    if (pEnchant->requiredLevel > GetLevel())
+        return;
+
+    if (pEnchant->requiredSkill > 0 && pEnchant->requiredSkillValue > GetSkillValue(pEnchant->requiredSkill))
+        return;
+
+    if (!sScriptMgr->OnPlayerCanApplyEnchantment(this, item, slot, apply, apply_dur, ignore_condition))
+        return;
+
+    // If we're dealing with a gem inside a prismatic socket we need to check the prismatic socket requirements
+    // rather than the gem requirements itself. If the socket has no color it is a prismatic socket.
+    if ((slot == SOCK_ENCHANTMENT_SLOT || slot == SOCK_ENCHANTMENT_SLOT_2 || slot == SOCK_ENCHANTMENT_SLOT_3)
+        && !item->GetTemplate()->Socket[slot - SOCK_ENCHANTMENT_SLOT].Color)
+    {
+        // Check if the requirements for the prismatic socket are met before applying the gem stats
+        SpellItemEnchantmentEntry const* pPrismaticEnchant = sSpellItemEnchantmentStore.LookupEntry(item->GetEnchantmentId(PRISMATIC_ENCHANTMENT_SLOT));
+        if (!pPrismaticEnchant || (pPrismaticEnchant->requiredSkill > 0 && pPrismaticEnchant->requiredSkillValue > GetSkillValue(pPrismaticEnchant->requiredSkill)))
+            return;
+    }
+
+    if (!item->IsBroken())
+    {
+        for (int s = 0; s < MAX_SPELL_ITEM_ENCHANTMENT_EFFECTS; ++s)
+        {
+            uint32 enchant_display_type = pEnchant->type[s];
+            uint32 enchant_amount = pEnchant->amount[s];
+            uint32 enchant_spell_id = pEnchant->spellid[s];
+
+            switch (enchant_display_type)
+            {
+            case ITEM_ENCHANTMENT_TYPE_NONE:
+                break;
+            case ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL:
+                // processed in Player::CastItemCombatSpell
+                break;
+            case ITEM_ENCHANTMENT_TYPE_DAMAGE:
+                if (item->GetSlot() == EQUIPMENT_SLOT_MAINHAND)
+                    HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_VALUE, float(enchant_amount), apply);
+                else if (item->GetSlot() == EQUIPMENT_SLOT_OFFHAND)
+                    HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_VALUE, float(enchant_amount), apply);
+                else if (item->GetSlot() == EQUIPMENT_SLOT_RANGED)
+                    HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_VALUE, float(enchant_amount), apply);
+                break;
+            case ITEM_ENCHANTMENT_TYPE_EQUIP_SPELL:
+                if (enchant_spell_id)
+                {
+                    if (apply)
+                    {
+                        int32 basepoints = 0;
+                        // Random Property Exist - try found basepoints for spell (basepoints depends from item suffix factor)
+                        if (item->GetItemRandomPropertyId())
+                        {
+                            ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(std::abs(item->GetItemRandomPropertyId()));
+                            if (item_rand)
+                            {
+                                // Search enchant_amount
+                                for (int k = 0; k < MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
+                                {
+                                    if (item_rand->Enchantment[k] == enchant_id)
+                                    {
+                                        basepoints = int32((item_rand->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        // Cast custom spell vs all equal basepoints got from enchant_amount
+                        if (basepoints)
+                            CastCustomSpell(this, enchant_spell_id, &basepoints, &basepoints, &basepoints, true, item);
+                        else
+                            CastSpell(this, enchant_spell_id, true, item);
+                    }
+                    else
+                        RemoveAurasDueToItemSpell(enchant_spell_id, item->GetGUID());
+                }
+                break;
+            case ITEM_ENCHANTMENT_TYPE_RESISTANCE:
+                if (!enchant_amount)
+                {
+                    ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(std::abs(item->GetItemRandomPropertyId()));
+                    if (item_rand)
+                    {
+                        for (int k = 0; k < MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
+                        {
+                            if (item_rand->Enchantment[k] == enchant_id)
+                            {
+                                enchant_amount = uint32((item_rand->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                HandleStatModifier(UnitMods(UNIT_MOD_RESISTANCE_START + enchant_spell_id), TOTAL_VALUE, float(enchant_amount), apply);
+                break;
+            case ITEM_ENCHANTMENT_TYPE_STAT:
+            {
+                if (!enchant_amount)
+                {
+                    ItemRandomSuffixEntry const* item_rand_suffix = sItemRandomSuffixStore.LookupEntry(std::abs(item->GetItemRandomPropertyId()));
+                    if (item_rand_suffix)
+                    {
+                        for (int k = 0; k < MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
+                        {
+                            if (item_rand_suffix->Enchantment[k] == enchant_id)
+                            {
+                                enchant_amount = uint32((item_rand_suffix->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                sScriptMgr->OnPlayerApplyEnchantmentItemModsBefore(this, item, slot, apply, enchant_spell_id, enchant_amount);
+
+                LOG_DEBUG("entities.player.items", "Adding {} to stat nb {}", enchant_amount, enchant_spell_id);
+                switch (enchant_spell_id)
+                {
+                case ITEM_MOD_MANA:
+                    LOG_DEBUG("entities.player.items", "+ {} MANA", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(enchant_amount), apply);
+                    break;
+                case ITEM_MOD_HEALTH:
+                    LOG_DEBUG("entities.player.items", "+ {} HEALTH", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(enchant_amount), apply);
+                    break;
+                case ITEM_MOD_AGILITY:
+                    LOG_DEBUG("entities.player.items", "+ {} AGILITY", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_STAT_AGILITY, TOTAL_VALUE, float(enchant_amount), apply);
+                    ApplyStatBuffMod(STAT_AGILITY, (float)enchant_amount, apply);
+                    break;
+                case ITEM_MOD_STRENGTH:
+                    LOG_DEBUG("entities.player.items", "+ {} STRENGTH", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_STAT_STRENGTH, TOTAL_VALUE, float(enchant_amount), apply);
+                    ApplyStatBuffMod(STAT_STRENGTH, (float)enchant_amount, apply);
+                    break;
+                case ITEM_MOD_INTELLECT:
+                    LOG_DEBUG("entities.player.items", "+ {} INTELLECT", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_STAT_INTELLECT, TOTAL_VALUE, float(enchant_amount), apply);
+                    ApplyStatBuffMod(STAT_INTELLECT, (float)enchant_amount, apply);
+                    break;
+                case ITEM_MOD_SPIRIT:
+                    LOG_DEBUG("entities.player.items", "+ {} SPIRIT", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_STAT_SPIRIT, TOTAL_VALUE, float(enchant_amount), apply);
+                    ApplyStatBuffMod(STAT_SPIRIT, (float)enchant_amount, apply);
+                    break;
+                case ITEM_MOD_STAMINA:
+                    LOG_DEBUG("entities.player.items", "+ {} STAMINA", enchant_amount);
+                    HandleStatModifier(UNIT_MOD_STAT_STAMINA, TOTAL_VALUE, float(enchant_amount), apply);
+                    ApplyStatBuffMod(STAT_STAMINA, (float)enchant_amount, apply);
+                    break;
+                case ITEM_MOD_DEFENSE_SKILL_RATING:
+                    ApplyRatingMod(CR_DEFENSE_SKILL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} DEFENCE", enchant_amount);
+                    break;
+                case  ITEM_MOD_DODGE_RATING:
+                    ApplyRatingMod(CR_DODGE, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} DODGE", enchant_amount);
+                    break;
+                case ITEM_MOD_PARRY_RATING:
+                    ApplyRatingMod(CR_PARRY, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} PARRY", enchant_amount);
+                    break;
+                case ITEM_MOD_BLOCK_RATING:
+                    ApplyRatingMod(CR_BLOCK, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} SHIELD_BLOCK", enchant_amount);
+                    break;
+                case ITEM_MOD_HIT_MELEE_RATING:
+                    ApplyRatingMod(CR_HIT_MELEE, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} MELEE_HIT", enchant_amount);
+                    break;
+                case ITEM_MOD_HIT_RANGED_RATING:
+                    ApplyRatingMod(CR_HIT_RANGED, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} RANGED_HIT", enchant_amount);
+                    break;
+                case ITEM_MOD_HIT_SPELL_RATING:
+                    ApplyRatingMod(CR_HIT_SPELL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} SPELL_HIT", enchant_amount);
+                    break;
+                case ITEM_MOD_CRIT_MELEE_RATING:
+                    ApplyRatingMod(CR_CRIT_MELEE, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} MELEE_CRIT", enchant_amount);
+                    break;
+                case ITEM_MOD_CRIT_RANGED_RATING:
+                    ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} RANGED_CRIT", enchant_amount);
+                    break;
+                case ITEM_MOD_CRIT_SPELL_RATING:
+                    ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} SPELL_CRIT", enchant_amount);
+                    break;
+                case ITEM_MOD_HASTE_RANGED_RATING:
+                    ApplyRatingMod(CR_HASTE_RANGED, enchant_amount, apply);
+                    break;
+                case ITEM_MOD_HASTE_SPELL_RATING:
+                    ApplyRatingMod(CR_HASTE_SPELL, enchant_amount, apply);
+                    break;
+                case ITEM_MOD_HIT_RATING:
+                    ApplyRatingMod(CR_HIT_MELEE, enchant_amount, apply);
+                    ApplyRatingMod(CR_HIT_RANGED, enchant_amount, apply);
+                    ApplyRatingMod(CR_HIT_SPELL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} HIT", enchant_amount);
+                    break;
+                case ITEM_MOD_CRIT_RATING:
+                    ApplyRatingMod(CR_CRIT_MELEE, enchant_amount, apply);
+                    ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
+                    ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} CRITICAL", enchant_amount);
+                    break;
+                case ITEM_MOD_RESILIENCE_RATING:
+                    ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
+                    ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
+                    ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} RESILIENCE", enchant_amount);
+                    break;
+                case ITEM_MOD_HASTE_RATING:
+                    ApplyRatingMod(CR_HASTE_MELEE, enchant_amount, apply);
+                    ApplyRatingMod(CR_HASTE_RANGED, enchant_amount, apply);
+                    ApplyRatingMod(CR_HASTE_SPELL, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} HASTE", enchant_amount);
+                    break;
+                case ITEM_MOD_EXPERTISE_RATING:
+                    ApplyRatingMod(CR_EXPERTISE, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} EXPERTISE", enchant_amount);
+                    break;
+                case ITEM_MOD_ATTACK_POWER:
+                    HandleStatModifier(UNIT_MOD_ATTACK_POWER, TOTAL_VALUE, float(enchant_amount), apply);
+                    HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(enchant_amount), apply);
+                    LOG_DEBUG("entities.player.items", "+ {} ATTACK_POWER", enchant_amount);
+                    break;
+                case ITEM_MOD_RANGED_ATTACK_POWER:
+                    HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(enchant_amount), apply);
+                    LOG_DEBUG("entities.player.items", "+ {} RANGED_ATTACK_POWER", enchant_amount);
+                    break;
+                case ITEM_MOD_MANA_REGENERATION:
+                    ApplyManaRegenBonus(enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} MANA_REGENERATION", enchant_amount);
+                    break;
+                case ITEM_MOD_ARMOR_PENETRATION_RATING:
+                    ApplyRatingMod(CR_ARMOR_PENETRATION, enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} ARMOR PENETRATION", enchant_amount);
+                    break;
+                case ITEM_MOD_SPELL_POWER:
+                    ApplySpellPowerBonus(enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} SPELL_POWER", enchant_amount);
+                    break;
+                case ITEM_MOD_HEALTH_REGEN:
+                    ApplyHealthRegenBonus(enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} HEALTH_REGENERATION", enchant_amount);
+                    break;
+                case ITEM_MOD_SPELL_PENETRATION:
+                    ApplySpellPenetrationBonus(enchant_amount, apply);
+                    LOG_DEBUG("entities.player.items", "+ {} SPELL_PENETRATION", enchant_amount);
+                    break;
+                case ITEM_MOD_BLOCK_VALUE:
+                    HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(enchant_amount), apply);
+                    LOG_DEBUG("entities.player.items", "+ {} BLOCK_VALUE", enchant_amount);
+                    break;
+                case ITEM_MOD_SPELL_HEALING_DONE:   // deprecated
+                case ITEM_MOD_SPELL_DAMAGE_DONE:    // deprecated
+                default:
+                    break;
+                }
+                break;
+            }
+            case ITEM_ENCHANTMENT_TYPE_TOTEM:           // Shaman Rockbiter Weapon
+            {
+                if (IsClass(CLASS_SHAMAN, CLASS_CONTEXT_ABILITY))
+                {
+                    float addValue = 0.0f;
+                    if (item->GetSlot() == EQUIPMENT_SLOT_MAINHAND)
+                    {
+                        addValue = float(enchant_amount * item->GetTemplate()->Delay / 1000.0f);
+                        HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_VALUE, addValue, apply);
+                    }
+                    else if (item->GetSlot() == EQUIPMENT_SLOT_OFFHAND)
+                    {
+                        addValue = float(enchant_amount * item->GetTemplate()->Delay / 1000.0f);
+                        HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_VALUE, addValue, apply);
+                    }
+                }
+                break;
+            }
+            case ITEM_ENCHANTMENT_TYPE_USE_SPELL:
+                // processed in Player::CastItemUseSpell
+                break;
+            case ITEM_ENCHANTMENT_TYPE_PRISMATIC_SOCKET:
+                // nothing do..
+                break;
+            default:
+                LOG_ERROR("entities.player", "Unknown item enchantment (id = {}) display type: {}", enchant_id, enchant_display_type);
+                break;
+            }                                               /*switch (enchant_display_type)*/
+        }                                                   /*for*/
+    }
+
+    // visualize enchantment at player and equipped items
+    if (slot == PERM_ENCHANTMENT_SLOT)
+        SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (item->GetSlot() * 2), 0, apply ? item->GetEnchantmentId(slot) : 0);
+
+    if (slot == TEMP_ENCHANTMENT_SLOT)
+        SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (item->GetSlot() * 2), 1, apply ? item->GetEnchantmentId(slot) : 0);
+
+    if (apply_dur)
+    {
+        if (apply)
+        {
+            // set duration
+            uint32 duration = item->GetEnchantmentDuration(slot);
+            if (duration > 0)
+                AddEnchantmentDuration(item, slot, duration);
+        }
+        else
+        {
+            // duration == 0 will remove EnchantDuration
+            AddEnchantmentDuration(item, slot, 0);
+        }
+    }
+}
+
+
 void Player::UpdateSkillEnchantments(uint16 skill_id, uint16 curr_value, uint16 new_value)
 {
     for (uint8 i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -5420,6 +6616,35 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     _LoadSkills(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_SKILLS));
     UpdateSkillsForLevel(); //update skills after load, to make sure they are correctly update at player load
 
+    //玩家加载游戏模式状态
+    if (extraflags & PLAYER_EXTRA_YH_MODEL)
+        SetYHModelON(true);
+    else
+        SetYHModelON(false);
+
+    if (extraflags & PLAYER_EXTRA_YH_MODEL_PLUS1)
+        SetYHModelPLUS1ON(true);
+    else
+        SetYHModelPLUS1ON(false);
+
+    if (extraflags & PLAYER_EXTRA_YH_MODEL_PLUS2)
+        SetYHModelPLUS2ON(true);
+    else
+        SetYHModelPLUS2ON(false);
+
+    if (extraflags & PLAYER_EXTRA_YH_MODEL_PLUS3)
+        SetYHModelPLUS3ON(true);
+    else
+        SetYHModelPLUS3ON(false);
+
+    if (extraflags & PLAYER_EXTRA_YH_MODEL_PLUS4)
+        SetYHModelPLUS4ON(true);
+    else
+        SetYHModelPLUS4ON(false);
+
+
+    //加载天赋（原来的位置）
+
     // apply original stats mods before spell loading or item equipment that call before equip _RemoveStatsMods()
 
     m_specsCount = fields[64].Get<uint8>();
@@ -5433,16 +6658,24 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
     _LoadGlyphs(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_GLYPHS));
     _LoadGlyphAuras();
-    _LoadAuras(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_AURAS), time_diff);
-    // add ghost flag (must be after aura load: PLAYER_FLAGS_GHOST set in aura)
-    if (HasPlayerFlag(PLAYER_FLAGS_GHOST))
-    {
-        m_deathState = DeathState::Dead;
-        AddUnitState(UNIT_STATE_ISOLATED);
-    }
+    //_LoadAuras(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_AURAS), time_diff);//vip会员卡等光环，下线时会保存到aura表，所以登录的时候还在，需要设置技能Attributes=192
 
-    // pussywizard: remove auras that are removed at map change (after _LoadAuras)
-    RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_CHANGE_MAP);
+    //加载天赋（原来的位置）end ---------
+
+    //加载物品（提前的位置）
+    //加载物品（提前的位置）end ------------
+
+    //下面这几行移到下面，物品加载之后了
+    //// add ghost flag (must be after aura load: PLAYER_FLAGS_GHOST set in aura)
+    //if (HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    //{
+    //    m_deathState = DeathState::Dead;
+    //    AddUnitState(UNIT_STATE_ISOLATED);
+    //}
+
+    //// pussywizard: remove auras that are removed at map change (after _LoadAuras)
+    //RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_CHANGE_MAP);
+
 
     // after spell load, learn rewarded spell if need also
     _LoadQuestStatus(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_QUEST_STATUS));
@@ -5456,9 +6689,19 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     // Extra Bonus Talent Points
     m_extraBonusTalentCount = fields[73].Get<uint8>();
 
-    // after spell, bonus talents, and quest load
-    InitTalentForLevel();
+    //如果不是在战场或副本中，角色上线进行隐身保护
+    //if (IsAlive() && !GetMap()->IsBattlegroundOrArena() && !GetMap()->IsDungeon())
+    //    CastSpell(this, 11392, true);//上线时，启用隐形术15秒
 
+    //如果是GM，隐身
+    if (GetSession()->GetSecurity() == AccountTypes(SEC_ADMINISTRATOR))
+    {
+        AddAura(37800, this);
+        SetGMVisible(false);
+        UpdateObjectVisibility();
+    }
+
+    //加载物品
     // must be before inventory (some items required reputation check)
     m_reputationMgr->LoadFromDB(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_REPUTATION));
 
@@ -5471,6 +6714,111 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     UpdateItemDuration(time_diff, true);
 
     _LoadActions(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACTIONS));
+    //加载物品 end ---------
+
+        //判断身上是否有转生石
+    uint16 _zsstone = GetItemCount(70630, false);
+    setZHUANSHENGNUM(_zsstone);
+
+    //判断是否有转生石（包括银行）
+    uint16 _zsstoneall = GetItemCount(70630, true);
+    setZHUANSHENGNUMALL(_zsstoneall);
+
+    //判断身上是否有远古转生石
+    uint16 _ygzsstone = GetItemCount(70629, false);
+    setYGZHUANSHENGNUM(_ygzsstone);
+
+    //判断是否有远古转生石（包括银行）
+    uint16 _ygzsstoneall = GetItemCount(70629, true);
+    setYGZHUANSHENGNUMALL(_ygzsstoneall);
+
+    //LOG_ERROR("xx", "_zsstone {}  ", _zsstone);//测试
+    //LOG_ERROR("xx", "_zsstoneall {}  ", _zsstoneall);//测试
+
+
+
+    //载入VIP卡标识
+    setVIP1(false);
+    setVIP2(false);
+    setVIP3(false);
+    setVIP4(false);
+    setVIP5(false);
+    setVIP6(false);
+    setVIP7(false);
+    setVIP8(false);
+    setVIP9(false);
+    setVIP10(false);
+    setVIP11(false);
+    setVIP12(false);
+    setVIP13(false);
+    setVIP14(false);
+    setVIP15(false);
+    setVIP16(false);
+    setVIP17(false);
+    setVIP18(false);
+    setVIP19(false);
+    setVIP20(false);
+
+    if (GetItemCount(70901, true) > 0)
+        setVIP1(true);
+    if (GetItemCount(70902, true) > 0)
+        setVIP2(true);
+    if (GetItemCount(70903, true) > 0)
+        setVIP3(true);
+    if (GetItemCount(70904, true) > 0)
+        setVIP4(true);
+    if (GetItemCount(70905, true) > 0)
+        setVIP5(true);
+    if (GetItemCount(70906, true) > 0)
+        setVIP6(true);
+    if (GetItemCount(70907, true) > 0)
+        setVIP7(true);
+    if (GetItemCount(70908, true) > 0)
+        setVIP8(true);
+    if (GetItemCount(70909, true) > 0)
+        setVIP9(true);
+    if (GetItemCount(70910, true) > 0)
+        setVIP10(true);
+    if (GetItemCount(70911, true) > 0)
+        setVIP11(true);
+    if (GetItemCount(70912, true) > 0)
+        setVIP12(true);
+    if (GetItemCount(70913, true) > 0)
+        setVIP13(true);
+    if (GetItemCount(70914, true) > 0)
+        setVIP14(true);
+
+    if (GetItemCount(70915, true) > 0)
+        setVIP15(true);
+    if (GetItemCount(70916, true) > 0)
+        setVIP16(true);
+    if (GetItemCount(70917, true) > 0)
+        setVIP17(true);
+    if (GetItemCount(70918, true) > 0)
+        setVIP18(true);
+    if (GetItemCount(70919, true) > 0)
+        setVIP19(true);
+    if (GetItemCount(70920, true) > 0)
+        setVIP20(true);
+    //end----------------
+
+    // after spell, bonus talents, and quest load
+    InitTalentForLevel();
+
+    //光环加载移到这里
+    _LoadAuras(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_AURAS), time_diff);
+
+    // add ghost flag (must be after aura load: PLAYER_FLAGS_GHOST set in aura)
+    if (HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    {
+        m_deathState = DeathState::Dead;
+        AddUnitState(UNIT_STATE_ISOLATED);
+    }
+
+    // pussywizard: remove auras that are removed at map change (after _LoadAuras)
+    RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_CHANGE_MAP);
+
+    //光环加载移到这里end--------
 
     m_social = sSocialMgr->LoadFromDB(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_SOCIAL_LIST), GetGUID());
 
@@ -5485,7 +6833,24 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     // has to be called after last Relocate() in Player::LoadFromDB
     SetFallInformation(GameTime::GetGameTime().count(), GetPositionZ());
 
+    //加载技能冷却时间 原来的位置
     _LoadSpellCooldowns(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_SPELL_COOLDOWNS));
+
+    //如果机器人没有公会，自动加入公会
+    if (GetGuildId() == 0 && GetSession()->IsBot())
+    {
+        uint32 guildIdarr[9] = { 4, 5, 6, 7, 8, 9, 10, 11, 12 };//默认加入的公会ID
+
+        Guild* guild;
+        guild = sGuildMgr->GetGuildById(guildIdarr[urand(0, 8)]);
+        if (guild)
+        {
+            if (guild->AddMember(GetGUID(), guild->GetLowestRankId()))
+            {
+                //添加机器人到公会
+            }
+        }
+    }
 
     // Spell code allow apply any auras to dead character in load time in aura/spell/item loading
     // Do now before stats re-calculation cleanup for ghost state unexpected auras
@@ -5496,6 +6861,493 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
     //apply all stat bonuses from items and auras
     SetCanModifyStats(true);
+
+    //载入赫拉迪姆和远古能量徽记是否拥有的标识，减少技能触发魔盒调用时去即时查询，以提高性能！
+    setHLDM(false);
+    uint32 hldmbox = GetItemCount(91666, true);
+    if (hldmbox)
+    {
+        setHLDM(true);
+    }
+    uint32 yuanguhuijinum = GetItemCount(91150, false) + GetItemCount(91151, false) + GetItemCount(91152, false) +
+        GetItemCount(91153, false) + GetItemCount(91154, false) + GetItemCount(91155, false) +
+        GetItemCount(91156, false) + GetItemCount(91157, false) + GetItemCount(91158, false) + GetItemCount(91159, false);
+    if (yuanguhuijinum > 0)
+    {
+        setYGNL(true);
+    }
+    //end----------------
+
+
+    //如果角色是硬核模式
+    //if (extraflags & PLAYER_EXTRA_YH_MODEL || (GetSession()->IsBot() && GetLevel() == 60))//现在允许非硬核模式生效
+    if ((GetSession()->IsBot() && GetLevel() == 60))
+    {
+        //判断身上是否有转生石
+        uint16 zsstone = getZHUANSHENGNUM();
+        //LOG_ERROR("xx", "xxxzsstone {}  ", zsstone);//测试,有时候不是0，变成237
+        //如果是机器人，随机转生石的数量
+        if (zsstone == 0 && GetSession()->IsBot() && GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+        {
+            zsstone = urand(5, 10);//前期0-5，后期5-10
+        }
+
+        if (zsstone > 0)
+        {
+            //获取当前级别的数据
+            PlayerClassLevelInfo classInfo;
+            sObjectMgr->GetPlayerClassLevelInfo(GetClass(), GetLevel(), &classInfo);
+
+            PlayerLevelInfo levelInfo;
+            sObjectMgr->GetPlayerLevelInfo(GetRace(), GetClass(), GetLevel(), &levelInfo);
+
+            //一个转生石相当于1个60级属性*sWorld->getRate(CONFIG_FLOAT_REBORN_GET_STATS_RATE)
+            float _plusrate = sWorld->getRate(CONFIG_FLOAT_REBORN_GET_STATS_RATE);
+            PlayerClassLevelInfo classInfox;
+            sObjectMgr->GetPlayerClassLevelInfo(GetClass(), 60, &classInfox);
+
+            PlayerLevelInfo levelInfox;
+            sObjectMgr->GetPlayerLevelInfo(GetRace(), GetClass(), 60, &levelInfox);
+
+            uint32 newHealth = classInfox.basehealth * zsstone * _plusrate;
+            uint32 newMana = classInfox.basemana * zsstone * _plusrate;
+            uint32 newSTRENGTH = uint32(int32(levelInfox.stats[0])) * zsstone * _plusrate;
+            uint32 newAGILITY = uint32(int32(levelInfox.stats[1])) * zsstone * _plusrate;
+            uint32 newSTAMINA = uint32(int32(levelInfox.stats[2])) * zsstone * _plusrate;
+            uint32 newINTELLECT = uint32(int32(levelInfox.stats[3])) * zsstone * _plusrate;
+            uint32 newSPIRIT = uint32(int32(levelInfox.stats[4])) * zsstone * _plusrate;
+
+            //if (GetGUID().GetCounter() == 1)
+            //{
+            //    LOG_ERROR("xx", "levelInfox[0] {}  ", levelInfox.stats[0]);//测试
+            //    LOG_ERROR("xx", "levelInfox[1] {}  ", levelInfox.stats[1]);//测试
+            //    LOG_ERROR("xx", "levelInfox[2] {}  ", levelInfox.stats[2]);//测试
+            //    LOG_ERROR("xx", "levelInfox[3] {}  ", levelInfox.stats[3]);//测试
+            //    LOG_ERROR("xx", "levelInfox[4] {}  ", levelInfox.stats[4]);//测试
+            //    LOG_ERROR("xx", "newSTRENGTH {}  ", newSTRENGTH);//测试
+            //    LOG_ERROR("xx", "newAGILITY {}  ", newAGILITY);//测试
+            //    LOG_ERROR("xx", "newSTAMINA {}  ", newSTAMINA);//测试
+            //    LOG_ERROR("xx", "newINTELLECT {}  ", newINTELLECT);//测试
+            //    LOG_ERROR("xx", "newSPIRIT {}  ", newSPIRIT);//测试
+            //}
+
+
+            //SetCreateHealth(newHealth);
+            //SetCreateMana(newMana);
+            HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(newHealth), true);
+            HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(newMana), true);
+
+            HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(newSTRENGTH), true);
+            HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(newAGILITY), true);
+            HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(newSTAMINA), true);
+            HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(newINTELLECT), true);
+            HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(newSPIRIT), true);
+
+
+        }
+    }
+
+
+    //判断角色是否拥有变身卡，每个变身卡道具增加除耐力外10点属性
+    if (m_bianshencards.size() > 0)
+    {
+        uint32 bscardnum = 0;
+        uint8 pluspoint = sWorld->getIntConfig(CONFIG_UINT32_TRANSMODCARD_ADD_STAT);
+        for (auto bscards : m_bianshencards)
+        {
+            bscardnum += GetItemCount(bscards, true);
+        }
+
+        uint32 plusSTRENGTH = bscardnum * pluspoint;
+        uint32 plusAGILITY = bscardnum * pluspoint;
+        //uint32 plusSTAMINA = bscardnum * pluspoint;
+        uint32 plusINTELLECT = bscardnum * pluspoint;
+        uint32 plusSPIRIT = bscardnum * pluspoint;
+
+        HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(plusSTRENGTH), true);
+        HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(plusAGILITY), true);
+        //HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(plusSTAMINA), true);
+        HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(plusINTELLECT), true);
+        HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(plusSPIRIT), true);
+    }
+
+    //判断角色是否拥有声望崇拜卡，每个声望崇拜卡道具增加除耐力外15点属性
+    if (m_shengwangcards.size() > 0)
+    {
+        uint32 swcardnum = 0;
+        uint8 swpluspoint = sWorld->getIntConfig(CONFIG_UINT32_FACTIONCARD_ADD_STAT);
+        for (auto swcards : m_shengwangcards)
+        {
+            swcardnum += GetItemCount(swcards, true);
+        }
+
+        uint32 swplusSTRENGTH = swcardnum * swpluspoint;
+        uint32 swplusAGILITY = swcardnum * swpluspoint;
+        //uint32 swplusSTAMINA = swcardnum * swpluspoint;
+        uint32 swplusINTELLECT = swcardnum * swpluspoint;
+        uint32 swplusSPIRIT = swcardnum * swpluspoint;
+
+        HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(swplusSTRENGTH), true);
+        HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(swplusAGILITY), true);
+        //HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(swplusSTAMINA), true);
+        HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(swplusINTELLECT), true);
+        HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(swplusSPIRIT), true);
+    }
+
+    //判断是否有技艺者之心，有就增加专业加点技能
+    uint32 _jyzzx = GetItemCount(95996, true);
+    if (_jyzzx > 0 && sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+    {
+        CastSpell(this, 86600, true);//制皮
+        CastSpell(this, 86601, true);//剥皮
+        CastSpell(this, 86602, true);//裁缝
+        CastSpell(this, 86603, true);//采矿
+        CastSpell(this, 86604, true);//锻造
+        CastSpell(this, 86605, true);//珠宝
+        CastSpell(this, 86606, true);//工程学
+        CastSpell(this, 86607, true);//附魔
+        CastSpell(this, 86608, true);//草药学
+        CastSpell(this, 86609, true);//炼金术
+        CastSpell(this, 86610, true);//铭文
+    }
+    //end -----------------------
+
+
+    //判断身上是否有会员卡，有的话，触发会员卡对应的技能，只会触发最高级别的卡
+    //死亡状态下上线，也可以触发效果admin
+
+    if (getVIP20())
+    {
+        CastSpell(this, 85820, true);//攻速20%
+        CastSpell(this, 85830, true);//施法速度20%
+        CastSpell(this, 85478, true);//+100%
+        //CastSpell(this, 85870, true);//攻速30%
+        //CastSpell(this, 85850, true);//施法速度30%
+        //CastSpell(this, 85478, true);//+100%
+        //CastSpell(this, 85484, true);//-30%
+        //CastSpell(this, 85840, true);//+200%
+        //CastSpell(this, 85494, true);//-60%
+        CastSpell(this, 17427, true);
+        //CastSpell(this, 900011, true);//翅膀
+        //CastSpell(this, 17625, true);//DK剑效果
+        //CastSpell(this, 85890, true);//耐力50%
+
+        //增加隐藏天赋技能
+        //CastSpell(this, 20266, true);//神圣之力 提高15%力量值
+        //CastSpell(this, 50111, true);//啜血 生命大于75%时 提高10%伤害（DK有效）
+        //CastSpell(this, 53503, true);//圣光出鞘
+        //CastSpell(this, 29144, true);//活力 耐力和力量总值提高，精准提高
+        //CastSpell(this, 16494, true);//穿刺 技能暴击伤害加成提高20%
+
+    }
+    else
+    {
+        if (getVIP19())
+        {
+            CastSpell(this, 85819, true);//攻速19%
+            CastSpell(this, 85829, true);//施法速度19%
+            CastSpell(this, 85557, true);//+95%
+            //CastSpell(this, 85868, true);//攻速28%
+            //CastSpell(this, 85848, true);//施法速度28%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85839, true);//+190%
+            //CastSpell(this, 85493, true);//-57%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900010, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85889, true);//耐力45%
+        }
+        else
+        {
+            if (getVIP18())
+            {
+                CastSpell(this, 85818, true);//攻速18%
+                CastSpell(this, 85828, true);//施法速度18%
+                CastSpell(this, 85477, true);//+90%
+                //CastSpell(this, 85866, true);//攻速26%
+                //CastSpell(this, 85846, true);//施法速度26%
+                //CastSpell(this, 85478, true);//+100%
+                //CastSpell(this, 85484, true);//-30%
+                //CastSpell(this, 85838, true);//+180%
+                //CastSpell(this, 85492, true);//-54%
+                CastSpell(this, 17427, true);
+                //CastSpell(this, 900009, true);//翅膀
+                //CastSpell(this, 17625, true);//DK剑效果
+                //CastSpell(this, 85888, true);//耐力40%
+            }
+            else
+            {
+                if (getVIP17())
+                {
+                    CastSpell(this, 85817, true);//攻速17%
+                    CastSpell(this, 85827, true);//施法速度17%
+                    CastSpell(this, 85556, true);//+85%
+                    //CastSpell(this, 85864, true);//攻速24%
+                    //CastSpell(this, 85844, true);//施法速度24%
+                    //CastSpell(this, 85478, true);//+100%
+                    //CastSpell(this, 85484, true);//-30%
+                    //CastSpell(this, 85837, true);//+170%
+                    //CastSpell(this, 85491, true);//-51%
+                    CastSpell(this, 17427, true);
+                    //CastSpell(this, 900008, true);//翅膀
+                    //CastSpell(this, 17625, true);//DK剑效果
+                    //CastSpell(this, 85887, true);//耐力35%
+                }
+                else
+                {
+                    if (getVIP16())
+                    {
+                        CastSpell(this, 85816, true);//攻速16%
+                        CastSpell(this, 85826, true);//施法速度16%
+                        CastSpell(this, 85476, true);//+80%
+                        //CastSpell(this, 85862, true);//攻速22%
+                        //CastSpell(this, 85842, true);//施法速度22%
+                        //CastSpell(this, 85478, true);//+100%
+                        //CastSpell(this, 85484, true);//-30%
+                        //CastSpell(this, 85836, true);//+160%
+                        //CastSpell(this, 85490, true);//-48%
+                        CastSpell(this, 17427, true);
+                        //CastSpell(this, 900007, true);//翅膀
+                        //CastSpell(this, 17625, true);//DK剑效果
+                        //CastSpell(this, 85886, true);//耐力30%
+                    }
+                    else
+                    {
+                        if (getVIP15())
+                        {
+                            CastSpell(this, 85815, true);//攻速15%
+                            CastSpell(this, 85825, true);//施法速度15%
+                            CastSpell(this, 85555, true);//+75%
+                            //CastSpell(this, 85820, true);//攻速20%
+                            //CastSpell(this, 85830, true);//施法速度20%
+                            //CastSpell(this, 85478, true);//+100%
+                            //CastSpell(this, 85484, true);//-30%
+                            //CastSpell(this, 85835, true);//+150%
+                            //CastSpell(this, 85489, true);//-45%
+                            CastSpell(this, 17427, true);
+                            //CastSpell(this, 900006, true);//翅膀
+                            //CastSpell(this, 17625, true);//DK剑效果
+                            //CastSpell(this, 85885, true);//耐力25%
+                        }
+                        else
+                        {
+                            if (getVIP14())
+                            {
+                                CastSpell(this, 85814, true);//攻速14%
+                                CastSpell(this, 85824, true);//施法速度14%
+                                CastSpell(this, 85475, true);//+70%
+                                //CastSpell(this, 85818, true);//攻速18%
+                                //CastSpell(this, 85828, true);//施法速度18%
+                                //CastSpell(this, 85478, true);//+100%
+                                //CastSpell(this, 85484, true);//-30%
+                                //CastSpell(this, 85834, true);//+140%
+                                //CastSpell(this, 85488, true);//-42%
+                                CastSpell(this, 17427, true);
+                                //CastSpell(this, 900005, true);//翅膀
+                                //CastSpell(this, 17625, true);//DK剑效果
+                                //CastSpell(this, 85884, true);//耐力20%
+                            }
+                            else
+                            {
+                                if (getVIP13())
+                                {
+                                    CastSpell(this, 85813, true);//攻速13%
+                                    CastSpell(this, 85823, true);//施法速度13%
+                                    CastSpell(this, 85554, true);//+65%
+                                    //CastSpell(this, 85816, true);//攻速16%
+                                    //CastSpell(this, 85826, true);//施法速度16%
+                                    //CastSpell(this, 85478, true);//+100%
+                                    //CastSpell(this, 85484, true);//-30%
+                                    //CastSpell(this, 85833, true);//+130%
+                                    //CastSpell(this, 85487, true);//-39%
+                                    CastSpell(this, 17427, true);
+                                    //CastSpell(this, 900004, true);//翅膀
+                                    //CastSpell(this, 17625, true);//DK剑效果
+                                    //CastSpell(this, 85883, true);//耐力15%
+                                }
+                                else
+                                {
+                                    if (getVIP12())
+                                    {
+                                        CastSpell(this, 85812, true);//攻速12%
+                                        CastSpell(this, 85822, true);//施法速度12%
+                                        CastSpell(this, 85474, true);//+60%
+                                        //CastSpell(this, 85814, true);//攻速14%
+                                        //CastSpell(this, 85824, true);//施法速度14%
+                                        //CastSpell(this, 85478, true);//+100%
+                                        //CastSpell(this, 85484, true);//-30%
+                                        //CastSpell(this, 85832, true);//+120%
+                                        //CastSpell(this, 85486, true);//-36%
+                                        CastSpell(this, 17427, true);
+                                        //CastSpell(this, 900003, true);//翅膀
+                                        //CastSpell(this, 17625, true);//DK剑效果
+                                        //CastSpell(this, 85882, true);//耐力10%
+                                    }
+                                    else
+                                    {
+
+                                        if (getVIP11())
+                                        {
+                                            CastSpell(this, 85811, true);//攻速11%
+                                            CastSpell(this, 85821, true);//施法速度11%
+                                            CastSpell(this, 85553, true);//+55%
+                                            //CastSpell(this, 85812, true);//攻速12%
+                                            //CastSpell(this, 85822, true);//施法速度12%
+                                            //CastSpell(this, 85478, true);//+100%
+                                            //CastSpell(this, 85484, true);//-30%
+                                            //CastSpell(this, 85831, true);//+110%
+                                            //CastSpell(this, 85485, true);//-33%
+                                            CastSpell(this, 17427, true);
+                                            //CastSpell(this, 900002, true);//翅膀
+                                            //CastSpell(this, 27571, true);
+                                            //CastSpell(this, 17625, true);//DK剑效果
+                                            //CastSpell(this, 85881, true);//耐力5%
+                                        }
+                                        else
+                                        {
+                                            if (getVIP10())
+                                            {
+                                                CastSpell(this, 85420, true);//攻速10%
+                                                CastSpell(this, 85430, true);//施法速度10%
+                                                CastSpell(this, 85473, true);//+50%
+                                                //CastSpell(this, 85478, true);//+100%
+                                                //CastSpell(this, 85484, true);//-30%
+                                                CastSpell(this, 17427, true);
+                                                //CastSpell(this, 900001, true);//翅膀
+                                                //CastSpell(this, 27571, true);
+                                                //CastSpell(this, 17625, true);//DK剑效果
+                                            }
+                                            else
+                                            {
+                                                if (getVIP9())
+                                                {
+                                                    CastSpell(this, 85419, true);//攻速9%
+                                                    CastSpell(this, 85429, true);//施法速度9%
+                                                    CastSpell(this, 85552, true);//+45%
+                                                    //CastSpell(this, 85477, true);//+90%
+                                                    //CastSpell(this, 85483, true);//-27%
+                                                    CastSpell(this, 17427, true);
+                                                    //CastSpell(this, 27571, true);
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP8())
+                                                    {
+                                                        CastSpell(this, 85418, true);//攻速8%
+                                                        CastSpell(this, 85428, true);//施法速度8%
+                                                        CastSpell(this, 85472, true);//+40%
+                                                        //CastSpell(this, 85476, true);//+80%
+                                                        //CastSpell(this, 85482, true);//-24%
+                                                        CastSpell(this, 17427, true);
+                                                        //CastSpell(this, 27571, true);
+                                                        CastSpell(this, 17625, true);//DK剑效果
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP7())
+                                                        {
+                                                            CastSpell(this, 85417, true);//攻速7%
+                                                            CastSpell(this, 85427, true);//施法速度7%
+                                                            CastSpell(this, 85551, true);//+35%
+                                                            //CastSpell(this, 85475, true);//+70%
+                                                            //CastSpell(this, 85481, true);//-21%
+                                                            CastSpell(this, 17427, true);
+                                                            //CastSpell(this, 27571, true);
+                                                            CastSpell(this, 17625, true);//DK剑效果
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP6())
+                                                            {
+                                                                CastSpell(this, 85416, true);//攻速6%
+                                                                CastSpell(this, 85426, true);//施法速度6%
+                                                                CastSpell(this, 85471, true);//+30%
+                                                                //CastSpell(this, 85474, true);//+60%
+                                                                //CastSpell(this, 85458, true);//-18%
+                                                                CastSpell(this, 17427, true);
+                                                                //CastSpell(this, 27571, true);
+                                                                CastSpell(this, 17625, true);//DK剑效果
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP5())
+                                                                {
+                                                                    CastSpell(this, 85415, true);//攻速5%
+                                                                    CastSpell(this, 85425, true);//施法速度5%
+                                                                    CastSpell(this, 85550, true);//+25%
+                                                                    //CastSpell(this, 85473, true);//+50%
+                                                                    //CastSpell(this, 85455, true);//-15%
+                                                                    CastSpell(this, 17427, true);
+                                                                    //CastSpell(this, 27571, true);
+                                                                    CastSpell(this, 17625, true);//DK剑效果
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP4())
+                                                                    {
+                                                                        CastSpell(this, 85414, true);//攻速4%
+                                                                        CastSpell(this, 85424, true);//施法速度4%
+                                                                        CastSpell(this, 85470, true);//+20%
+                                                                        //CastSpell(this, 85472, true);//+40%
+                                                                        //CastSpell(this, 85452, true);//-12%
+                                                                        CastSpell(this, 17427, true);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP3())
+                                                                        {
+                                                                            CastSpell(this, 85413, true);//攻速3%
+                                                                            CastSpell(this, 85423, true);//施法速度3%
+                                                                            CastSpell(this, 85465, true);//+15%
+                                                                            //CastSpell(this, 85471, true);//+30%
+                                                                            //CastSpell(this, 85449, true);//-9%
+                                                                            CastSpell(this, 17427, true);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP2())
+                                                                            {
+                                                                                CastSpell(this, 85412, true);//攻速2%
+                                                                                CastSpell(this, 85422, true);//施法速度2%
+                                                                                CastSpell(this, 85440, true);//+5%
+                                                                                //CastSpell(this, 85470, true);//+20%
+                                                                                //CastSpell(this, 85446, true);//-6%
+                                                                                CastSpell(this, 17427, true);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP1())
+                                                                                {
+                                                                                    CastSpell(this, 85411, true);//攻速1%
+                                                                                    CastSpell(this, 85421, true);//施法速度1%
+                                                                                    CastSpell(this, 85435, true);//+5%
+                                                                                    //CastSpell(this, 85440, true);//+10%
+                                                                                    //CastSpell(this, 85443, true);//-3%
+                                                                                    CastSpell(this, 17427, true);
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
     UpdateAllStats();
 
     // restore remembered power/health values (but not more max values)
@@ -5836,7 +7688,16 @@ void Player::LoadCorpse(PreparedQueryResult result)
             ApplyModFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTE_RELEASE_TIMER, !sMapStore.LookupEntry(_corpseLocation.GetMapId())->Instanceable());
         }
         else
+        {
+            if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+            {
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+                //如果是专家模式，这里不继续运行
+                if (!GetMap()->IsBattlegroundOrArena())
+                    return;
+            }
             ResurrectPlayer(0.5f);
+        }
     }
 
     RemoveAtLoginFlag(AT_LOGIN_RESURRECT);
@@ -6338,8 +8199,12 @@ void Player::_LoadQuestStatusRewarded(PreparedQueryResult result)
             Quest const* quest = sObjectMgr->GetQuestTemplate(quest_id);
             if (quest)
             {
-                // learn rewarded spell if unknown
-                learnQuestRewardedSpells(quest);
+                //判断当前职业是否是这个任务的要求职业，如果不是就跳过
+                if (quest->GetRequiredClasses() == GetClass())
+                {
+                    // learn rewarded spell if unknown
+                    learnQuestRewardedSpells(quest);
+                }
 
                 // set rewarded title if any
                 if (quest->GetCharTitleId())
@@ -6988,11 +8853,50 @@ bool Player::CheckInstanceLoginValid()
     return sMapMgr->PlayerCannotEnter(GetMap()->GetId(), this, true) == Map::CAN_ENTER;
 }
 
-bool Player::CheckInstanceCount(uint32 instanceId) const
+bool Player::CheckInstanceCount(uint32 instanceId, bool bb) const
 {
+    if (IsGameMaster())
+    {
+        return true;
+    }
     if (_instanceResetTimes.size() < sWorld->getIntConfig(CONFIG_MAX_INSTANCES_PER_HOUR))
         return true;
-    return _instanceResetTimes.find(instanceId) != _instanceResetTimes.end();
+
+    if (_instanceResetTimes.find(instanceId) != _instanceResetTimes.end() == false)//当前爆本的话
+    {
+
+        //判断角色背包中是否有爆本卷轴
+        if (GetItemCount(70618, false) > 0)
+        {
+            //LOG_ERROR("xx", "bapoben  ");//测试
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxxp3 %f", GetItemCount(30618, false));//测试
+            //这里不能直接执行扣除，因为PlayerCannotEnter函数被调用了两次
+            //扣除的动作改到最后一个函数bool Player::TeleportTo调用的位置调用带bb参数的本函数进行
+            if (bb)
+            {
+                //扣除一个卷轴并记录日志
+                GetSession()->GetPlayer()->DestroyItemCount(70618, 1, true);
+                //--------------------------------------
+                //LOG_ERROR("xx", "bapoben2  ");//测试
+                //返回true：允许玩家进入副本
+
+            }
+            return true;
+        }
+        else
+        {
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxxp4 %f", GetItemCount(30618, false));//测试
+            return false;
+        }
+    }
+    else
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxxp5 %f", GetItemCount(30618, false));//测试
+        return true;
+    }
+
+    //return _instanceResetTimes.find(instanceId) != _instanceResetTimes.end();
+
 }
 
 bool Player::_LoadHomeBind(PreparedQueryResult result)

@@ -633,6 +633,7 @@ struct GossipMenuItems
     std::string     BoxText;
     ConditionList   Conditions;
     uint32          BoxBroadcastTextID;
+    std::string     commandtext = "";
 };
 
 struct GossipMenus

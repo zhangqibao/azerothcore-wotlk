@@ -179,7 +179,7 @@ namespace Acore::Impl::ChatCommands
     public:
         static void LoadCommandMap();
         static void InvalidateCommandMap();
-        static bool TryExecuteCommand(ChatHandler& handler, std::string_view cmd);
+        static bool TryExecuteCommand(ChatHandler& handler, std::string_view cmd, bool itemuse = false);
         static void SendCommandHelpFor(ChatHandler& handler, std::string_view cmd);
         static std::vector<std::string> GetAutoCompletionsFor(ChatHandler const& handler, std::string_view cmd);
 
@@ -195,9 +195,9 @@ namespace Acore::Impl::ChatCommands
         void ResolveNames(std::string name);
         void SendCommandHelp(ChatHandler& handler) const;
 
-        bool IsVisible(ChatHandler const& who) const { return (IsInvokerVisible(who) || HasVisibleSubCommands(who)); }
-        bool IsInvokerVisible(ChatHandler const& who) const;
-        bool HasVisibleSubCommands(ChatHandler const& who) const;
+        bool IsVisible(ChatHandler const& who, bool itemuse = false) const { return (IsInvokerVisible(who, itemuse) || HasVisibleSubCommands(who, itemuse)); }
+        bool IsInvokerVisible(ChatHandler const& who, bool itemuse = false) const;
+        bool HasVisibleSubCommands(ChatHandler const& who, bool itemuse = false) const;
 
         std::string _name;
         CommandInvoker _invoker;
@@ -252,7 +252,7 @@ namespace Acore::ChatCommands
 
     AC_GAME_API void LoadCommandMap();
     AC_GAME_API void InvalidateCommandMap();
-    AC_GAME_API bool TryExecuteCommand(ChatHandler& handler, std::string_view cmd);
+    AC_GAME_API bool TryExecuteCommand(ChatHandler& handler, std::string_view cmd, bool itemuse = false);
     AC_GAME_API void SendCommandHelpFor(ChatHandler& handler, std::string_view cmd);
     AC_GAME_API std::vector<std::string> GetAutoCompletionsFor(ChatHandler const& handler, std::string_view cmd);
 }

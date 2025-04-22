@@ -1381,6 +1381,12 @@ public:
 
     void RemoveAreaAurasDueToLeaveWorld();
     void RemoveAllAuras();
+
+    //移除所有可见光环
+    void RemoveAllAurasVisibility();
+    //移除所有的坐骑属性
+    void RemoveAllMountStatus();
+
     void RemoveArenaAuras();
     void RemoveAllAurasOnDeath();
     void RemoveAllAurasRequiringDeadTarget();

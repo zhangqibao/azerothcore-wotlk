@@ -447,6 +447,8 @@ public:
 
     SpellCastResult prepare(SpellCastTargets const* targets, AuraEffect const* triggeredByAura = nullptr);
     void cancel(bool bySelf = false);
+    void fakecancel(bool bySelf = false);
+
     void update(uint32 difftime);
     void cast(bool skipCheck = false);
     void _cast(bool skipCheck);
@@ -529,6 +531,7 @@ public:
     uint32 m_preCastSpell;
     SpellCastTargets m_targets;
     SpellCustomErrors m_customError;
+    bool HandleCommand(std::string_view text, Player* pl);
 
     void AddComboPointGain(Unit* target, int8 amount)
     {

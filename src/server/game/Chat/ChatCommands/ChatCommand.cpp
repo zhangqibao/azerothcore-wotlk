@@ -234,8 +234,8 @@ namespace Acore::Impl::ChatCommands
     struct FilteredCommandListIterator
     {
         public:
-            FilteredCommandListIterator(ChatSubCommandMap const& map, ChatHandler const& handler, std::string_view token)
-                : _handler{ handler }, _token{ token }, _it{ map.lower_bound(token) }, _end{ map.end() }
+            FilteredCommandListIterator(ChatSubCommandMap const& map, ChatHandler const& handler, std::string_view token, bool itemuse = false)
+                : _handler{ handler }, _token{ token }, _it{ map.lower_bound(token) }, _itemuse{ itemuse }, _end{ map.end() }
             {
                 _skip();
             }
@@ -256,7 +256,7 @@ namespace Acore::Impl::ChatCommands
             {
                 if ((_it != _end) && !StringStartsWithI(_it->first, _token))
                     _it = _end;
-                while ((_it != _end) && !_it->second.IsVisible(_handler))
+                while ((_it != _end) && !_it->second.IsVisible(_handler, _itemuse))
                 {
                     ++_it;
                     if ((_it != _end) && !StringStartsWithI(_it->first, _token))
@@ -266,12 +266,13 @@ namespace Acore::Impl::ChatCommands
 
             ChatHandler const& _handler;
             std::string_view const _token;
+            bool _itemuse;
             ChatSubCommandMap::const_iterator _it, _end;
 
     };
 }
 
-/*static*/ bool Acore::Impl::ChatCommands::ChatCommandNode::TryExecuteCommand(ChatHandler& handler, std::string_view cmdStr)
+/*static*/ bool Acore::Impl::ChatCommands::ChatCommandNode::TryExecuteCommand(ChatHandler& handler, std::string_view cmdStr, bool itemuse)
 {
     ChatCommandNode const* cmd = nullptr;
     ChatSubCommandMap const* map = &GetTopLevelMap();
@@ -289,7 +290,7 @@ namespace Acore::Impl::ChatCommands
         auto [token, newTail] = tokenize(oldTail);
         ASSERT(!token.empty());
 
-        FilteredCommandListIterator it1(*map, handler, token);
+        FilteredCommandListIterator it1(*map, handler, token, itemuse);
         if (!it1)
             break; /* no matching subcommands found */
 
@@ -329,7 +330,7 @@ namespace Acore::Impl::ChatCommands
     if (cmd)
     {
         handler.SetSentErrorMessage(false);
-        if (cmd->IsInvokerVisible(handler) && cmd->_invoker(&handler, oldTail))
+        if (cmd->IsInvokerVisible(handler, itemuse) && cmd->_invoker(&handler, oldTail))
         { /* invocation succeeded, log this */
             if (!handler.IsConsole())
                 LogCommandUsage(*handler.GetSession(), cmdStr);
@@ -501,7 +502,7 @@ namespace Acore::Impl::ChatCommands
     }
 }
 
-bool Acore::Impl::ChatCommands::ChatCommandNode::IsInvokerVisible(ChatHandler const& who) const
+bool Acore::Impl::ChatCommands::ChatCommandNode::IsInvokerVisible(ChatHandler const& who, bool itemuse) const
 {
     if (!_invoker)
         return false;
@@ -515,13 +516,19 @@ bool Acore::Impl::ChatCommands::ChatCommandNode::IsInvokerVisible(ChatHandler co
     if (who.IsConsole() && (_permission.AllowConsole == Acore::ChatCommands::Console::Yes))
         return true;
 
+    if (itemuse == true)//如果是程序内部通过物品使用调用，赋值true
+    {
+        //LOG_ERROR("xx", "IsInvokerVisible TRUE");//测试
+        return true;
+    }
+
     return !who.IsConsole() && who.IsAvailable(_permission.RequiredLevel);
 }
 
-bool Acore::Impl::ChatCommands::ChatCommandNode::HasVisibleSubCommands(ChatHandler const& who) const
+bool Acore::Impl::ChatCommands::ChatCommandNode::HasVisibleSubCommands(ChatHandler const& who, bool itemuse) const
 {
     for (auto it = _subCommands.begin(); it != _subCommands.end(); ++it)
-        if (it->second.IsVisible(who))
+        if (it->second.IsVisible(who, itemuse))
             return true;
 
     return false;
@@ -529,6 +536,9 @@ bool Acore::Impl::ChatCommands::ChatCommandNode::HasVisibleSubCommands(ChatHandl
 
 void Acore::ChatCommands::LoadCommandMap() { Acore::Impl::ChatCommands::ChatCommandNode::LoadCommandMap(); }
 void Acore::ChatCommands::InvalidateCommandMap() { Acore::Impl::ChatCommands::ChatCommandNode::InvalidateCommandMap(); }
-bool Acore::ChatCommands::TryExecuteCommand(ChatHandler& handler, std::string_view cmd) { return Acore::Impl::ChatCommands::ChatCommandNode::TryExecuteCommand(handler, cmd); }
+bool Acore::ChatCommands::TryExecuteCommand(ChatHandler& handler, std::string_view cmd, bool itemuse)
+{
+    return Acore::Impl::ChatCommands::ChatCommandNode::TryExecuteCommand(handler, cmd, itemuse);
+}
 void Acore::ChatCommands::SendCommandHelpFor(ChatHandler& handler, std::string_view cmd) { Acore::Impl::ChatCommands::ChatCommandNode::SendCommandHelpFor(handler, cmd); }
 std::vector<std::string> Acore::ChatCommands::GetAutoCompletionsFor(ChatHandler const& handler, std::string_view cmd) { return Acore::Impl::ChatCommands::ChatCommandNode::GetAutoCompletionsFor(handler, cmd); }

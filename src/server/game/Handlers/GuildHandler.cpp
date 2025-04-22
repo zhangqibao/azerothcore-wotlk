@@ -270,6 +270,12 @@ void WorldSession::HandleGuildPermissions(WorldPackets::Guild::GuildPermissionsQ
 // Called when clicking on Guild bank gameobject
 void WorldSession::HandleGuildBankerActivate(WorldPackets::Guild::GuildBankActivate& packet)
 {
+    //如果玩家是流浪者模式，禁止使用公会银行
+    if ((GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        return;
+    }
+
     LOG_DEBUG("guild", "CMSG_GUILD_BANKER_ACTIVATE [{}]: Go: [{}] AllSlots: {}"
     , GetPlayerInfo(), packet.Banker.ToString(), packet.FullUpdate);
 

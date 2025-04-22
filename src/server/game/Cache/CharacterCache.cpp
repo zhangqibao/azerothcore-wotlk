@@ -90,7 +90,7 @@ void CharacterCache::LoadCharacterCacheStorage()
     LOG_INFO("server.loading", " ");
 }
 
-void CharacterCache::RefreshCacheEntry(uint32 lowGuid)
+void CharacterCache::RefreshCacheEntry(uint32 lowGuid, uint32 guildid)
 {
     QueryResult result = CharacterDatabase.Query("SELECT guid, name, account, race, gender, class, level FROM characters WHERE guid = {}", lowGuid);
     if (!result)
@@ -102,7 +102,7 @@ void CharacterCache::RefreshCacheEntry(uint32 lowGuid)
     {
         Field* fields = result->Fetch();
         DeleteCharacterCacheEntry(ObjectGuid::Create<HighGuid::Player>(lowGuid), fields[1].Get<std::string>());
-        AddCharacterCacheEntry(ObjectGuid::Create<HighGuid::Player>(fields[0].Get<uint32>()) /*guid*/, fields[2].Get<uint32>() /*account*/, fields[1].Get<std::string>() /*name*/, fields[4].Get<uint8>() /*gender*/, fields[3].Get<uint8>() /*race*/, fields[5].Get<uint8>() /*class*/, fields[6].Get<uint8>() /*level*/);
+        AddCharacterCacheEntry(ObjectGuid::Create<HighGuid::Player>(fields[0].Get<uint32>()) /*guid*/, fields[2].Get<uint32>() /*account*/, fields[1].Get<std::string>() /*name*/, fields[4].Get<uint8>() /*gender*/, fields[3].Get<uint8>() /*race*/, fields[5].Get<uint8>() /*class*/, fields[6].Get<uint8>() /*level*/, guildid);
     } while (result->NextRow());
 
     QueryResult mailCountResult = CharacterDatabase.Query("SELECT receiver, COUNT(receiver) FROM mail WHERE receiver = {} GROUP BY receiver", lowGuid);
@@ -119,7 +119,7 @@ void CharacterCache::RefreshCacheEntry(uint32 lowGuid)
 /*
 Modifying functions
 */
-void CharacterCache::AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accountId, std::string const& name, uint8 gender, uint8 race, uint8 playerClass, uint8 level)
+void CharacterCache::AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accountId, std::string const& name, uint8 gender, uint8 race, uint8 playerClass, uint8 level, uint32 guild)
 {
     CharacterCacheEntry& data = _characterCacheStore[guid];
     data.Guid = guid;
@@ -129,7 +129,7 @@ void CharacterCache::AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accou
     data.Sex = gender;
     data.Class = playerClass;
     data.Level = level;
-    data.GuildId = 0;                           // Will be set in guild loading or guild setting
+    data.GuildId = guild;                           // Will be set in guild loading or guild setting
     for (uint8 i = 0; i < MAX_ARENA_SLOT; ++i)
     {
         data.ArenaTeamId[i] = 0; // Will be set in arena teams loading

@@ -47,7 +47,7 @@ public:
         {
             { "chat",    HandleGMChatCommand,       SEC_GAMEMASTER,     Console::No  },
             { "fly",     HandleGMFlyCommand,        SEC_GAMEMASTER,     Console::No  },
-            { "ingame",  HandleGMListIngameCommand, SEC_PLAYER,         Console::Yes },
+            { "ingame",  HandleGMListIngameCommand, SEC_GAMEMASTER,     Console::Yes },
             { "list",    HandleGMListFullCommand,   SEC_ADMINISTRATOR,  Console::Yes },
             { "visible", HandleGMVisibleCommand,    SEC_GAMEMASTER,     Console::No  },
             { "on",      HandleGMOnCommand,         SEC_MODERATOR,      Console::No  },

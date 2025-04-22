@@ -222,6 +222,18 @@ public:
     static Item* CreateItem(uint32 item, uint32 count, Player const* player = nullptr, bool clone = false, uint32 randomPropertyId = 0, bool temp = false);
     Item* CloneItem(uint32 count, Player const* player = nullptr) const;
 
+    bool ChangeEntry(ItemTemplate const* pNewProto);
+    bool ExtractEntry(ItemTemplate const* pOldProto);
+    bool ExtractEntryEmpty(ItemTemplate const* pOldProto);
+
+    bool LoadEntry(Item* castItem, ItemTemplate const* pOldProto, ItemTemplate const* pNewProto);
+    bool LoadEntryFW(Item* castItem, ItemTemplate const* pOldProto, ItemTemplate const* pNewProto);
+    bool SetUnBindingEntry();
+
+    bool FlushEntry(ItemTemplate const* pNewProto);
+    void core_rollPossibleEnchant(Player* player, Item* item);
+    [[nodiscard]] uint32 core_getRandEnchantment(Item* item);
+
     Item();
 
     virtual bool Create(ObjectGuid::LowType guidlow, uint32 itemid, Player const* owner);
@@ -295,8 +307,10 @@ public:
     [[nodiscard]] int32 GetItemRandomPropertyId() const { return GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID); }
     [[nodiscard]] uint32 GetItemSuffixFactor() const { return GetUInt32Value(ITEM_FIELD_PROPERTY_SEED); }
     void SetItemRandomProperties(int32 randomPropId);
+    void SetItemFWRandomProperties(int32 randomPropId);
+
     void UpdateItemSuffixFactor();
-    static int32 GenerateItemRandomPropertyId(uint32 item_id);
+    static int32 GenerateItemRandomPropertyId(uint32 item_id, bool force = false);
     void SetEnchantment(EnchantmentSlot slot, uint32 id, uint32 duration, uint32 charges, ObjectGuid caster = ObjectGuid::Empty);
     void SetEnchantmentDuration(EnchantmentSlot slot, uint32 duration, Player* owner);
     void SetEnchantmentCharges(EnchantmentSlot slot, uint32 charges);

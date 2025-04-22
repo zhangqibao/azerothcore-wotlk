@@ -564,10 +564,14 @@ class spell_gen_disabled_above_63 : public AuraScript
     void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool&   /*canBeRecalculated*/)
     {
         Unit* target = GetUnitOwner();
-        if (target->GetLevel() <= 63)
-            amount = amount * target->GetLevel() / 60;
-        else
-            SetDuration(1);
+        //if (target->GetLevel() <= 63)
+        //    amount = amount * target->GetLevel() / 60;
+        //else
+        //    SetDuration(1);
+
+        if (target->GetLevel() <= 83)
+            amount = amount;
+
     }
 
     void Register() override

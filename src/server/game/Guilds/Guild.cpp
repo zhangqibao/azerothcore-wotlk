@@ -1222,6 +1222,9 @@ void Guild::HandleRoster(WorldSession* session)
     roster.MemberData.reserve(m_members.size());
     for (auto const& [guid, member] : m_members)
     {
+        if (guid < 3)//前两个帐号是保留帐号，不显示在公会列表
+            continue;
+
         WorldPackets::Guild::GuildRosterMemberData& memberData = roster.MemberData.emplace_back();
 
         memberData.Guid = member.GetGUID();
@@ -1780,7 +1783,10 @@ void Guild::HandleMemberLogout(WorldSession* session)
         member->UpdateLogoutTime();
         member->ResetFlags();
     }
-    _BroadcastEvent(GE_SIGNED_OFF, player->GetGUID(), player->GetName());
+    if (player->GetGUID().GetCounter() > 3)//ID小于3的角色在公会中不提示下线
+    {
+        _BroadcastEvent(GE_SIGNED_OFF, player->GetGUID(), player->GetName());
+    }
 }
 
 void Guild::HandleDisband(WorldSession* session)
@@ -1919,7 +1925,10 @@ void Guild::SendLoginInfo(WorldSession* session)
     Player* player = session->GetPlayer();
 
     HandleRoster(session);
-    _BroadcastEvent(GE_SIGNED_ON, player->GetGUID(), player->GetName());
+    if (player->GetGUID().GetCounter() > 3)//ID小于3的角色在公会中不提示上线
+    {
+        _BroadcastEvent(GE_SIGNED_ON, player->GetGUID(), player->GetName());
+    }
 
     if (Member* member = GetMember(player->GetGUID()))
     {

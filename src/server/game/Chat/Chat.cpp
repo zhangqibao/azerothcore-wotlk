@@ -225,9 +225,9 @@ void ChatHandler::SendErrorMessage(std::string_view str, bool escapeCharacters)
     SetSentErrorMessage(true);
 }
 
-bool ChatHandler::_ParseCommands(std::string_view text)
+bool ChatHandler::_ParseCommands(std::string_view text, bool itemuse)
 {
-    if (Acore::ChatCommands::TryExecuteCommand(*this, text))
+    if (Acore::ChatCommands::TryExecuteCommand(*this, text, itemuse))
         return true;
 
     // Pretend commands don't exist for regular players
@@ -239,7 +239,7 @@ bool ChatHandler::_ParseCommands(std::string_view text)
     return true;
 }
 
-bool ChatHandler::ParseCommands(std::string_view text)
+bool ChatHandler::ParseCommands(std::string_view text, bool itemuse)
 {
     ASSERT(!text.empty());
 
@@ -259,7 +259,7 @@ bool ChatHandler::ParseCommands(std::string_view text)
     if (text[1] == Acore::Impl::ChatCommands::COMMAND_DELIMITER)
         return false;
 
-    return _ParseCommands(text.substr(1));
+    return _ParseCommands(text.substr(1), itemuse);
 }
 
 std::size_t ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg chatType, Language language, ObjectGuid senderGUID, ObjectGuid receiverGUID, std::string_view message, uint8 chatTag,
@@ -965,7 +965,7 @@ void CliHandler::SendSysMessage(std::string_view str, bool /*escapeCharacters*/)
     m_print(m_callbackArg, "\r\n");
 }
 
-bool CliHandler::ParseCommands(std::string_view str)
+bool CliHandler::ParseCommands(std::string_view str, bool itemuse)
 {
     if (str.empty())
         return false;
@@ -974,7 +974,7 @@ bool CliHandler::ParseCommands(std::string_view str)
     if (str[0] == '.' || str[0] == '!')
         str = str.substr(1);
 
-    return _ParseCommands(str);
+    return _ParseCommands(str, itemuse);
 }
 
 std::string CliHandler::GetNameLink() const
@@ -1047,7 +1047,7 @@ bool CliHandler::HasSession() const
     return true;
 }
 
-bool AddonChannelCommandHandler::ParseCommands(std::string_view str)
+bool AddonChannelCommandHandler::ParseCommands(std::string_view str, bool itemuse)
 {
     if (memcmp(str.data(), "AzerothCore\t", 12))
         return false;
@@ -1068,7 +1068,7 @@ bool AddonChannelCommandHandler::ParseCommands(std::string_view str)
             if (!str[17])
                 return false;
             humanReadable = (opcode == 'h');
-            if (_ParseCommands(str.substr(17))) // actual command starts at str[17]
+            if (_ParseCommands(str.substr(17), itemuse)) // actual command starts at str[17]
             {
                 if (!hadAck)
                     SendAck();

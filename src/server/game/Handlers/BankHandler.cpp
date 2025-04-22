@@ -89,6 +89,30 @@ void WorldSession::HandleAutoBankItemOpcode(WorldPackets::Bank::AutoBankItem& pa
         return;
     }
 
+    if (dest[0].pos > 65318 && dest[0].pos < 65343)//从包里往银行右键存放，这个pos是物品在银行的栏位id，如果是前24格
+    {
+        //判断是否拥有赫拉迪姆魔盒
+        if (_player->getHLDM())
+        {
+            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果------
+            _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, item, nullptr);
+            return;
+            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果---end---
+        }
+    }
+    else
+    {
+        //判断是否是赞助坐骑，如果是就禁止
+        if (m_zuoqis.size() > 0)
+        {
+            if (std::find(m_zuoqis.begin(), m_zuoqis.end(), item->GetEntry()) != m_zuoqis.end())
+            {
+                _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, item, nullptr);
+                return;
+            }
+        }
+    }
+
     _player->RemoveItem(packet.Bag, packet.Slot, true);
     _player->ItemRemovedQuestCheck(item->GetEntry(), item->GetCount());
     _player->BankItem(dest, item, true);
@@ -108,6 +132,33 @@ void WorldSession::HandleAutoStoreBankItemOpcode(WorldPackets::Bank::AutoStoreBa
     Item* item = _player->GetItemByPos(packet.Bag, packet.Slot);
     if (!item)
         return;
+
+    if (packet.Slot > 38 && packet.Slot < 63)//从银行往包里右键存放，这个slot是物品在来源银行的栏位id，如果是前16格
+    {
+        //判断是否拥有赫拉迪姆魔盒
+        if (_player->getHLDM())
+        {
+            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果------
+            //判断是否拥有赫拉迪姆魔盒,无论是否有魔盒，都执行，因为可能用坐骑刷高属性
+            _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, item, nullptr);
+            return;
+            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果---end---
+        }
+
+    }
+    else//如果不是银行的前24格
+    {
+        //判断是否是赞助坐骑，如果是就禁止
+        if (m_zuoqis.size() > 0)
+        {
+            if (std::find(m_zuoqis.begin(), m_zuoqis.end(), item->GetEntry()) != m_zuoqis.end())
+            {
+                _player->SendEquipError(EQUIP_ERR_ITEM_DOESNT_GO_TO_SLOT, item, nullptr);
+                return;
+            }
+        }
+
+    }
 
     if (_player->IsBankPos(packet.Bag, packet.Slot))                    // moving from bank to inventory
     {

@@ -2547,6 +2547,36 @@ Creature* Map::GetCreature(ObjectGuid const guid)
     return _objectsStore.Find<Creature>(guid);
 }
 
+
+ObjectGuid Map::GetCreatureGUIDFromSpawnId(uint32 spawnId, Map* map)
+{
+    const auto creatureBounds = map->GetCreatureBySpawnIdStore().equal_range(spawnId);
+    std::vector <Creature*> despawnList;
+    ObjectGuid creatureguid;
+
+    if (creatureBounds.first != creatureBounds.second)
+    {
+        for (auto itr = creatureBounds.first; itr != creatureBounds.second; ++itr)
+        {
+            if (itr->second->IsAlive())
+            {
+                return itr->second->GetGUID();
+            }
+            else
+            {
+                creatureguid = itr->second->GetGUID();
+                despawnList.push_back(itr->second);
+            }
+        }
+
+        for (Creature* despawnCreature : despawnList)
+        {
+            despawnCreature->AddObjectToRemoveList();
+        }
+        return creatureguid;
+    }
+}
+
 GameObject* Map::GetGameObject(ObjectGuid const guid)
 {
     return _objectsStore.Find<GameObject>(guid);

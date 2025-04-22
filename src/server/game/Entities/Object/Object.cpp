@@ -305,7 +305,7 @@ void Object::DestroyForPlayer(Player* target, bool onDeath) const
 [[nodiscard]] uint32 Object::GetUInt32Value(uint16 index) const
 {
     ASSERT(index < m_valuesCount || PrintIndexError(index, false));
-    return m_uint32Values[index];
+    return m_uint32Values ? m_uint32Values[index] : 0;//防崩测试
 }
 
 [[nodiscard]] uint64 Object::GetUInt64Value(uint16 index) const
@@ -2574,6 +2574,30 @@ void WorldObject::GetCreatureListWithEntryInGrid(std::list<Creature*>& creatureL
     Acore::AllCreaturesOfEntryInRange check(this, entry, maxSearchRange);
     Acore::CreatureListSearcher<Acore::AllCreaturesOfEntryInRange> searcher(this, creatureList, check);
     Cell::VisitGridObjects(this, searcher, maxSearchRange);
+}
+
+
+void WorldObject::GetCreaturesCorpseInRange(std::list<Creature*>& creatureList, float radius) const
+{
+
+    CellCoord pair(Acore::ComputeCellCoord(GetPositionX(), GetPositionY()));
+    Cell cell(pair);
+
+    //LOG_ERROR("xx", "radius {} ", radius);//测试
+    Acore::AllDeadCreaturesInRange check(this, radius);
+    Acore::CreatureListSearcher<Acore::AllDeadCreaturesInRange> searcher(this, creatureList, check);
+
+    TypeContainerVisitor<Acore::CreatureListSearcher<Acore::AllDeadCreaturesInRange>, WorldTypeMapContainer> world_visitor(searcher);
+    cell.Visit(pair, world_visitor, *(this->GetMap()), *this, radius);
+
+    TypeContainerVisitor<Acore::CreatureListSearcher<Acore::AllDeadCreaturesInRange>, GridTypeMapContainer> grid_visitor(searcher);
+    cell.Visit(pair, grid_visitor, *(this->GetMap()), *this, radius);
+
+    /*
+    Acore::AllDeadCreaturesInRange check(this, radius, false);
+    Acore::CreatureListSearcher<Acore::AllDeadCreaturesInRange> searcher(this, creatureList, check);
+    Cell::VisitGridObjects(this, searcher, radius);
+    */
 }
 
 void WorldObject::GetDeadCreatureListInGrid(std::list<Creature*>& creaturedeadList, float maxSearchRange, bool alive /*= false*/) const

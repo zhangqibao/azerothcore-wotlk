@@ -681,6 +681,30 @@ bool Group::AddMember(Player* player)
         ChangeLeader(player->GetGUID());
     //end npcbot
 
+        //如果是战场团队，添加成员时判断，当前的团长是否是机器人，如果是，就转团长给玩家
+    if (isBGGroup())
+    {
+        if (Player* leader = GetLeader())
+        {
+            if (leader && leader->GetSession()->IsBot())
+            {
+                if (player)
+                {
+                    if (!player->GetSession()->IsBot())
+                    {
+                        ChangeLeader(player->GetGUID());
+
+                        //好像和给不给团长没关系，机器人总会有进战场后就卡着不动的，而且是队长才会卡
+
+                        //给出团长后，自己退出战场，防止出现有时候卡着不动，不行，给出后机器人也会不动，组他也没反应
+                        //leader->LeaveBattleground();
+                    }
+                }
+
+            }
+        }
+    }
+
     return true;
 }
 

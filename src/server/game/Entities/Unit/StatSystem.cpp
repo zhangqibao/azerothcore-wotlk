@@ -70,6 +70,42 @@ void Unit::UpdateDamagePhysical(WeaponAttackType attType)
         totalMax += tmpMax;
     }
 
+    //获得主人攻击强度整体加成
+    float ownerpower = 0.0f;
+
+    if (GetOwner() && GetOwner()->IsPlayer())
+    {
+        //主人是否是硬核模式
+        //if (((Player*)GetOwner())->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)//现在允许非硬核模式生效
+        //{
+            //ownerpower = ((Player*)GetOwner())->GetSession()->GetPlayer()->GetTotalAttackPowerValue(attType);//取近战攻强
+        ownerpower = ((Player*)GetOwner())->GetSession()->GetPlayer()->GetTotalAttackPowerValue(RANGED_ATTACK);//取远程攻强
+        if (ownerpower > 0)
+        {
+            totalMin = float(totalMin + float(ownerpower * 0.023));
+            totalMax = float(totalMax + float(ownerpower * 0.023));
+        }
+
+        //获取主人的法伤
+        float ownerfashang = 0.0f;
+        //取法伤中的最大值作为伤害加成参考
+        int32 DoneAdvertisedBenefit = (((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE)) ? ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE);
+        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
+        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST);
+        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW);
+        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE);
+        ownerfashang = float(DoneAdvertisedBenefit);
+        if (ownerfashang > 0)
+        {
+            totalMin = float(totalMin + float(ownerfashang * 0.05));
+            totalMax = float(totalMax + float(ownerfashang * 0.05));
+        }
+
+
+
+        //}
+    }
+
     switch (attType)
     {
         case BASE_ATTACK:
@@ -255,9 +291,49 @@ void Player::UpdateArmor()
 
     float value = GetModifierValue(unitMod, BASE_VALUE);   // base armor (from items)
     value *= GetModifierValue(unitMod, BASE_PCT);           // armor percent from items
-    value += GetStat(STAT_AGILITY) * 2.0f;                  // armor bonus from stats
     value += GetModifierValue(unitMod, TOTAL_VALUE);
+    
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+    {
+        value += GetStat(STAT_AGILITY) * 2.0f;                  // armor bonus from stats
+    }
+    else
+    {
 
+        //敏捷分3个阶段加不同护甲系数
+        float dynamic = 0.0f;
+        float varmaxvl = 600.0f;//超过这个数值就执行第二套方案
+        float varmaxv2 = 1000.0f;//超过这个数值就执行第三套方案
+        float valxs2 = 3.0f;
+        float valxs3 = 4.0f;
+        float statvalue = GetStat(STAT_AGILITY);
+
+        //根据不同档的数值，拼出最终加成
+        if (statvalue <= varmaxvl)
+        {
+            dynamic = (statvalue * 2.0f);
+        }
+        else if (statvalue > varmaxvl && statvalue <= varmaxv2)
+        {
+            dynamic = (varmaxvl * 2.0f) + (statvalue - varmaxvl) * valxs2;
+        }
+        else if (statvalue > varmaxv2)
+        {
+            dynamic = (varmaxvl * 2.0f) + (varmaxv2 - varmaxvl) * valxs2 + (statvalue - varmaxv2) * valxs3;
+        }
+
+        //防御加护甲,1点防御10护甲
+        float statvalue2 = (int32(GetDefenseSkillValue()) - 300) * 10.0f;
+        if (statvalue2 > 0)
+            dynamic = dynamic + statvalue2;
+
+        value += dynamic;
+
+        //end-----
+    }
+    //------------
+    
     //add dynamic flat mods
     AuraEffectList const& mResbyIntellect = GetAuraEffectsByType(SPELL_AURA_MOD_RESISTANCE_OF_STAT_PERCENT);
     for (AuraEffectList::const_iterator i = mResbyIntellect.begin(); i != mResbyIntellect.end(); ++i)
@@ -334,6 +410,15 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
 
     sScriptMgr->OnPlayerBeforeUpdateAttackPowerAndDamage(this, level, val2, ranged);
 
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    //敏捷分3个阶段加不同攻强系数
+    float varmaxvl = 600.0f;//超过这个数值就执行第二套方案
+    float varmaxv2 = 1000.0f;//超过这个数值就执行第三套方案
+    float valxs2 = 1.25f;
+    float valxs3 = 1.5f;
+    float statvalue = GetStat(STAT_AGILITY);
+    float strengthvalue = GetStat(STAT_STRENGTH);
+
     UnitMods unitMod = ranged ? UNIT_MOD_ATTACK_POWER_RANGED : UNIT_MOD_ATTACK_POWER;
 
     uint16 index = UNIT_FIELD_ATTACK_POWER;
@@ -348,11 +433,51 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
 
         if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_STATS))
         {
-            val2 = level * 2.0f + GetStat(STAT_AGILITY) - 10.0f;
+            //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            {
+                val2 = level * 2.0f + GetStat(STAT_AGILITY) - 10.0f;
+            }
+            else
+            {
+                //根据不同档的数值，拼出最终加成
+                if (statvalue <= varmaxvl)
+                {
+                    val2 = level * 2.0f + statvalue * 2.0f - 10.0f;
+                }
+                else if (statvalue > varmaxvl && statvalue <= varmaxv2)
+                {
+                    val2 = (level * 2.0f + varmaxvl * 2.0f - 10.0f) + (statvalue - varmaxvl) * 2 * valxs2 * 1.3f;//600以上的敏捷，攻强加成额外提升30%;
+                }
+                else if (statvalue > varmaxv2)
+                {
+                    val2 = (level * 2.0f + varmaxvl * 2.0f - 10.0f) + (varmaxv2 - varmaxvl) * 2 * valxs2 * 1.3f + (statvalue - varmaxv2) * 2 * valxs3 * 1.5f;//1000以上的敏捷，攻强加成额外提升50%
+                }
+            }
         }
         else if (IsClass(CLASS_ROGUE, CLASS_CONTEXT_STATS) || IsClass(CLASS_WARRIOR, CLASS_CONTEXT_STATS))
         {
-            val2 = level + GetStat(STAT_AGILITY) - 10.0f;
+            //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            {
+                val2 = level + GetStat(STAT_AGILITY) - 10.0f;
+            }
+            else
+            {
+                //根据不同档的数值，拼出最终加成
+                if (statvalue <= varmaxvl)
+                {
+                    val2 = level + statvalue - 10.0f;
+                }
+                else if (statvalue > varmaxvl && statvalue <= varmaxv2)
+                {
+                    val2 = (level + varmaxvl - 10.0f) + (statvalue - varmaxvl) * valxs2;
+                }
+                else if (statvalue > varmaxv2)
+                {
+                    val2 = (level + varmaxvl - 10.0f) + (varmaxv2 - varmaxvl) * valxs2 + (statvalue - varmaxv2) * valxs3;
+                }
+            }
         }
         else if (IsClass(CLASS_DRUID, CLASS_CONTEXT_STATS))
         {
@@ -370,7 +495,27 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         }
         else
         {
-            val2 = GetStat(STAT_AGILITY) - 10.0f;
+            //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            {
+                val2 = GetStat(STAT_AGILITY) - 10.0f;
+            }
+            else
+            {
+                //根据不同档的数值，拼出最终加成
+                if (statvalue <= varmaxvl)
+                {
+                    val2 = level + statvalue - 10.0f;
+                }
+                else if (statvalue > varmaxvl && statvalue <= varmaxv2)
+                {
+                    val2 = (level + varmaxvl - 10.0f) + (statvalue - varmaxvl) * valxs2;
+                }
+                else if (statvalue > varmaxv2)
+                {
+                    val2 = (level + varmaxvl - 10.0f) + (varmaxv2 - varmaxvl) * valxs2 + (statvalue - varmaxv2) * valxs3;
+                }
+            }
         }
     }
     else
@@ -381,7 +526,27 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         }
         else if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_STATS) || IsClass(CLASS_SHAMAN, CLASS_CONTEXT_STATS) || IsClass(CLASS_ROGUE, CLASS_CONTEXT_STATS))
         {
-            val2 = level * 2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
+            //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            {
+                val2 = level * 2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
+            }
+            else
+            {
+                //根据不同档的数值，拼出最终加成
+                if (statvalue <= varmaxvl)
+                {
+                    val2 = level * 2.0f + strengthvalue + statvalue - 20.0f;
+                }
+                else if (statvalue > varmaxvl && statvalue <= varmaxv2)
+                {
+                    val2 = (level * 2.0f + strengthvalue + varmaxvl - 20.0f) + (statvalue - varmaxvl) * valxs2 * 1.15f;//600以上的敏捷，盗贼的攻强加成额外提升15%
+                }
+                else if (statvalue > varmaxv2)
+                {
+                    val2 = (level * 2.0f + strengthvalue + varmaxvl - 20.0f) + (varmaxv2 - varmaxvl) * valxs2 * 1.15f + (statvalue - varmaxv2) * valxs3 * 1.25f;//1000以上的敏捷，盗贼的攻强加成额外提升25%
+                }
+            }
         }
         else if (IsClass(CLASS_DRUID, CLASS_CONTEXT_STATS))
         {
@@ -450,7 +615,27 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
             switch (GetShapeshiftForm())
             {
             case FORM_CAT:
-                val2 = (GetLevel() * mLevelMult) + GetStat(STAT_STRENGTH) * 2.0f + GetStat(STAT_AGILITY) - 20.0f + weapon_bonus + m_baseFeralAP;
+                //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+                if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+                {
+                    val2 = (GetLevel() * mLevelMult) + GetStat(STAT_STRENGTH) * 2.0f + GetStat(STAT_AGILITY) - 20.0f + weapon_bonus + m_baseFeralAP;
+                }
+                else
+                {
+                    //根据不同档的数值，拼出最终加成
+                    if (statvalue <= varmaxvl)
+                    {
+                        val2 = level * mLevelMult + strengthvalue * 2.0f + statvalue - 20.0f + weapon_bonus + m_baseFeralAP;
+                    }
+                    else if (statvalue > varmaxvl && statvalue <= varmaxv2)
+                    {
+                        val2 = (level * mLevelMult + strengthvalue * 2.0f + varmaxvl - 20.0f) + (statvalue - varmaxvl) * valxs2 * 1.15f + weapon_bonus + m_baseFeralAP;//600以上的猫德，盗贼的攻强加成额外提升15%
+                    }
+                    else if (statvalue > varmaxv2)
+                    {
+                        val2 = (level * mLevelMult + strengthvalue * 2.0f + varmaxvl - 20.0f) + (varmaxv2 - varmaxvl) * valxs2 * 1.15f + (statvalue - varmaxv2) * valxs3 * 1.25f + weapon_bonus + m_baseFeralAP;//1000以上的敏捷，猫德的攻强加成额外提升25%
+                    }
+                }
                 break;
             case FORM_BEAR:
             case FORM_DIREBEAR:
@@ -573,8 +758,27 @@ void Player::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bo
         if (lvl > 60)
             lvl = 60;
 
-        weaponMinDamage = lvl * 0.85f * attackSpeedMod;
-        weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
+        //德鲁伊变形状态伤害不依赖武器，但硬核模式做出伤害提升
+        if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL))//硬核模式增加变形的伤害
+        {
+
+            weaponMinDamage = lvl * 0.85f * attackSpeedMod;
+            weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
+
+            float pluspower = 0.0f;
+            //先获得整体攻强数值
+            pluspower = GetTotalAttackPowerValue(attType);
+            if (int32(pluspower) > 0)
+            {
+                weaponMinDamage = weaponMinDamage + float(pluspower * 0.08) / 2.0f;
+                weaponMaxDamage = weaponMaxDamage + float(pluspower * 0.08) / 2.0f;
+            }
+        }
+        else
+        {
+            weaponMinDamage = lvl * 0.85f * attackSpeedMod;
+            weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
+        }
     }
     else if (!CanUseAttackType(attType)) // check if player not in form but still can't use (disarm case)
     {
@@ -666,7 +870,10 @@ void Player::UpdateCritPercentage(WeaponAttackType attType)
 
     float value = GetTotalPercentageModValue(modGroup) + GetRatingBonusValue(cr);
     // Modify crit from weapon skill and maximized defense skill of same level victim difference
-    value += (int32(GetWeaponSkillValue(attType)) - int32(GetMaxSkillValueForLevel())) * 0.04f;
+    if (int32(GetMaxSkillValueForLevel()) >= 300)//如果玩家等级是60+，才根据比300多出来的武器技能增加暴击率，避免转生玩家出现逆天暴击
+    {
+        value += (int32(GetWeaponSkillValue(attType)) - int32(GetMaxSkillValueForLevel())) * 0.04f;
+    }
 
     if (sConfigMgr->GetOption<bool>("Stats.Limits.Enable", false))
     {
@@ -1199,8 +1406,228 @@ void Creature::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, 
     float totalPct         = addTotalPct ? GetModifierValue(unitMod, TOTAL_PCT) : 1.0f;
     float dmgMultiplier    = GetCreatureTemplate()->DamageModifier; // = DamageModifier * _GetDamageMod(rank);
 
-    minDamage = ((weaponMinDamage + baseValue) * dmgMultiplier * basePct + totalValue) * totalPct;
-    maxDamage = ((weaponMaxDamage + baseValue) * dmgMultiplier * basePct + totalValue) * totalPct;
+    //判断是否在团本中，是则调用团本难度参数
+    CreatureTemplate const* cInfo = GetCreatureTemplate();
+    uint32 rank = IsPet() ? 0 : cInfo->rank;
+
+    float damageRaidMod = 1.0f;
+
+    if (GetTypeId() == TYPEID_UNIT && (!ToCreature()->IsPet() || !ToCreature()->IsGuardian() || !ToCreature()->IsControlledByPlayer()))//剔除玩家的宠物
+    {
+        //获得配置项目wowpatch,大于2的时候，加强团本
+        uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+        if (wowpatch > 2)
+        {
+
+            //如果是5人本，且是英雄副本
+            if (GetMap()->IsDungeon() && !GetMap()->IsRaid())
+            {
+                //如果是英雄模式
+                if (GetMap()->IsHeroic())
+                {
+                    //根据不同的团本，在基础难度系数上再进行微调
+                    switch (GetMap()->GetId())
+                    {
+                    case 269:	//开启黑暗之门
+                    case 540:	//地狱火堡垒：破碎大厅
+                    case 542:	//地狱火堡垒：鲜血熔炉
+                    case 543:	//地狱火堡垒：城墙
+                    case 545:	//盘牙湖泊：蒸汽地窟
+                    case 546:	//盘牙湖泊：幽暗沼泽
+                    case 547:	//盘牙湖泊：奴隶围栏
+                    case 552:	//风暴要塞：禁魔监狱
+                    case 553:	//风暴要塞：生态船
+                    case 554:	//风暴要塞：能源舰
+                    case 555:	//奥金顿：暗影迷宫
+                    case 556:	//奥金顿：塞泰克大厅
+                    case 557:	//奥金顿：法力墓穴
+                    case 558:	//奥金顿：奥金尼地穴
+                    case 560:	//逃离敦霍尔德
+                    case 574:	//乌特加德城堡
+                    case 575:	//乌特加德之巅
+                    case 576:	//魔枢
+                    case 578:	//魔环
+                    case 585:	//魔导师平台
+                    case 595:	//净化斯坦索姆
+                    case 599:	//岩石大厅
+                    case 600:	//达克萨隆要塞
+                    case 601:	//艾卓-尼鲁布
+                    case 602:	//闪电大厅
+                    case 604:	//古达克
+                    case 608:	//紫罗兰监狱
+                    case 619:	//安卡赫特：古代王国
+                    case 632:	//灵魂洪炉
+                    case 650:	//冠军的试炼
+                    case 658:	//萨隆深渊
+                    case 668:	//映像大厅
+                        damageRaidMod = _GetRaidDamageMod(rank);
+                        //damageRaidMod = damageRaidMod * 1;
+                        damageRaidMod = damageRaidMod / damageRaidMod;//原版伤害
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+
+            }
+
+            if (GetMap()->IsRaid() || GetMap()->IsBattlegroundOrArena())
+            {
+                damageRaidMod = _GetRaidDamageMod(rank);
+
+                ////如果是英雄模式
+                //if (GetMap()->IsHeroic())
+                //{
+                //    damageRaidMod = damageRaidMod * 2.0f;
+                //}
+
+                //根据不同的团本，在基础难度系数上再进行微调
+                switch (GetMap()->GetId())
+                {
+                case 309://ZUG
+                    damageRaidMod = damageRaidMod * 3.0;
+                    break;
+                case 409://MC
+                    damageRaidMod = damageRaidMod * 4.5;
+                    break;
+                case 509://安其拉废墟
+                    damageRaidMod = damageRaidMod * 3.75;
+                    break;
+
+                case 469://BWL
+                    damageRaidMod = damageRaidMod * 5.25;
+                    break;
+                case 531://安其拉神庙
+                    damageRaidMod = damageRaidMod * 6.0;
+                    break;
+
+                case 30://奥特兰克山谷
+                case 489://战歌峡谷
+                case 529://阿拉希盆地
+                    damageRaidMod = damageRaidMod * 3.5;
+                    break;
+                    //新世界
+                case 532://卡拉赞
+                case 565://格鲁尔的巢穴
+                case 544://玛瑟里顿的巢穴
+                    damageRaidMod = damageRaidMod * 3.5;
+                    break;
+                case 550://风暴要塞
+                    //特殊boss过高伤害处理
+                    if (GetEntry())
+                    {
+                        switch (GetEntry())
+                        {
+                        case 20040://晶核摧毁者
+                            damageRaidMod = damageRaidMod * 2.5;
+                            break;
+                        default:
+                            damageRaidMod = damageRaidMod * 2.5;
+                            break;
+                        }
+                    }
+                    break;
+                case 548://盘牙湖泊：毒蛇神殿
+                    //特殊boss过高伤害处理
+                    if (GetEntry())
+                    {
+                        switch (GetEntry())
+                        {
+                        case 21216://不稳定的海度斯
+                        case 21932://不稳定的海度斯
+                            damageRaidMod = damageRaidMod * 1.8;
+                            break;
+                        default:
+                            damageRaidMod = damageRaidMod * 2.6;
+                            break;
+                        }
+                    }
+                    break;
+                case 568://祖阿曼
+
+                    break;
+                case 534://海加尔山之战
+                case 564://黑暗神殿
+                case 580://太阳之井
+                    //特殊boss过高伤害处理
+                    if (GetEntry())
+                    {
+                        switch (GetEntry())
+                        {
+                        case 24882://布鲁塔卢斯
+                        case 25158://布鲁塔卢斯(英雄)
+                            damageRaidMod = damageRaidMod * 1.7;
+                            break;
+                        case 25369://小怪：炎刃守备官
+                            damageRaidMod = damageRaidMod * 1.7;
+                            break;
+                        default:
+                            damageRaidMod = damageRaidMod * 2.0;
+                            break;
+                        }
+                    }
+                    break;
+                case 603://奥杜尔（WLK）
+                case 615://黑曜石圣殿（WLK）
+                case 616://永恒之眼（WLK）
+                case 624://阿尔卡冯的宝库（WLK）
+                case 649://十字军的试炼（WLK）
+                    //damageRaidMod = damageRaidMod * 0.87;
+                    damageRaidMod = damageRaidMod / _GetRaidDamageMod(rank);//原版伤害
+                    break;
+                case 249://黑龙，难度提高，因为掉落远古装备
+                    damageRaidMod = damageRaidMod * 1.0;
+                    //damageRaidMod = damageRaidMod / _GetRaidDamageMod(rank);//原版伤害,P7阶段普通难度开放时
+                    break;
+                case 533://NAXX
+                    //damageRaidMod = damageRaidMod * 1.0;//难度提高，因为掉落远古装备
+                    damageRaidMod = damageRaidMod / _GetRaidDamageMod(rank);//原版伤害,P3阶段普通难度开放时
+                    break;
+                case 631://冰冠堡垒（WLK），难度提高，因为掉落太古装备
+                case 724://红玉圣殿（WLK），难度提高，因为掉落太古装备
+                    //damageRaidMod = damageRaidMod * 1.0;
+                    damageRaidMod = damageRaidMod / _GetRaidDamageMod(rank);//原版伤害,P7阶段普通难度开放时
+                    break;
+                default:
+                    break;
+                }
+            }
+            //判断是否是野外boss
+            if (GetEntry())
+            {
+                switch (GetEntry())
+                {
+                case 12397:
+                    damageRaidMod = _GetRaidDamageMod(rank);
+                    //damageRaidMod = damageRaidMod * 0.1;
+                    damageRaidMod = damageRaidMod * 3.5;
+                    break;
+                case 14890:
+                case 14888:
+                case 14887:
+                case 14889:
+                case 6109:
+                    damageRaidMod = _GetRaidDamageMod(rank);
+                    damageRaidMod = damageRaidMod * 3.5;
+                    break;
+                case 17711://末日行者
+                case 18728://外域 末日领主卡扎克
+                    damageRaidMod = _GetRaidDamageMod(rank);
+                    damageRaidMod = damageRaidMod * 3.5;
+                    break;
+                }
+            }
+        }
+
+    }
+
+
+    //end-----
+
+    minDamage = ((weaponMinDamage + baseValue) * dmgMultiplier * damageRaidMod * basePct + totalValue) * totalPct;
+    maxDamage = ((weaponMaxDamage + baseValue) * dmgMultiplier * damageRaidMod * basePct + totalValue) * totalPct;
+
 
     // pussywizard: crashfix (casting negative to uint => min > max => assertion in urand)
     if (minDamage < 0.0f || minDamage > 1000000000.0f)

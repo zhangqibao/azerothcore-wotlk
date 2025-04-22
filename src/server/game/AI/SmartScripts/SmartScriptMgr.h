@@ -740,7 +740,9 @@ enum SMART_ACTION
     SMART_ACTION_WORLD_SCRIPT                       = 237,    // eventId, param
     SMART_ACTION_DISABLE_REWARD                     = 238,    // reputation 0/1, loot 0/1
 
-    SMART_ACTION_AC_END                             = 239,    // placeholder
+    SMART_ACTION_SET_CASTER_COMBAT_DIST             = 239,    // followDistance, resetToMax
+
+    SMART_ACTION_AC_END                             = 240,    // placeholder
 };
 
 enum class SmartActionSummonCreatureFlags

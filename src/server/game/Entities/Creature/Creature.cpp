@@ -830,7 +830,8 @@ void Creature::Update(uint32 diff)
             }
 
             Unit* owner = GetCharmerOrOwner();
-            if (IsCharmed() && !IsWithinDistInMap(owner, GetMap()->GetVisibilityRange(), true, false))
+            //if (IsCharmed() && !IsWithinDistInMap(owner, GetMap()->GetVisibilityRange(), true, false))
+            if (!isPossessedByPlayer() && IsCharmed() && !IsWithinDistInMap(owner, GetMap()->GetVisibilityRange(), true, false))
             {
                 RemoveCharmAuras();
             }
@@ -1632,8 +1633,189 @@ void Creature::SelectLevel(bool changelevel)
     // health
     float healthmod = _GetHealthMod(rank);
 
+    float healthRaidMod = 1.0f;
+    if (GetTypeId() == TYPEID_UNIT && (!ToCreature()->IsPet() || !ToCreature()->IsGuardian() || !ToCreature()->IsControlledByPlayer()))//剔除玩家的宠物
+    {
+        //获得配置项目wowpatch,大于2的时候，加强团本
+        uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+        if (wowpatch > 2)
+        {
+            //如果是5人本，且是英雄副本
+            if (GetMap()->IsDungeon() && !GetMap()->IsRaid())
+            {
+                //如果是英雄模式
+                if (GetMap()->IsHeroic())
+                {
+                    //根据不同的团本，在基础难度系数上再进行微调
+                    switch (GetMap()->GetId())
+                    {
+                    case 269:	//开启黑暗之门
+                    case 540:	//地狱火堡垒：破碎大厅
+                    case 542:	//地狱火堡垒：鲜血熔炉
+                    case 543:	//地狱火堡垒：城墙
+                    case 545:	//盘牙湖泊：蒸汽地窟
+                    case 546:	//盘牙湖泊：幽暗沼泽
+                    case 547:	//盘牙湖泊：奴隶围栏
+                    case 552:	//风暴要塞：禁魔监狱
+                    case 553:	//风暴要塞：生态船
+                    case 554:	//风暴要塞：能源舰
+                    case 555:	//奥金顿：暗影迷宫
+                    case 556:	//奥金顿：塞泰克大厅
+                    case 557:	//奥金顿：法力墓穴
+                    case 558:	//奥金顿：奥金尼地穴
+                    case 560:	//逃离敦霍尔德
+                    case 574:	//乌特加德城堡
+                    case 575:	//乌特加德之巅
+                    case 576:	//魔枢
+                    case 578:	//魔环
+                    case 585:	//魔导师平台
+                    case 595:	//净化斯坦索姆
+                    case 599:	//岩石大厅
+                    case 600:	//达克萨隆要塞
+                    case 601:	//艾卓-尼鲁布
+                    case 602:	//闪电大厅
+                    case 604:	//古达克
+                    case 608:	//紫罗兰监狱
+                    case 619:	//安卡赫特：古代王国
+                    case 632:	//灵魂洪炉
+                    case 650:	//冠军的试炼
+                    case 658:	//萨隆深渊
+                    case 668:	//映像大厅
+                        healthRaidMod = _GetRaidHealthMod(rank);
+                        //healthRaidMod = healthRaidMod * 1;
+                        healthRaidMod = healthRaidMod / healthRaidMod;//原版血量
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+
+            }
+
+            //判断是否在团本中，是则调用团本难度参数
+            if (GetMap()->IsRaid() || GetMap()->IsBattlegroundOrArena())
+            {
+                healthRaidMod = _GetRaidHealthMod(rank);
+
+                ////如果是英雄模式
+                //if (GetMap()->IsHeroic())
+                //{
+                //    healthRaidMod = healthRaidMod * 2.0f;
+                //}
+
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "GetMapID %u", GetMap()->GetId());//测试
+                //根据不同的团本，在基础难度系数上再进行微调
+                switch (GetMap()->GetId())
+                {
+                case 309://ZUG
+                    healthRaidMod = healthRaidMod * 10.0;//难度1星
+                    SetLevel(level + 20);//加难
+                    break;
+                case 409://MC
+                    healthRaidMod = healthRaidMod * 10.0;//难度1.5星
+                    SetLevel(level + 20);//加难
+                    break;
+                case 509://安其拉废墟
+                    healthRaidMod = healthRaidMod * 10;//难度1星
+                    SetLevel(level + 20);//加难
+                    break;
+
+                case 469://BWL
+                    healthRaidMod = healthRaidMod * 10;
+                    SetLevel(level + 20);//加难
+                    break;
+                case 531://安其拉神庙
+                    healthRaidMod = healthRaidMod * 10;
+                    SetLevel(level + 20);//加难
+                    break;
+                case 30://奥特兰克山谷
+                case 489://战歌峡谷
+                case 529://阿拉希盆地
+                    healthRaidMod = healthRaidMod * 3;
+                    break;
+                    //新世界
+                case 532://卡拉赞
+                case 565://格鲁尔的巢穴
+                case 544://玛瑟里顿的巢穴
+                    healthRaidMod = healthRaidMod * 10;
+                    SetLevel(level + 10);//加难
+                    break;
+                case 534://海加尔山之战
+                case 548://盘牙湖泊：毒蛇神殿
+                case 550://风暴要塞
+                case 564://黑暗神殿
+                case 568://祖阿曼
+                case 580://太阳之井
+                    healthRaidMod = healthRaidMod * 10;
+                    SetLevel(level + 10);//加难
+                    break;
+                case 603://奥杜尔
+                case 615://黑曜石圣殿
+                case 616://永恒之眼
+                case 624://阿尔卡冯的宝库
+                case 649://十字军的试炼
+                    //healthRaidMod = healthRaidMod * 1.5;
+                    healthRaidMod = healthRaidMod / healthRaidMod;//原版血量
+                    break;
+                case 249://黑龙，难度提高，因为掉落远古装备
+                    healthRaidMod = healthRaidMod * 1.5;
+                    //healthRaidMod = healthRaidMod / healthRaidMod;//原版血量
+                    break;
+                case 533://NAXX
+                    healthRaidMod = healthRaidMod * 1.5;//难度提高，因为掉落远古装备
+                    //healthRaidMod = healthRaidMod / healthRaidMod;//原版血量,P3阶段普通难度开放时
+                    break;
+                case 631://冰冠堡垒，难度提高，因为掉落太古装备
+                case 724://红玉圣殿，难度提高，因为掉落太古装备
+                    healthRaidMod = healthRaidMod * 1.5;
+                    //healthRaidMod = healthRaidMod / healthRaidMod;//原版血量,P7阶段普通难度开放时
+                    break;
+                default:
+                    break;
+                }
+
+            }
+            //判断是否是野外boss
+            if (GetEntry())
+            {
+                switch (GetEntry())
+                {
+                case 12397://卡扎克
+                    healthRaidMod = _GetRaidHealthMod(rank);
+                    healthRaidMod = healthRaidMod * 20;
+                    SetLevel(level + 20);//加难
+                    break;
+                case 14890:
+                case 14888:
+                case 14887:
+                case 14889:
+                    healthRaidMod = _GetRaidHealthMod(rank);
+                    healthRaidMod = healthRaidMod * 20;
+                    SetLevel(level + 20);//加难
+                    break;
+                case 6109:
+                    healthRaidMod = _GetRaidHealthMod(rank);
+                    healthRaidMod = healthRaidMod * 20;
+                    SetLevel(level + 20);//加难
+                    break;
+                case 17711://外域 末日行者
+                case 18728://外域 末日领主卡扎克
+                    healthRaidMod = _GetRaidHealthMod(rank);
+                    healthRaidMod = healthRaidMod * 20;
+                    break;
+                }
+            }
+        }
+
+    }
+
+
+    //end----
+
+
     uint32 basehp = std::max<uint32>(1, stats->GenerateHealth(cInfo));
-    uint32 health = uint32(basehp * healthmod);
+    uint32 health = uint32(basehp * healthmod * healthRaidMod);
 
     SetCreateHealth(health);
     SetMaxHealth(health);
@@ -1693,6 +1875,25 @@ float Creature::_GetHealthMod(int32 Rank)
     }
 }
 
+float Creature::_GetRaidHealthMod(int32 rank)
+{
+    switch (rank)                                           // define rates for each elite rank
+    {
+    case CREATURE_ELITE_NORMAL:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_NORMAL_HP);
+    case CREATURE_ELITE_ELITE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_HP);
+    case CREATURE_ELITE_RAREELITE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RAREELITE_HP);
+    case CREATURE_ELITE_WORLDBOSS:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_BOSS_HP);
+    case CREATURE_ELITE_RARE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RARE_HP);
+    default:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_HP);
+    }
+}
+
 float Creature::_GetDamageMod(int32 Rank)
 {
     switch (Rank)                                           // define rates for each elite rank
@@ -1712,6 +1913,25 @@ float Creature::_GetDamageMod(int32 Rank)
     }
 }
 
+float Creature::_GetRaidDamageMod(int32 rank)
+{
+    switch (rank)                                           // define rates for each elite rank
+    {
+    case CREATURE_ELITE_NORMAL:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_NORMAL_DAMAGE);
+    case CREATURE_ELITE_ELITE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_DAMAGE);
+    case CREATURE_ELITE_RAREELITE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RAREELITE_DAMAGE);
+    case CREATURE_ELITE_WORLDBOSS:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_BOSS_DAMAGE);
+    case CREATURE_ELITE_RARE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RARE_DAMAGE);
+    default:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_DAMAGE);
+    }
+}
+
 float Creature::GetSpellDamageMod(int32 Rank)
 {
     switch (Rank)                                           // define rates for each elite rank
@@ -1728,6 +1948,30 @@ float Creature::GetSpellDamageMod(int32 Rank)
             return sWorld->getRate(RATE_CREATURE_ELITE_RARE_SPELLDAMAGE);
         default:
             return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
+    }
+}
+
+float Creature::GetRaidSpellDamageMod(int32 rank)
+{
+    return _GetRaidSpellDamageMod(rank);
+}
+
+float Creature::_GetRaidSpellDamageMod(int32 rank)
+{
+    switch (rank)                                           // define rates for each elite rank
+    {
+    case CREATURE_ELITE_NORMAL:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_NORMAL_SPELLDAMAGE);
+    case CREATURE_ELITE_ELITE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_SPELLDAMAGE);
+    case CREATURE_ELITE_RAREELITE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RAREELITE_SPELLDAMAGE);
+    case CREATURE_ELITE_WORLDBOSS:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_BOSS_SPELLDAMAGE);
+    case CREATURE_ELITE_RARE:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_RARE_SPELLDAMAGE);
+    default:
+        return sWorld->getRate(CONFIG_FLOAT_RATE_CREATURE_RAID_ELITE_ELITE_SPELLDAMAGE);
     }
 }
 
@@ -3619,6 +3863,23 @@ float Creature::GetAggroRange(Unit const* target) const
     auto creatureLevel = target->getLevelForTarget(this);
     auto playerLevel  = getLevelForTarget(target);
     int32 levelDiff = int32(creatureLevel) - int32(playerLevel);
+
+    //特殊怪的视野范围固定，免得卡60时，高等级的任务道具无法在距离内使用
+    //如果服务器设置的最大等级和卡的等级相同，且玩家达到了这个等级，就特殊处理（例如整体卡60级就特殊处理，整体是80级卡60的时候就不特殊处理）
+    if (playerLevel == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        if (GetEntry())
+        {
+            switch (GetEntry())
+            {
+            case 30037:
+                levelDiff = 0;
+                break;
+            }
+        }
+    }
+    //------------
+
 
     // The maximum Aggro Radius is capped at 45 yards (25 level difference)
     if (levelDiff < -25)

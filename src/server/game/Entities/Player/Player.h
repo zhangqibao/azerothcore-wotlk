@@ -91,6 +91,21 @@ typedef void(*bgZoneRef)(Battleground*, WorldPackets::WorldState::InitWorldState
 #define SKILL_PERM_BONUS(x)    int16(PAIR32_HIPART(x))
 #define MAKE_SKILL_BONUS(t, p) MAKE_PAIR32(t, p)
 
+
+//变身卡vector
+extern std::vector<uint32> m_bianshencards;
+//声望崇拜证书vector
+extern std::vector<uint32> m_shengwangcards;
+//赞助坐骑vector
+extern std::vector<uint32> m_zuoqis;
+//专业技能spellvector
+extern std::vector<uint32> m_spellforskill;
+//橙装戒指vector,对应entry和加成百分比数字
+extern std::vector<std::pair<uint32, uint32>> m_CZRingItems;
+
+//buff药水卷轴 vector
+extern std::vector<std::pair<uint32, uint32>> m_buffspells;
+
 // Note: SPELLMOD_* values is aura types in fact
 enum SpellModType
 {
@@ -600,6 +615,13 @@ enum PlayerExtraFlags
     PLAYER_EXTRA_SPECTATOR_ON       = 0x0080,               // Marks if player is spectactor
     PLAYER_EXTRA_PVP_DEATH          = 0x0100,               // store PvP death status until corpse creating.
     PLAYER_EXTRA_SHOW_DK_PET        = 0x0400,               // Marks if player should see ghoul on login screen
+
+    PLAYER_EXTRA_YH_MODEL       = 0x0800,				//2048 硬核模式（轮回模式）
+    PLAYER_EXTRA_YH_MODEL_PLUS1 = 0x1000,				//4096 龟速模式
+    PLAYER_EXTRA_YH_MODEL_PLUS2 = 0x2000,				//8192 剑客模式
+    PLAYER_EXTRA_YH_MODEL_PLUS3 = 0x4000,				//16384 专家模式
+    PLAYER_EXTRA_YH_MODEL_PLUS4 = 0x8000				//32768 保留模式
+
 };
 
 // 2^n values
@@ -1166,6 +1188,8 @@ public:
     void SetDeveloper(bool on) { ApplyModFlag(PLAYER_FLAGS, PLAYER_FLAGS_DEVELOPER, on); }
     [[nodiscard]] bool isAcceptWhispers() const { return m_ExtraFlags & PLAYER_EXTRA_ACCEPT_WHISPERS; }
     void SetAcceptWhispers(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_ACCEPT_WHISPERS; else m_ExtraFlags &= ~PLAYER_EXTRA_ACCEPT_WHISPERS; }
+    uint32 GetExtraFlags() const { return m_ExtraFlags; }
+
     [[nodiscard]] bool IsGameMaster() const { return m_ExtraFlags & PLAYER_EXTRA_GM_ON; }
     void SetGameMaster(bool on);
     [[nodiscard]] bool isGMChat() const { return m_ExtraFlags & PLAYER_EXTRA_GM_CHAT; }
@@ -1174,6 +1198,13 @@ public:
     void SetTaxiCheater(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_TAXICHEAT; else m_ExtraFlags &= ~PLAYER_EXTRA_TAXICHEAT; }
     [[nodiscard]] bool isGMVisible() const { return !(m_ExtraFlags & PLAYER_EXTRA_GM_INVISIBLE); }
     void SetGMVisible(bool on);
+
+    void SetYHModelON(bool on, bool notify = false);//硬核模式设置
+    void SetYHModelPLUS1ON(bool on, bool notify = false);//龟速模式设置
+    void SetYHModelPLUS2ON(bool on, bool notify = false);//剑客模式设置
+    void SetYHModelPLUS3ON(bool on, bool notify = false);//专家模式设置
+    void SetYHModelPLUS4ON(bool on, bool notify = false);//保留模式设置
+
     bool Has310Flyer(bool checkAllSpells, uint32 excludeSpellId = 0);
     void SetHas310Flyer(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_HAS_310_FLYER; else m_ExtraFlags &= ~PLAYER_EXTRA_HAS_310_FLYER; }
     void SetPvPDeath(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; else m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; }
@@ -1246,6 +1277,99 @@ public:
     uint8 FindEquipSlot(ItemTemplate const* proto, uint32 slot, bool swap) const;
     uint32 GetItemCount(uint32 item, bool inBankAlso = false, Item* skipItem = nullptr) const;
     uint32 GetItemCountWithLimitCategory(uint32 limitCategory, Item* skipItem = nullptr) const;
+
+
+    [[nodiscard]] uint32 GetCZRingItem() const;
+    bool isCZRingItem(uint32 item) const;
+
+    bool m_hldm;
+    bool m_ygnl;
+
+    [[nodiscard]] bool getHLDM() const { return m_hldm; }//是否有魔盒
+    void setHLDM(bool a) { m_hldm = a; }
+    [[nodiscard]] bool getYGNL() const { return m_ygnl; }//是否有能量徽记
+    void setYGNL(bool a) { m_ygnl = a; }
+
+    uint16 m_zhuanshengnum;
+    [[nodiscard]] uint16 getZHUANSHENGNUM() const { return m_zhuanshengnum; }//转生石个数
+    void setZHUANSHENGNUM(uint16 a) { m_zhuanshengnum = a; }
+
+    uint16 m_zhuanshengnumall;
+    [[nodiscard]] uint16 getZHUANSHENGNUMALL() const { return m_zhuanshengnumall; }//转生石个数(包括银行)
+    void setZHUANSHENGNUMALL(uint16 a) { m_zhuanshengnumall = a; }
+
+    uint16 m_ygzhuanshengnum;
+    [[nodiscard]] uint16 getYGZHUANSHENGNUM() const { return m_ygzhuanshengnum; }//远古转生石个数
+    void setYGZHUANSHENGNUM(uint16 a) { m_ygzhuanshengnum = a; }
+
+    uint16 m_ygzhuanshengnumall;
+    [[nodiscard]] uint16 getYGZHUANSHENGNUMALL() const { return m_ygzhuanshengnumall; }//远古转生石个数(包括银行)
+    void setYGZHUANSHENGNUMALL(uint16 a) { m_ygzhuanshengnumall = a; }
+
+    bool m_vip1;
+    bool m_vip2;
+    bool m_vip3;
+    bool m_vip4;
+    bool m_vip5;
+    bool m_vip6;
+    bool m_vip7;
+    bool m_vip8;
+    bool m_vip9;
+    bool m_vip10;
+    bool m_vip11;
+    bool m_vip12;
+    bool m_vip13;
+    bool m_vip14;
+    bool m_vip15;
+    bool m_vip16;
+    bool m_vip17;
+    bool m_vip18;
+    bool m_vip19;
+    bool m_vip20;
+
+
+    [[nodiscard]] bool getVIP1() const { return m_vip1; }//是否有VIP卡1
+    void setVIP1(bool a) { m_vip1 = a; }
+    [[nodiscard]] bool getVIP2() const { return m_vip2; }//是否有VIP卡2
+    void setVIP2(bool a) { m_vip2 = a; }
+    [[nodiscard]] bool getVIP3() const { return m_vip3; }//是否有VIP卡3
+    void setVIP3(bool a) { m_vip3 = a; }
+    [[nodiscard]] bool getVIP4() const { return m_vip4; }//是否有VIP卡4
+    void setVIP4(bool a) { m_vip4 = a; }
+    [[nodiscard]] bool getVIP5() const { return m_vip5; }//是否有VIP卡5
+    void setVIP5(bool a) { m_vip5 = a; }
+    [[nodiscard]] bool getVIP6() const { return m_vip6; }//是否有VIP卡6
+    void setVIP6(bool a) { m_vip6 = a; }
+    [[nodiscard]] bool getVIP7() const { return m_vip7; }//是否有VIP卡7
+    void setVIP7(bool a) { m_vip7 = a; }
+    [[nodiscard]] bool getVIP8() const { return m_vip8; }//是否有VIP卡8
+    void setVIP8(bool a) { m_vip8 = a; }
+    [[nodiscard]] bool getVIP9() const { return m_vip9; }//是否有VIP卡9
+    void setVIP9(bool a) { m_vip9 = a; }
+    [[nodiscard]] bool getVIP10() const { return m_vip10; }//是否有VIP卡10
+    void setVIP10(bool a) { m_vip10 = a; }
+    [[nodiscard]] bool getVIP11() const { return m_vip11; }//是否有VIP卡11
+    void setVIP11(bool a) { m_vip11 = a; }
+    [[nodiscard]] bool getVIP12() const { return m_vip12; }//是否有VIP卡12
+    void setVIP12(bool a) { m_vip12 = a; }
+    [[nodiscard]] bool getVIP13() const { return m_vip13; }//是否有VIP卡13
+    void setVIP13(bool a) { m_vip13 = a; }
+    [[nodiscard]] bool getVIP14() const { return m_vip14; }//是否有VIP卡14
+    void setVIP14(bool a) { m_vip14 = a; }
+
+    [[nodiscard]] bool getVIP15() const { return m_vip15; }//是否有VIP卡15
+    void setVIP15(bool a) { m_vip15 = a; }
+    [[nodiscard]] bool getVIP16() const { return m_vip16; }//是否有VIP卡16
+    void setVIP16(bool a) { m_vip16 = a; }
+    [[nodiscard]] bool getVIP17() const { return m_vip17; }//是否有VIP卡17
+    void setVIP17(bool a) { m_vip17 = a; }
+    [[nodiscard]] bool getVIP18() const { return m_vip18; }//是否有VIP卡18
+    void setVIP18(bool a) { m_vip18 = a; }
+    [[nodiscard]] bool getVIP19() const { return m_vip19; }//是否有VIP卡19
+    void setVIP19(bool a) { m_vip19 = a; }
+    [[nodiscard]] bool getVIP20() const { return m_vip20; }//是否有VIP卡20
+    void setVIP20(bool a) { m_vip20 = a; }
+
     [[nodiscard]] Item* GetItemByGuid(ObjectGuid guid) const;
     [[nodiscard]] Item* GetItemByEntry(uint32 entry) const;
     [[nodiscard]] Item* GetItemByPos(uint16 pos) const;
@@ -1313,7 +1437,11 @@ public:
     Item* StoreItem(ItemPosCountVec const& pos, Item* pItem, bool update);
     Item* EquipNewItem(uint16 pos, uint32 item, bool update);
     Item* EquipItem(uint16 pos, Item* pItem, bool update);
+    Item* FakeEquipItem(uint16 pos, Item* pItem, bool update);
+
     void AutoUnequipOffhandIfNeed(bool force = false);
+    void AutoUnequipItemFromSlot(uint32 slot);
+
     bool StoreNewItemInBestSlots(uint32 item_id, uint32 item_count);
     void AutoStoreLoot(uint8 bag, uint8 slot, uint32 loot_id, LootStore const& store, bool broadcast = false);
     void AutoStoreLoot(uint32 loot_id, LootStore const& store, bool broadcast = false) { AutoStoreLoot(NULL_BAG, NULL_SLOT, loot_id, store, broadcast); }
@@ -1341,6 +1469,9 @@ public:
     }
     Item* BankItem(uint16 pos, Item* pItem, bool update);
     void RemoveItem(uint8 bag, uint8 slot, bool update, bool swap = false);
+
+    void FlushItem(uint8 bag, uint8 slot, bool update);
+
     void MoveItemFromInventory(uint8 bag, uint8 slot, bool update);
     // in trade, auction, guild bank, mail....
     void MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool update, bool in_characterInventoryDB = false);
@@ -1372,7 +1503,7 @@ public:
     }
     void SendNewItem(Item* item, uint32 count, bool received, bool created, bool broadcast = false, bool sendChatMessage = true);
     bool BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uint32 item, uint8 count, uint8 bag, uint8 slot);
-    bool _StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 count, uint8 bag, uint8 slot, int32 price, ItemTemplate const* pProto, Creature* pVendor, VendorItem const* crItem, bool bStore);
+    bool _StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 count, uint8 bag, uint8 slot, int32 price, ItemTemplate const* pProto, Creature* pVendor, VendorItem const* crItem, bool bStore, uint32 costitem = 0, uint32 costitemcount = 0);
 
     [[nodiscard]] float GetReputationPriceDiscount(Creature const* creature) const;
     [[nodiscard]] float GetReputationPriceDiscount(FactionTemplateEntry const* factionTemplate) const;
@@ -1395,6 +1526,10 @@ public:
     void AddEnchantmentDuration(Item* item, EnchantmentSlot slot, uint32 duration);
     void ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool apply_dur = true, bool ignore_condition = false);
     void ApplyEnchantment(Item* item, bool apply);
+
+    void ApplyEnchantmentByHLDM(Item* item, EnchantmentSlot slot, bool apply, bool apply_dur = true, bool ignore_condition = false);
+    void ApplyEnchantmentByHLDM(Item* item, bool apply);
+
     void UpdateSkillEnchantments(uint16 skill_id, uint16 curr_value, uint16 new_value);
     void SendEnchantmentDurations();
     void UpdateEnchantmentDurations();
@@ -1414,6 +1549,8 @@ public:
     void PrepareGossipMenu(WorldObject* source, uint32 menuId = 0, bool showQuests = false);
     void SendPreparedGossip(WorldObject* source);
     void OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 menuId);
+
+    void SendTranerListTMP(uint32 fromentry, ObjectGuid toguid);
 
     uint32 GetGossipTextId(uint32 menuId, WorldObject* source);
     uint32 GetGossipTextId(WorldObject* source);
@@ -1957,6 +2094,8 @@ public:
     void UpdateRating(CombatRating cr);
     void UpdateAllRatings();
 
+    void UpdateAllAttackSpeeds();//攻速、施法速度更新
+
     void CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bool addTotalPct, float& minDamage, float& maxDamage, uint8 damageIndex) override;
 
     void UpdateDefenseBonusesMod();
@@ -2040,6 +2179,8 @@ public:
     [[nodiscard]] WorldLocation GetCorpseLocation() const { return _corpseLocation; }
     uint32 GetResurrectionSpellId();
     void ResurrectPlayer(float restore_percent, bool applySickness = false);
+    void ResurrectPlayerByGM(float restore_percent, bool applySickness = false);
+
     void BuildPlayerRepop();
     void RepopAtGraveyard();
 
@@ -2077,7 +2218,7 @@ public:
     void UpdateWeaponSkill(Unit* victim, WeaponAttackType attType, Item* item = nullptr);
     void UpdateCombatSkills(Unit* victim, WeaponAttackType attType, bool defence, Item* item = nullptr);
 
-    void SetSkill(uint16 id, uint16 step, uint16 currVal, uint16 maxVal);
+    void SetSkill(uint16 id, uint16 step, uint16 currVal, uint16 maxVal, bool jihuo = false);
     [[nodiscard]] uint16 GetMaxSkillValue(uint32 skill) const;        // max + perm. bonus + temp bonus
     [[nodiscard]] uint16 GetPureMaxSkillValue(uint32 skill) const;    // max
     [[nodiscard]] uint16 GetSkillValue(uint32 skill) const;           // skill value + perm. bonus + temp bonus
@@ -2209,10 +2350,19 @@ public:
     void _ApplyWeaponDependentAuraDamageMod(Item* item, WeaponAttackType attackType, AuraEffect const* aura, bool apply);
 
     void _ApplyItemMods(Item* item, uint8 slot, bool apply);
+    void _ApplyItemModsByHLDM(Item* item, uint8 slot, bool apply);
+    void _ApplyItemModsByMount(Item* item, uint8 slot, bool apply);
+
+    void _RemoveAllItemModsForHLDM();
+
     void _RemoveAllItemMods();
     void _ApplyAllItemMods();
     void _ApplyAllLevelScaleItemMods(bool apply);
     void _ApplyItemBonuses(ItemTemplate const* proto, uint8 slot, bool apply, bool only_level_scale = false);
+    void _ApplyItemBonusesByHLDM(ItemTemplate const* proto, uint8 slot, bool apply);
+    void _ApplyItemBonusesByHLDMForSPELL(ItemTemplate const* proto, uint8 slot, bool apply, bool only_level_scale = false);
+    void _ApplyItemBonusesByMount(ItemTemplate const* proto, uint8 slot, bool apply);
+
     void _ApplyWeaponDamage(uint8 slot, ItemTemplate const* proto, ScalingStatValuesEntry const* ssv, bool apply);
     void _ApplyAmmoBonuses();
     bool EnchantmentFitsRequirements(uint32 enchantmentcondition, int8 slot);
@@ -2226,6 +2376,9 @@ public:
     void CastItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 procVictim, uint32 procEx);
     void CastItemUseSpell(Item* item, SpellCastTargets const& targets, uint8 cast_count, uint32 glyphIndex);
     void CastItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 procVictim, uint32 procEx, Item* item, ItemTemplate const* proto);
+
+    void CastItemCombatSpellByHLDM(Unit* Target, Item* item);
+    void CastItemCombatSpellPlusByHLDM(Unit* Target, Item* item, uint32 spellid = 0, bool shunfa = false);
 
     void SendEquipmentSetList();
     void SetEquipmentSet(uint32 index, EquipmentSet eqset);
@@ -2243,6 +2396,8 @@ public:
     std::vector<ItemSetEffect*> ItemSetEff;
 
     void SendLoot(ObjectGuid guid, LootType loot_type);
+    void SendLootPlus(ObjectGuid guid, LootType loot_type);
+
     void SendLootError(ObjectGuid guid, LootError error);
     void SendLootRelease(ObjectGuid guid);
     void SendNotifyLootItemRemoved(uint8 lootSlot);
@@ -2448,7 +2603,7 @@ public:
     void PrettyPrintRequirementsItemsList(const std::vector<const ProgressionRequirement*>& missingItems) const;
     bool Satisfy(DungeonProgressionRequirements const* ar, uint32 target_map, bool report = false);
     bool CheckInstanceLoginValid();
-    [[nodiscard]] bool CheckInstanceCount(uint32 instanceId) const;
+    [[nodiscard]] bool CheckInstanceCount(uint32 instanceId, bool bb = false) const;
 
     void AddInstanceEnterTime(uint32 instanceId, time_t enterTime)
     {
@@ -2840,6 +2995,9 @@ protected:
 
     float m_auraBaseMod[BASEMOD_END][MOD_END];
     int32 m_baseRatingValue[MAX_COMBAT_RATING];
+
+    float m_baseRatingPCTValue[MAX_COMBAT_RATING];//当前的急速百分比
+
     uint32 m_baseSpellPower;
     uint32 m_baseFeralAP;
     uint32 m_baseManaRegen;

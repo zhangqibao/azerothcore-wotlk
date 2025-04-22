@@ -417,6 +417,1165 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster, int32 const* bp, Unit const
     int32 basePoints = bp ? *bp : BasePoints;
     int32 randomPoints = int32(DieSides);
 
+    bool canusezuoqi = false;
+    if (caster)
+    {
+        //获得玩家当前是否在战场或竞技场中
+        if (caster->IsPlayer())
+            if (caster->IsInWorld() && caster->isActiveObject())
+                if (caster->GetMap() && caster->GetAreaId() && caster->GetAreaId())
+                    canusezuoqi = !caster->GetMap()->IsBattlegroundOrArena() && caster->GetAreaId() != 2177 && caster->GetAreaId() != 1741;
+    }
+
+
+    //如果是玩家的宠物
+    if (caster)
+    {
+        if (caster->IsPet() && caster->IsHunterPet())
+        {
+            if (Unit* owner = caster->GetOwner())
+            {
+                if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                {
+                    //获得主人近战攻击强度整体加成
+                    float ownerpower = 0.0f;
+                    //如果主人是硬核模式
+                    //if (((Player*)owner)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL || ((Player*)owner)->GetSession()->IsBot())//现在允许非硬核模式生效
+                    //{
+                    ownerpower = ((Player*)owner)->GetSession()->GetPlayer()->GetTotalAttackPowerValue(RANGED_ATTACK);//取远程攻强
+                    //攻强除以3.3基本等于面板伤害，远程攻强除以4基本等于面板远程伤害，原设置满级猎人平射是100多，低吼是415，相当3倍平射伤害
+                    //根据这个来3/4的远程攻强，是要给低吼增加的仇恨值
+                    //335的60猎人宠物低吼默认仇恨是319，远程攻强7873打60木桩平射800，70木桩平射600，80木桩平射500
+                    //如果按原版设定，低吼应当是平射的三倍，就是打60木桩仇恨2400，70木桩仇恨1800，80木桩仇恨1500，仇恨是固定的
+                    //取最大值2400，就是319*7.5 ,7.5=7873/1050,所以公式改为:basePoints = basePoints + basePoints * (ownerpower / 1050);
+                    if (_spellInfo)
+                    {
+                        if (_spellInfo->SpellIconID && _spellInfo->Id)
+                        {
+                            //低吼增加
+                            if (_spellInfo->SpellIconID == 201)
+                            {
+                                switch (_spellInfo->Id)
+                                {
+                                case 2649:
+                                case 14916:
+                                case 14917:
+                                case 14918:
+                                case 14919:
+                                case 14920:
+                                case 14921:
+                                case 27047:
+                                    //LOG_ERROR("xx", "old basePoints: {} ", basePoints);//测试
+                                    //basePoints = basePoints + ownerpower * 0.175;
+                                    basePoints = basePoints + basePoints * (ownerpower / 1050);
+                                    //LOG_ERROR("xx", "basePoints: {} ", basePoints);//测试
+                                    break;
+                                }
+
+
+                            }
+                        }
+                    }
+                    //}
+
+                }
+            }
+
+        }
+
+        //如果是SS宠物
+        if (caster->IsPet() && caster->IsSummon())
+        {
+            if (Unit* owner = caster->GetOwner())
+            {
+                if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                {
+                    //获得主人法伤加成
+                    float ownerfashang = 0.0f;
+                    //如果主人是硬核模式
+                    //if (((Player*)owner)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL || ((Player*)owner)->GetSession()->IsBot())//现在允许非硬核模式生效
+                    //{
+                        //取法伤中的最大值作为伤害加成参考
+                    int32 DoneAdvertisedBenefit = (((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) > ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE)) ? ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) : ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE);
+                    DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE)) ? DoneAdvertisedBenefit : ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
+                    DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST)) ? DoneAdvertisedBenefit : ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST);
+                    DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW)) ? DoneAdvertisedBenefit : ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW);
+                    DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE)) ? DoneAdvertisedBenefit : ((Player*)owner)->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE);
+                    ownerfashang = float(DoneAdvertisedBenefit);
+
+                    if (_spellInfo)
+                    {
+                        if (_spellInfo->SpellIconID && _spellInfo->Id)
+                        {
+                            //增加仇恨
+                            switch (_spellInfo->Id)
+                            {
+                                //魅魔 安抚之吻
+                            case 6360:
+                            case 7813:
+                            case 11784:
+                            case 11785:
+                            case 27275:
+                                //虚空行者 折磨
+                            case 3716:
+                            case 7809:
+                            case 7810:
+                            case 7811:
+                            case 11774:
+                            case 11775:
+                            case 27270:
+                            case 47984:
+                                //虚空行者 受难
+                            case 17735:
+                            case 17750:
+                            case 17751:
+                            case 17752:
+                            case 27271:
+                            case 33701:
+                            case 47989:
+                            case 47990:
+                                //LOG_ERROR("xx", "old basePoints: {} ", basePoints);//测试
+                                //basePoints = basePoints + basePoints * (ownerfashang / 1050);
+                                basePoints = basePoints + basePoints * (ownerfashang / 500);
+                                //LOG_ERROR("xx", "basePoints: {} ", basePoints);//测试
+                                break;
+                            }
+
+                        }
+                    }
+                    //}
+
+                }
+            }
+
+        }
+
+
+        // 如果是图腾施法的，找到图腾的主人，如果主人是硬核转生，就提升图腾效果
+        if (caster->GetTypeId() == TYPEID_UNIT && caster->IsTotem())
+        {
+            if (Unit* owner = caster->GetOwner())
+            {
+                //获得主人当前是否在战场或竞技场中
+                bool ownercanusezuoqi = false;
+                if (owner->IsInWorld() && owner->isActiveObject())
+                    if (owner->GetMap() && owner->GetAreaId() && owner->GetAreaId())
+                        ownercanusezuoqi = !owner->GetMap()->IsBattlegroundOrArena() && owner->GetAreaId() != 2177 && owner->GetAreaId() != 1741;
+
+                if (owner->IsPlayer() && ownercanusezuoqi)
+                {
+                    Player const* pownerPlayer = owner->ToPlayer();
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xbasePoints %f", basePoints);//测试，药水效果也可以到这里，比如泰坦合剂
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xSpellIconID %u", _spellInfo->SpellIconID);//测试
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xSpellid %u", _spellInfo->Id);//测试
+
+                    //如果图腾的主人是硬核模式
+                    float ownerAPpower = 0.0f;
+                    float ownermeleeAPpower = 0.0f;
+                    //if (pownerPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL || pownerPlayer->GetSession()->IsBot())//现在允许非硬核模式生效
+                    //{
+                    ownerAPpower = pownerPlayer->GetTotalAttackPowerValue(RANGED_ATTACK);
+                    ownermeleeAPpower = pownerPlayer->GetTotalAttackPowerValue(BASE_ATTACK);
+
+                    //获得图腾主人的转生石个数
+                    uint32 ownerzsstone = pownerPlayer->GetItemCount(30630, false);
+                    //如果是满级机器人，随机转生石的数量
+                    if (ownerzsstone == 0 && pownerPlayer->GetSession()->IsBot() && pownerPlayer->GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+                    {
+                        ownerzsstone = urand(0, 10);
+                    }
+
+                    switch (pownerPlayer->GetClass())
+                    {
+                    case CLASS_SHAMAN:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //萨满法力之泉图腾加成
+                                if (_spellInfo->SpellIconID == 338 && _spellInfo->Id == 10494)
+                                {
+                                    if (ownerzsstone > 0)
+                                        basePoints = basePoints + basePoints * ownerzsstone * 0.2;
+                                }
+                                //萨满法力之潮图腾加成
+                                if (_spellInfo->SpellIconID == 94 && _spellInfo->Id == 17360)
+                                {
+                                    if (ownerzsstone > 0)
+                                        basePoints = basePoints + basePoints * ownerzsstone * 0.2;
+                                }
+                                //萨满石肤图腾加成
+                                if (_spellInfo->SpellIconID == 690 && _spellInfo->Id == 10405)
+                                {
+                                    if (ownerzsstone > 0)
+                                        basePoints = basePoints + basePoints * ownerzsstone * 0.2;
+                                }
+                                //萨满风墙图腾加成
+                                if (_spellInfo->SpellIconID == 174 && _spellInfo->Id == 15110)
+                                {
+                                    if (ownerzsstone > 0)
+                                        basePoints = basePoints + basePoints * ownerzsstone * 0.2;
+                                }
+                                //萨满治疗之泉墙图腾加成
+                                if (_spellInfo->SpellIconID == 1647 && _spellInfo->Id == 10461)
+                                {
+                                    if (ownerzsstone > 0)
+                                        basePoints = basePoints + basePoints * ownerzsstone * 0.2;
+
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xnewbasePoints %f", basePoints);//测试 
+                                }
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                    //}
+
+
+                }
+
+            }
+        }
+
+
+
+        //if (caster->IsPlayer() && !caster->ToPlayer()->GetSession()->IsBot())
+        if (caster->IsPlayer() && canusezuoqi)//机器人也加成
+        {
+            //调试位置
+            //if (caster->GetGUID().GetCounter()== 5238) {
+            //    LOG_ERROR("xx", "1basePoints{} ", basePoints);//测试
+            //    LOG_ERROR("xx", "1SpellIconID {} ", _spellInfo->SpellIconID);//测试
+            //    LOG_ERROR("xx", "1Spellid {} ", _spellInfo->Id);//测试
+            //}
+
+
+            //if (_spellInfo->Id == 7712 || _spellInfo->Id == 7714) {
+            //    LOG_ERROR("xx", "break ");//测试，已经骑上马，再次点击马的图标，会下马，打印到了这里
+            //    std::abort();
+            //}
+
+
+            //LOG_ERROR("xx", "SpellFamilyFlags {} ", _spellInfo->SpellFamilyFlags[0]);//测试
+            //LOG_ERROR("xx", "SpellFamilyName {} ", _spellInfo->SpellFamilyName);//测试
+
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1basePoints %f", basePoints);//测试，药水效果也可以到这里，比如泰坦合剂#####
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1SpellIconID %u", _spellInfo->SpellIconID);//测试#####
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1Spellid %u", _spellInfo->Id);//测试#####
+
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1GetExtraFlags %u", pPlayer->GetExtraFlags());//测试
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1playGetEntry %u", pPlayer->GetGUIDLow());//测试
+
+
+            //对硬核玩家，以及不同职业的硬核玩家的伤害加成进行区别对待
+            //如果玩家是硬核模式
+            float APpower = 0.0f;
+            float meleeAPpower = 0.0f;
+            int32 armorbasePoints = 0;
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "GetClass %u", pPlayer->GetGUIDLow());//测试
+            //if(( ((Player*)this)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL ))//这种写法会崩，好像人物登录加载时有无法获取GetExtraFlags()的情况
+            if (caster->ToPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL || caster->ToPlayer()->GetSession()->IsBot())
+            {
+                //LOG_ERROR("xx", "ApplyAuraName: {} ", ApplyAuraName);//测试
+                //判断装备调用的光环技能是否为攻强，远程攻强，法伤，治疗的加成--------------------------
+                if (ApplyAuraName == SPELL_AURA_MOD_ATTACK_POWER || ApplyAuraName == SPELL_AURA_MOD_RANGED_ATTACK_POWER
+                    || ApplyAuraName == SPELL_AURA_MOD_DAMAGE_DONE || ApplyAuraName == SPELL_AURA_MOD_HEALING_DONE)
+                {
+                    //判断玩家是否装备了橙装戒指，并返回戒指的加成数值，如果有橙装，就动态根据加成数值改动攻强，远程攻强，法伤，治疗加成的百分比
+                    uint32 getczring = caster->ToPlayer()->GetCZRingItem();
+                    if (getczring > 0)
+                    {
+                        //LOG_ERROR("xx", "getczring: {} ", getczring);//测试
+                        //LOG_ERROR("xx", "basePoints1: {} ", basePoints);//测试
+                        basePoints = basePoints + basePoints * float(getczring) / 100.0f;
+                        //LOG_ERROR("xx", "basePoints2: {} ", basePoints);//测试
+                    }
+                }
+                //判断装备调用的光环技能是否为攻强，远程攻强，法伤，治疗的加成----------------end---------------
+
+
+                APpower = caster->ToPlayer()->GetTotalAttackPowerValue(RANGED_ATTACK);
+                meleeAPpower = caster->ToPlayer()->GetTotalAttackPowerValue(BASE_ATTACK);
+                armorbasePoints = caster->ToPlayer()->GetResistance(SPELL_SCHOOL_NORMAL);
+
+                //获得玩家的转生石个数
+                uint16 zsstone = 0;
+                //zsstone = caster->ToPlayer()->GetItemCount(70630, false);
+                zsstone = caster->ToPlayer()->getZHUANSHENGNUM();
+                //LOG_ERROR("xx", "spell-zsstone {}  ", zsstone);//测试
+
+                //如果是机器人，随机转生石的数量
+                if (zsstone == 0 && caster->ToPlayer()->GetSession()->IsBot() && caster->ToPlayer()->GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+                {
+                    zsstone = urand(0, 10);
+                }
+                //LOG_ERROR("xx", "spellrobot-zsstone {}  ", zsstone);//测试
+
+
+                //所有硬核玩家，对以下技能的效果进行重新加成
+                if (_spellInfo)
+                {
+                    if (_spellInfo->SpellIconID && _spellInfo->Id)
+                    {
+                        //泰坦合剂增加效果
+                        if (_spellInfo->SpellIconID == 1639 && _spellInfo->Id == 17626)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.15;
+
+                        }
+                        //多重抗性合剂增加效果
+                        if (_spellInfo->SpellIconID == 1641 && _spellInfo->Id == 17629)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //精炼智慧合剂增加效果
+                        if (_spellInfo->SpellIconID == 1640 && _spellInfo->Id == 17627)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //超级能量合剂增加效果
+                        if (_spellInfo->SpellIconID == 1643 && _spellInfo->Id == 17628)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //大红增加效果
+                        if (_spellInfo->SpellIconID == 1 && _spellInfo->Id == 17534)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 1049)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //大蓝增加效果
+                        if (_spellInfo->SpellIconID == 1 && _spellInfo->Id == 17531)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 1349)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+
+                        //猫鼬药剂增加效果
+                        if (_spellInfo->SpellIconID == 1609 && _spellInfo->Id == 17538)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //东泉火酒增加效果
+                        if (_spellInfo->SpellIconID == 1570 && _spellInfo->Id == 17038)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //巨人药剂增加效果
+                        if (_spellInfo->SpellIconID == 1337 && _spellInfo->Id == 11405)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //强效奥法药剂增加效果
+                        if (_spellInfo->SpellIconID == 1686 && _spellInfo->Id == 17539)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //砂囊口香糖增加效果
+                        if (_spellInfo->SpellIconID == 937 && _spellInfo->Id == 10693)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //砂囊口香糖增加效果
+                        if (_spellInfo->SpellIconID == 47 && _spellInfo->Id == 10668)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //土狼兴奋剂糖增加效果
+                        if (_spellInfo->SpellIconID == 63 && _spellInfo->Id == 10667)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //脑皮层混合饮料增加效果
+                        if (_spellInfo->SpellIconID == 32 && _spellInfo->Id == 10692)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //厚甲蝎药粉增加效果
+                        if (_spellInfo->SpellIconID == 111 && _spellInfo->Id == 10669)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+                        //防御水晶增加效果
+                        if (_spellInfo->SpellIconID == 1517 && _spellInfo->Id == 15233)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //精神水晶增加效果
+                        if (_spellInfo->SpellIconID == 1515 && _spellInfo->Id == 15231)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //尖刺水晶增加效果
+                        if (_spellInfo->SpellIconID == 283 && _spellInfo->Id == 15279)
+                        {
+                            if (zsstone > 0)
+                            {
+                                if (APpower > meleeAPpower)
+                                {
+                                    //basePoints = basePoints + basePoints * zsstone * 0.2 + APpower * 0.06;
+                                    basePoints = basePoints + basePoints * zsstone * 0.1 + meleeAPpower * 0.05 + (APpower - meleeAPpower) * 0.03;//远程攻强算近战攻强3/5的加成
+                                }
+                                else
+                                    basePoints = basePoints + basePoints * zsstone * 0.2 + meleeAPpower * 0.05;
+                            }
+                        }
+                        //破甲水晶增加效果，int和uint相乘，会出现很大的数字的bug
+                        if (_spellInfo->SpellIconID == 1518 && _spellInfo->Id == 15235)
+                        {
+                            //LOG_ERROR("xx", "basePoints: {} ", basePoints);//测试
+                            //LOG_ERROR("xx", "basePointsx: {} ", basePoints * int32(zsstone * 0.2));//测试
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * int32(zsstone) * 0.2;
+
+                            //LOG_ERROR("xx", "basePoints: {} ", basePoints);//测试
+                        }
+                        //赞扎之魂增加效果
+                        if (_spellInfo->SpellIconID == 1315 && _spellInfo->Id == 24382)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //赞扎之光增加效果
+                        if (_spellInfo->SpellIconID == 1602 && _spellInfo->Id == 24417)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 2)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //赞扎之速增加效果
+                        if (_spellInfo->SpellIconID == 1597 && _spellInfo->Id == 24383)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 19)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //迅捷之风增加效果
+                        if (_spellInfo->SpellIconID == 174 && _spellInfo->Id == 8385)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 39)
+                                    basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+
+                        //塔罗牌抗性增加效果
+                        if (_spellInfo->SpellIconID == 1595 && _spellInfo->Id == 23769)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 24)
+                                    basePoints = basePoints + basePoints * zsstone * 0.1;
+                        }
+
+                        //野猪之皮增加效果
+                        if (_spellInfo->SpellIconID == 53 && _spellInfo->Id == 16610)
+                        {
+                            if (zsstone > 0)
+                            {
+                                if (basePoints != 24)
+                                {
+                                    if (APpower > meleeAPpower)
+                                    {
+                                        //basePoints = basePoints + basePoints * zsstone * 0.2 + APpower * 0.05 + armorbasePoints * 0.025;
+                                        basePoints = basePoints + basePoints * zsstone * 0.1 + meleeAPpower * 0.05 + (APpower - meleeAPpower) * 0.03;//远程攻强算近战攻强3/5的加成
+                                    }
+                                    else
+                                        basePoints = basePoints + basePoints * zsstone * 0.2 + meleeAPpower * 0.05 + armorbasePoints * 0.025;
+                                }
+                            }
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2basePoints %f", basePoints);//测试
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2meleeAPpower %f", meleeAPpower);//测试
+                        }
+                        //沙漠肉丸子增加效果
+                        if (_spellInfo->SpellIconID == 59 && _spellInfo->Id == 24799)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //魂能之击增加效果
+                        if (_spellInfo->SpellIconID == 1538 && _spellInfo->Id == 16329)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //魂能之力增加效果
+                        if (_spellInfo->SpellIconID == 1533 && _spellInfo->Id == 16323)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //魂能之诈增加效果
+                        if (_spellInfo->SpellIconID == 1537 && _spellInfo->Id == 16327)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //强效石盾药剂增加效果
+                        if (_spellInfo->SpellIconID == 1316 && _spellInfo->Id == 17540)
+                        {
+                            if (zsstone > 0)
+                                basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //卓越巫师之油增加效果
+                        if (_spellInfo->SpellIconID == 1 && _spellInfo->Id == 25113)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 35)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //卓越法力之油增加效果
+                        if (_spellInfo->SpellIconID == 1 && _spellInfo->Id == 25116)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 12)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //牛皮糖增加效果
+                        if (_spellInfo->SpellIconID == 1926 && _spellInfo->Id == 29334)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 43)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //仲夏腊肠增加效果
+                        if (_spellInfo->SpellIconID == 1925 && _spellInfo->Id == 29333)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 29)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+
+                        //火焰节之韧增加效果
+                        if (_spellInfo->SpellIconID == 1923 && _spellInfo->Id == 29235)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 29)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        /*
+                        //彩带之舞增加效果。硬核没必要加了，取消
+                        if (_spellInfo->SpellIconID == 1919 && _spellInfo->Id == 29175)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 9)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        //稻草人的祈祷增加效果。硬核没必要加了，取消
+                        if (_spellInfo->SpellIconID == 1816 && _spellInfo->Id == 24705)
+                        {
+                            if (zsstone > 0)
+                                if (basePoints == 9)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+                        }
+                        */
+                        //醉酒增加效果
+                        if (_spellInfo->SpellIconID == 232 && _spellInfo->Id == 25947)
+                        {
+                            //LOG_ERROR("xx", "basePoints {}- {} ", basePoints, _spellInfo->Id);//测试
+                            if (zsstone > 0)
+                                if (basePoints == 49)
+                                    basePoints = basePoints + basePoints * zsstone * 0.2;
+
+                            //LOG_ERROR("xx", "xbasePoints {}- {} ", basePoints, _spellInfo->Id);//测试
+                        }
+
+                        /*
+                        //风剑，雷霆之怒技能增加效果
+                        if (_spellInfo->SpellIconID == 220 && _spellInfo->Id == 21992)
+                        {
+                            //if (zsstone > 0)
+                            //	if (basePoints == 299)
+                            //		basePoints = basePoints + basePoints * zsstone * 0.2;
+
+                            if (zsstone > 0)
+                            {
+                                if (basePoints == 299)
+                                    basePoints = basePoints + meleeAPpower * 0.1;//按3000攻强和转生的加成做成持平
+                            }
+
+
+                        }
+
+                        //橙锤，萨弗拉斯 炎魔拉格纳罗斯之手技能增加效果
+                        if (_spellInfo->SpellIconID == 183 && _spellInfo->Id == 21162)
+                        {
+                            if (zsstone > 0)
+                            {
+                                if (basePoints == 272)
+                                    basePoints = basePoints + meleeAPpower * 0.1;
+                                if (basePoints == 14)
+                                    basePoints = basePoints + basePoints * zsstone * 0.1;
+                                if (basePoints == 2)
+                                    basePoints = basePoints + basePoints * zsstone * 0.1;
+                            }
+
+
+                        }
+                        */
+
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2basePoints %f", basePoints);//测试，药水效果也可以到这里，比如泰坦合剂
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2SpellIconID %u", _spellInfo->SpellIconID);//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2Spellid %u", _spellInfo->Id);//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2GetExtraFlags %u", pPlayer->GetExtraFlags());//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "2playGetEntry %u", pPlayer->GetGUIDLow());//测试
+
+                    }
+                }
+
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "tttt");//测试
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxxxx %u", ((Player*)this)->GetSession()->GetPlayer()->GetExtraFlags());//测试，会崩
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "GetClass %u", pPlayer->GetClass());//测试
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "GetClass %u", pPlayer->GetGUIDLow());//测试
+                if (caster->ToPlayer()->GetClass())
+                {
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "spellId %u", _spellInfo->Id);//测试，光环战斗回血，不会到这里
+
+                    switch (caster->ToPlayer()->GetClass())
+                    {
+                    case CLASS_PRIEST:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //牧师神圣新星
+                                //if (_spellInfo->Id == 27801)
+                                if (_spellInfo->SpellIconID == 1874 && (_spellInfo->SpellFamilyFlags[0] & 0x400000))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.15;
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_PALADIN:
+                        if (_spellInfo)
+                        {
+                            /*
+                            //这个版本骑士太强了，奉献不再加强
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //圣骑士的奉献
+                                //if (_spellInfo->Id == 20924)
+                                if (_spellInfo->SpellIconID == 51 && (_spellInfo->SpellFamilyFlags[0] & 0x20))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                            }
+                            */
+                        }
+                        break;
+                    case CLASS_MAGE:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //法师魔爆术
+                                //if (_spellInfo->Id == 10202)
+                                if (_spellInfo->SpellIconID == 122 && (_spellInfo->SpellFamilyFlags[0] & 0x1000))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.15;
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_WARLOCK:
+                        break;
+                    case CLASS_SHAMAN:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //萨满闪电之盾加成26363
+                                /*
+                                if (_spellInfo->SpellIconID == 19 && _spellInfo->Id == 10432)
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                */
+                                if (_spellInfo->SpellIconID == 62 && (_spellInfo->SpellFamilyFlags[0] & 0x400))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //萨满法力之泉图腾加成10497
+                                if (_spellInfo->SpellIconID == 338 && (_spellInfo->SpellFamilyFlags[0] & 0x80000))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //萨满法力之潮图腾加成16190
+                                if (_spellInfo->SpellIconID == 94 && (_spellInfo->SpellFamilyFlags[0] & 0x20000000))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //萨满石肤图腾加成10408
+                                if (_spellInfo->SpellIconID == 690 && (_spellInfo->SpellFamilyFlags[0] & 0x20000000))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                ////萨满风墙图腾加成15112 没有找到
+                                //if (_spellInfo->SpellIconID == 174 && _spellInfo->Id == 15112)
+                                //{
+                                //    if (zsstone > 0)
+                                //        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                //}
+                            }
+                        }
+                        break;
+                    case CLASS_WARRIOR:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //战士撕裂加成11574
+                                if (_spellInfo->SpellIconID == 245 && (_spellInfo->SpellFamilyFlags[0] & 0x20))
+                                {
+                                    if (basePoints != 0)
+                                        basePoints = basePoints + meleeAPpower * 0.05;
+                                }
+                                //战士斩杀加成20662
+                                if (_spellInfo->SpellIconID == 1648 && (_spellInfo->SpellFamilyFlags[0] & 0x20000000))
+                                {
+                                    if (basePoints != 0)
+                                        basePoints = basePoints + meleeAPpower * 0.24;
+                                }
+                                //战士拳击加成6554
+                                if (_spellInfo->SpellIconID == 756 && (_spellInfo->SpellFamilyFlags[0] & 0x8))
+                                {
+                                    if (basePoints != 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //战士复仇加成25288
+                                if (_spellInfo->SpellIconID == 562 && (_spellInfo->SpellFamilyFlags[0] & 0x400))
+                                {
+                                    if (basePoints != 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //战士盾击加成1672
+                                if (_spellInfo->SpellIconID == 280 && (_spellInfo->SpellFamilyFlags[0] & 0x800))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //战士盾牌猛击加成23925
+                                if (_spellInfo->SpellIconID == 413 && (_spellInfo->Id == 23925 || _spellInfo->Id == 25258 || _spellInfo->Id == 30356 || _spellInfo->Id == 47487 || _spellInfo->Id == 47488))
+                                {
+                                    if (basePoints != 0)
+                                        basePoints = basePoints + meleeAPpower * 0.15;
+                                }
+
+                                //战士致死打击加成21553
+                                if (_spellInfo->SpellIconID == 564 && (_spellInfo->SpellFamilyFlags[0] & 0x2000000))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+
+                                //战士惩戒痛击加成20560
+                                if (_spellInfo->SpellIconID == 1477 && (_spellInfo->SpellFamilyFlags[0] & 0x8000000))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //战士雷霆一击加成11581
+                                if (_spellInfo->SpellIconID == 199 && (_spellInfo->SpellFamilyFlags[0] & 0x80))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.05;
+                                }
+                                /*
+                                //新版本嗜血技能改动了，先不再加强
+                                //战士嗜血加成
+                                if (_spellInfo->SpellIconID == 38 && _spellInfo->Id == 23881)
+                                {
+                                        if (basePoints == 49)
+                                            basePoints = basePoints + meleeAPpower * 0.08;
+                                }
+                                */
+                                //战士嗜血回血加成，实际无加血提高效果，百分比1改为2是有效的，但加血的值在这里没有打印出来
+                                //if (_spellInfo->SpellIconID == 38 && _spellInfo->Id == 23885)
+                                //{
+                                //    LOG_ERROR("xx", "ne2wbasePoints {} ", basePoints);//测试
+                                //    if (basePoints == 1)
+                                //        if (zsstone > 0)
+                                //            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                //    LOG_ERROR("xx", "newbasePoints {} ", basePoints);//测试
+                                //}
+                                //换一个被23885触发的技能23880，也无效
+                                //if (_spellInfo->SpellIconID == 38 && _spellInfo->Id == 23880)
+                                //{
+                                //    LOG_ERROR("xx", "ne2wbasePoints {} ", basePoints);//测试
+                                //    if (basePoints == 29)
+                                //        if (zsstone > 0)
+                                //            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                //    LOG_ERROR("xx", "newbasePoints {} ", basePoints);//测试
+                                //}
+
+                                //战士顺劈斩加成20569
+                                if (_spellInfo->SpellIconID == 277 && (_spellInfo->SpellFamilyFlags[0] & 0x400000))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+
+                                //战士英勇打击加成25286
+                                if (_spellInfo->SpellIconID == 856 && (_spellInfo->SpellFamilyFlags[0] & 0x40))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //战士猛击加成11605
+                                if (_spellInfo->SpellIconID == 559 && (_spellInfo->SpellFamilyFlags[0] & 0x200000))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //战士战斗怒吼加成25289
+                                if (_spellInfo->SpellIconID == 456 && (_spellInfo->SpellFamilyFlags[0] & 0x10000))
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints > 0)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_ROGUE:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //盗贼背刺加成11281
+                                if (_spellInfo->SpellIconID == 243 && (_spellInfo->SpellFamilyFlags[0] & 0x800004))
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints != 149)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //盗贼脚踢加成1769
+                                if (_spellInfo->SpellIconID == 246 && (_spellInfo->SpellFamilyFlags[0] & 0x10))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //盗贼凿击加成11286
+                                if (_spellInfo->SpellIconID == 245 && (_spellInfo->SpellFamilyFlags[0] & 0x8))
+                                {
+                                    if (basePoints > 0)
+                                        basePoints = basePoints + meleeAPpower * 0.1;
+                                }
+                                //盗贼伏击加成11269
+                                if (_spellInfo->SpellIconID == 856 && (_spellInfo->SpellFamilyFlags[0] & 0x800200))
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints != 274)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //盗贼速效毒药11337
+                                //if (_spellInfo->Id == 11337)
+                                if (_spellInfo->SpellIconID == 247 && (_spellInfo->SpellFamilyFlags[0] & 0x2000))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_DRUID:
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID && _spellInfo->Id)
+                            {
+                                //德鲁伊巨熊形态的攻强、生命、护甲加成9635
+                                if (_spellInfo->SpellIconID == 107 && _spellInfo->Id == 9635)
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints == 119)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //德鲁伊猎豹形态的攻强加成3025
+                                if (_spellInfo->SpellIconID == 493 && _spellInfo->Id == 3025)
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints == 39)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //德鲁伊猛虎之怒的伤害加成9846
+                                if (_spellInfo->SpellIconID == 1181 && (_spellInfo->Id == 9846 || _spellInfo->Id == 50212 || _spellInfo->Id == 50213))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.15;
+                                }
+                                //德鲁伊撕碎的伤害加成9830
+                                //if (_spellInfo->SpellIconID == 147 && _spellInfo->Id == 9830)
+                                if (_spellInfo->SpellIconID == 147 && (_spellInfo->SpellFamilyFlags[0] & 0x8000))
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints != 224)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                /*
+                                //新版本已加强过了
+                                //德鲁伊突袭的伤害加成
+                                if (_spellInfo->SpellIconID == 495 && _spellInfo->Id == 9826)
+                                {
+                                    if (zsstone > 0)
+                                         basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                */
+                                //德鲁伊毁灭的伤害加成9867
+                                //if (_spellInfo->SpellIconID == 1531 && _spellInfo->Id == 9867)
+                                if (_spellInfo->SpellIconID == 1531 && (_spellInfo->SpellFamilyFlags[0] & 0x10000))
+                                {
+                                    if (zsstone > 0)
+                                        if (basePoints != 384)
+                                            basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //德鲁伊横扫伤害加成9908
+                                if (_spellInfo->SpellIconID == 1562 && (_spellInfo->Id == 9908 || _spellInfo->Id == 26997 || _spellInfo->Id == 48561 || _spellInfo->Id == 48562))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //德鲁伊荆棘术9910
+                                //if (_spellInfo->Id == 9910)
+                                if (_spellInfo->SpellIconID == 53 && (_spellInfo->SpellFamilyFlags[0] & 0x100))
+                                {
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+                                }
+                                //德鲁伊重殴（锤击）的伤害加成
+                                if (_spellInfo->SpellIconID == 261 && (_spellInfo->SpellFamilyFlags[0] & 0x800))
+                                {
+                                    //LOG_ERROR("xx", "basePointsb {}  ", basePoints);//测试
+                                    if (zsstone > 0)
+                                        basePoints = basePoints + basePoints * zsstone * 0.1;
+
+                                    //LOG_ERROR("xx", "basePointsa {}  ", basePoints);//测试
+                                }
+
+                            }
+                        }
+                        break;
+                    case CLASS_HUNTER:
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "SpellID %u", _spellInfo->Id);//测试
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "SpellIconID %u", _spellInfo->SpellIconID);//测试
+
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID)
+                            {
+                                //uint32 spellid = _spellInfo->Id;
+                                //auto spellCheck = [spellid](SpellEntry const & spellEntry) -> bool { return (spellEntry.IsFitToFamily<SPELLFAMILY_HUNTER, CF_HUNTER_ARCANE_SHOT, CF_HUNTER_MULTI_SHOT, CF_HUNTER_VOLLEY, CF_HUNTER_AIMED_SHOT>() ); };
+                                //if ((bool&)spellCheck)
+                                //瞄准射击0x20000
+                                if (_spellInfo->SpellIconID == 1629 && (_spellInfo->SpellFamilyFlags[0] & 0x20000))
+                                {
+                                    //参考战士的嗜血，45%的攻强作为伤害加成
+                                    //335的瞄准射击有个debuff，降低50%的治疗，这个不能再加成，否则就bug了
+                                    if (basePoints != -51)
+                                        basePoints = basePoints + APpower * 0.12;
+                                }
+                                //奥术射击0x800
+                                else if (_spellInfo->SpellIconID == 218 && (_spellInfo->SpellFamilyFlags[0] & 0x800))
+                                {
+                                    basePoints = basePoints + APpower * 0.026;
+                                }
+                                //多重射击0x1000
+                                else if (_spellInfo->SpellIconID == 85 && (_spellInfo->SpellFamilyFlags[0] & 0x1000))
+                                {
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                                    //参考战士的嗜血，45%的攻强作为伤害加成
+                                    basePoints = basePoints + APpower * 0.068;
+                                }
+                                //乱射0x2000
+                                else if (_spellInfo->SpellIconID == 126 && (_spellInfo->SpellFamilyFlags[0] & 0x2000))
+                                {
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                                    //参考战士的嗜血，45%的攻强作为伤害加成，先测试了0.018，适当加到0.02
+                                    basePoints = basePoints + APpower * 0.023;
+                                }
+                                //猫鼬撕咬0x2
+                                else if (_spellInfo->SpellIconID == 257 && (_spellInfo->SpellFamilyFlags[0] & 0x2))
+                                {
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                                    //参考战士的嗜血，45%的攻强作为伤害加成
+                                    basePoints = basePoints + APpower * 0.26;
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "SpellID %u", _spellInfo->Id);//测试
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "SpellIconID %u", _spellInfo->SpellIconID);//测试
+                                }
+                                //猛禽一击0x2
+                                else if (_spellInfo->SpellIconID == 26 && (_spellInfo->SpellFamilyFlags[0] & 0x2))
+                                {
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                                    //参考战士的嗜血，45%的攻强作为伤害加成
+                                    basePoints = basePoints + APpower * 0.1;
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "APpower %f", APpower);//测试
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "SpellID %u", _spellInfo->Id);//测试
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "SpellIconID %u", _spellInfo->SpellIconID);//测试
+                                }
+                                //治疗宠物 SpellFamilyFlags就是表里的SpellClassMask_1
+                                else if (_spellInfo->SpellIconID == 267 && (_spellInfo->SpellFamilyFlags[0] & 0x800000))
+                                {
+                                    basePoints = basePoints + APpower * 0.05;
+                                }
+
+                            }
+                        }
+
+                        break;
+                    case CLASS_DEATH_KNIGHT://DK死亡骑士加强硬核
+
+                        if (_spellInfo)
+                        {
+                            if (_spellInfo->SpellIconID)
+                            {
+                                //冰冷触摸 45477
+                                if (_spellInfo->SpellIconID == 2721 && (_spellInfo->SpellFamilyFlags[0] & 0x2))
+                                {
+                                    basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //冰霜打击 
+                                else if (_spellInfo->SpellIconID == 2740)
+                                {
+                                    switch (_spellInfo->Id)
+                                    {
+                                    case 49143:
+                                    case 51416:
+                                    case 51417:
+                                    case 51418:
+                                    case 51419:
+                                    case 55268:
+
+                                        if (basePoints != 54)
+                                            basePoints = basePoints + meleeAPpower * 0.06;
+                                        break;
+                                    }
+                                }
+                                //凛风冲击 
+                                else if (_spellInfo->SpellIconID == 2131)
+                                {
+                                    switch (_spellInfo->Id)
+                                    {
+                                    case 49184:
+                                    case 51409:
+                                    case 51410:
+                                    case 51411:
+                                        if (basePoints != 149)
+                                            basePoints = basePoints + meleeAPpower * 0.06;
+                                        break;
+                                    }
+                                }
+
+                                //暗影打击 49917
+                                if (_spellInfo->SpellIconID == 2719 && (_spellInfo->SpellFamilyFlags[0] & 0x1))
+                                {
+                                    if (basePoints != 49)
+                                        basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //凋零缠绕 47541
+                                if (_spellInfo->SpellIconID == 88 && (_spellInfo->SpellFamilyFlags[0] & 0x2000))
+                                {
+                                    basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //枯萎凋零 43265
+                                if (_spellInfo->SpellIconID == 118 && (_spellInfo->SpellFamilyFlags[0] & 0x20))
+                                {
+                                    basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //灵界打击 49998
+                                if (_spellInfo->SpellIconID == 2751 && (_spellInfo->SpellFamilyFlags[0] & 0x10))
+                                {
+                                    if (basePoints != 74)
+                                        basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //血液沸腾 48721
+                                if (_spellInfo->SpellIconID == 2725 && (_spellInfo->SpellFamilyFlags[0] & 0x40000))
+                                {
+                                    basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //鲜血打击 49926
+                                if (_spellInfo->SpellIconID == 2624 && (_spellInfo->SpellFamilyFlags[0] & 0x400000))
+                                {
+                                    if (basePoints != 39)
+                                        basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //心脏打击 55050
+                                if (_spellInfo->SpellIconID == 3145 && (_spellInfo->SpellFamilyFlags[0] & 0x1000000))
+                                {
+                                    if (basePoints != 49)
+                                        basePoints = basePoints + meleeAPpower * 0.06;
+                                }
+                                //天灾打击 
+                                else if (_spellInfo->SpellIconID == 3143)
+                                {
+                                    switch (_spellInfo->Id)
+                                    {
+                                    case 55090:
+                                    case 55265:
+                                    case 55270:
+                                    case 55271:
+                                        if (basePoints != 69 && basePoints != 11)
+                                            basePoints = basePoints + meleeAPpower * 0.06;
+                                        break;
+                                    }
+                                }
+                                //邪爆 
+                                else if (_spellInfo->SpellIconID == 1737)
+                                {
+                                    switch (_spellInfo->Id)
+                                    {
+                                    case 51325:
+                                    case 51326:
+                                    case 51327:
+                                    case 51328:
+                                        if (basePoints != 50443)
+                                            basePoints = basePoints + meleeAPpower * 0.06;
+                                        break;
+                                    }
+                                }
+
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+
+            }
+
+        }
+
+
+
+    }
+
     // base amount modification based on spell lvl vs caster lvl
     // xinef: added basePointsPerLevel check
     if (caster && basePointsPerLevel != 0.0f)
@@ -1622,6 +2781,144 @@ SpellCastResult SpellInfo::CheckLocation(uint32 map_id, uint32 zone_id, uint32 a
 
                 return mapEntry->IsBattleArena() && player && player->InBattleground() ? SPELL_CAST_OK : SPELL_FAILED_REQUIRES_AREA;
             }
+        case 6724://月神之光
+        case 6615://自由行动药剂
+            //VIP卡增加的所有技能
+        case 85411:
+        case 85412:
+        case 85413:
+        case 85414:
+        case 85415:
+        case 85416:
+        case 85417:
+        case 85418:
+        case 85419:
+        case 85420:
+        case 85421:
+        case 85422:
+        case 85423:
+        case 85424:
+        case 85425:
+        case 85426:
+        case 85427:
+        case 85428:
+        case 85429:
+        case 85430:
+        case 85431:
+        case 85432:
+        case 85433:
+        case 85434:
+        case 85435:
+        case 85436:
+        case 85437:
+        case 85438:
+        case 85439:
+        case 85440:
+        case 85441:
+        case 85442:
+        case 85443:
+        case 85444:
+        case 85445:
+        case 85446:
+        case 85447:
+        case 85448:
+        case 85449:
+        case 85450:
+        case 85451:
+        case 85452:
+        case 85453:
+        case 85454:
+        case 85455:
+        case 85456:
+        case 85457:
+        case 85458:
+        case 85459:
+        case 85460:
+        case 85461:
+        case 85462:
+        case 85463:
+        case 85464:
+        case 85465:
+        case 85466:
+        case 85467:
+        case 85468:
+        case 85469:
+        case 85470:
+        case 85471:
+        case 85472:
+        case 85473:
+        case 85474:
+        case 85475:
+        case 85476:
+        case 85477:
+        case 85478:
+        case 85479:
+        case 85480:
+        case 85481:
+        case 85482:
+        case 85483:
+        case 85484:
+        case 85485:
+        case 85486:
+        case 85487:
+        case 85488:
+        case 85489:
+        case 85490:
+        case 85491:
+        case 85492:
+        case 85493:
+        case 85494:
+        case 85550:
+        case 85551:
+        case 85552:
+        case 85553:
+        case 85554:
+        case 85555:
+        case 85556:
+        case 85557:
+        case 85558:
+        case 85559:
+        case 85811:
+        case 85812:
+        case 85813:
+        case 85814:
+        case 85815:
+        case 85816:
+        case 85817:
+        case 85818:
+        case 85819:
+        case 85820:
+        case 85821:
+        case 85822:
+        case 85823:
+        case 85824:
+        case 85825:
+        case 85826:
+        case 85827:
+        case 85828:
+        case 85829:
+        case 85830:
+        case 85831:
+        case 85832:
+        case 85833:
+        {
+            //禁止在战场和竞技场中生效VIP相关技能
+            MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
+            if (!mapEntry)
+                return SPELL_FAILED_INCORRECT_AREA;
+
+            if (player)
+            {
+                if (mapEntry->IsBattlegroundOrArena() || area_id == 2177 || area_id == 1741)
+                {
+                    return SPELL_FAILED_INCORRECT_AREA;
+                }
+                else
+                    return SPELL_CAST_OK;
+            }
+
+        }
+
     }
 
     return SPELL_CAST_OK;

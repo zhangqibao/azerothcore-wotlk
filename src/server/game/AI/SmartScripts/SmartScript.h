@@ -56,6 +56,7 @@ public:
     void ProcessTimedAction(SmartScriptHolder& e, uint32 const& min, uint32 const& max, Unit* unit = nullptr, uint32 var0 = 0, uint32 var1 = 0, bool bvar = false, SpellInfo const* spell = nullptr, GameObject* gob = nullptr);
     void GetTargets(ObjectVector& targets, SmartScriptHolder const& e, WorldObject* invoker = nullptr) const;
     void GetWorldObjectsInDist(ObjectVector& objects, float dist) const;
+    void GetPlayerInDist(ObjectVector& objects, float dist) const;
     void InstallTemplate(SmartScriptHolder const& e);
     static SmartScriptHolder CreateSmartEvent(SMART_EVENT e, uint32 event_flags, uint32 event_param1, uint32 event_param2, uint32 event_param3, uint32 event_param4, uint32 event_param5, uint32 event_param6, SMART_ACTION action, uint32 action_param1, uint32 action_param2, uint32 action_param3, uint32 action_param4, uint32 action_param5, uint32 action_param6, SMARTAI_TARGETS t, uint32 target_param1, uint32 target_param2, uint32 target_param3, uint32 target_param4, uint32 phaseMask);
     void AddEvent(SMART_EVENT e, uint32 event_flags, uint32 event_param1, uint32 event_param2, uint32 event_param3, uint32 event_param4, uint32 event_param5, uint32 event_param6, SMART_ACTION action, uint32 action_param1, uint32 action_param2, uint32 action_param3, uint32 action_param4, uint32 action_param5, uint32 action_param6, SMARTAI_TARGETS t, uint32 target_param1, uint32 target_param2, uint32 target_param3, uint32 target_param4, uint32 phaseMask);
@@ -201,6 +202,21 @@ public:
     typedef std::unordered_map<uint32, uint32> CounterMap;
     CounterMap mCounterList;
 
+    // Xinef: Fix Combat Movement
+    void SetActualCombatDist(uint32 dist) { mActualCombatDist = dist; }
+    void RestoreMaxCombatDist() { mActualCombatDist = mMaxCombatDist; }
+    uint32 GetActualCombatDist() const { return mActualCombatDist; }
+    uint32 GetMaxCombatDist() const { return mMaxCombatDist; }
+
+    // Xinef: SmartCasterAI, replace above
+    void SetCasterActualDist(float dist) { smartCasterActualDist = dist; }
+    void RestoreCasterMaxDist() { smartCasterActualDist = smartCasterMaxDist; }
+    Powers GetCasterPowerType() const { return smartCasterPowerType; }
+    float GetCasterActualDist() const { return smartCasterActualDist; }
+    float GetCasterMaxDist() const { return smartCasterMaxDist; }
+
+    //end --------
+
     bool AllowPhaseReset() const { return _allowPhaseReset; }
     void SetPhaseReset(bool allow) { _allowPhaseReset = allow; }
 
@@ -240,6 +256,16 @@ private:
     bool mUseTextTimer;
     uint32 mCurrentPriority;
     bool mEventSortingRequired;
+
+    // Xinef: Fix Combat Movement
+    uint32 mActualCombatDist;
+    uint32 mMaxCombatDist;
+
+    // Xinef: SmartCasterAI, replace above in future
+    uint32 smartCasterActualDist;
+    uint32 smartCasterMaxDist;
+    Powers smartCasterPowerType;
+    //end -----------
 
     // Xinef: misc
     bool _allowPhaseReset;

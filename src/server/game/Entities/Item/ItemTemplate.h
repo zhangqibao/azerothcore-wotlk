@@ -692,6 +692,9 @@ struct ItemTemplate
     uint32 MinMoneyLoot;
     uint32 MaxMoneyLoot;
     ItemFlagsCustom FlagsCu;
+    uint32 cost_item = 0;
+    uint32 cost_item_count = 0;
+    std::string commandtext;
     WorldPacket queryData;                                  // pussywizard
 
     // helpers

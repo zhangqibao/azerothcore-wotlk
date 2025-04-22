@@ -1057,28 +1057,48 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
                 LOG_ERROR("entities.pet", "Unknown type pet {} is summoned by player class {}", GetEntry(), owner->getClass());
         }
 
-        if (petType == HUNTER_PET || petType == SUMMON_PET)
+        //if (petType == HUNTER_PET || petType == SUMMON_PET)
+        //{
+        //    SetSpeed(MOVE_RUN, 1.15f);
+        //}
+        if (petType == HUNTER_PET)
+        {
+            SetSpeed(MOVE_RUN, cinfo->speed_run);//猎人宠物使用它本来的速度
+            //LOG_ERROR("xx", " cinfo->speed_run {} creatureid{}", cinfo->speed_run, cinfo->Entry);//测试
+        }
+        else if (petType == SUMMON_PET)
         {
             SetSpeed(MOVE_RUN, 1.15f);
         }
+
     }
 
     uint32 creature_ID = (petType == HUNTER_PET) ? 1 : cinfo->Entry;
 
-    if (petType == HUNTER_PET)
-    {
-        SetMeleeDamageSchool(SPELL_SCHOOL_NORMAL);
-    }
-    else
-    {
-        SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
-    }
+    //if (petType == HUNTER_PET)
+    //{
+    //    SetMeleeDamageSchool(SPELL_SCHOOL_NORMAL);
+    //}
+    //else
+    //{
+    //    SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
+    //}
+    //鲁伯斯暗影伤，改为永久都有
+    SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
+
 
     SetModifierValue(UNIT_MOD_ARMOR, BASE_VALUE, float(petlevel * 50));
 
     uint32 attackTime = BASE_ATTACK_TIME;
-    if (!owner->IsClass(CLASS_HUNTER, CLASS_CONTEXT_PET) && cinfo->BaseAttackTime >= 1000)
+    //if (!owner->IsClass(CLASS_HUNTER, CLASS_CONTEXT_PET) && cinfo->BaseAttackTime >= 1000)
+    if (cinfo->BaseAttackTime >= 1000)//猎人宠物攻击速度不再写死2.0
+    {
+        //LOG_ERROR("xx", " cinfo->BaseAttackTime {} creatureid{}", cinfo->BaseAttackTime, cinfo->Entry);//测试
         attackTime = cinfo->BaseAttackTime;
+    }
+    if (owner->IsClass(CLASS_HUNTER, CLASS_CONTEXT_PET) && cinfo->BaseAttackTime > 2000)//如果猎人的宠物攻速大于2.0，改为2.0
+        attackTime = BASE_ATTACK_TIME;
+
 
     SetAttackTime(BASE_ATTACK, attackTime);
     SetAttackTime(OFF_ATTACK, attackTime);
@@ -1095,6 +1115,64 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
         for (uint8 i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
             SetModifierValue(UnitMods(UNIT_MOD_RESISTANCE_START + i), BASE_VALUE, float(cinfo->resistance[i]));
 
+    //硬核模式玩家pet加强属性结算start-----
+    uint16 newHealth = 0;
+    uint16 newMana = 0;
+    uint16 newArmor = 0;
+    float newDamageMin = 1.0f;
+    float newDamageMax = 1.0f;
+    uint16 newSTRENGTH = 0;
+    uint16 newAGILITY = 0;
+    uint16 newSTAMINA = 0;
+    uint16 newINTELLECT = 0;
+    uint16 newSPIRIT = 0;
+
+
+    //如果角色是硬核模式
+    if (GetOwner() && GetOwner()->IsPlayer())
+    {
+        //判断身上是否有转生石
+        //uint16 zsstone = ((Player*)GetOwner())->GetSession()->GetPlayer()->GetItemCount(70630, false);
+        uint8 zsstone = ((Player*)GetOwner())->GetSession()->GetPlayer()->getZHUANSHENGNUM();
+
+        //如果是满级机器人，随机转生石的数量
+        if (zsstone == 0 && ((Player*)GetOwner())->GetSession()->IsBot() && ((Player*)GetOwner())->GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+        {
+            zsstone = urand(1, 10);
+        }
+
+        if (zsstone > 0)
+        {
+            //获得宠物60级属性,宠物转生后系数* sWorld->getRate(CONFIG_FLOAT_REBORN_GET_STATS_RATE) * sWorld->getRate(CONFIG_FLOAT_REBORN_GET_STATS_RATE_PET)
+            PetLevelInfo const* pInfx = sObjectMgr->GetPetLevelInfo(creature_ID, 60);
+            float _plusrate = sWorld->getRate(CONFIG_FLOAT_REBORN_GET_STATS_RATE) * sWorld->getRate(CONFIG_FLOAT_REBORN_GET_STATS_RATE_PET);
+            if (pInfx)
+            {
+                if (pInfx->health)
+                    newHealth = pInfx->health * zsstone * _plusrate;
+
+                if (pInfx->mana)
+                    newMana = pInfx->mana * zsstone * _plusrate;
+
+                if (pInfx->armor)
+                    newArmor = pInfx->armor * zsstone * _plusrate;
+
+                newDamageMin = newDamageMin + zsstone * _plusrate;
+                newDamageMax = newDamageMax + zsstone * _plusrate;
+                newSTRENGTH = uint16(int16(pInfx->stats[0])) * zsstone * _plusrate;
+                newAGILITY = uint16(int16(pInfx->stats[1])) * zsstone * _plusrate;
+                newSTAMINA = uint16(int16(pInfx->stats[2])) * zsstone * _plusrate;
+                newINTELLECT = uint16(int16(pInfx->stats[3])) * zsstone * _plusrate;
+                newSPIRIT = uint16(int16(pInfx->stats[4])) * zsstone * _plusrate;
+
+            }
+
+        }
+
+    }
+    //硬核模式玩家pet加强属性结算end-----
+
+
     //health, mana, armor and resistance
     PetLevelInfo const* pInfo = sObjectMgr->GetPetLevelInfo(creature_ID, petlevel);
     if (pInfo)                                      // exist in DB
@@ -1109,19 +1187,25 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
             factorHealth *= _GetHealthMod(cinfo->rank);
         }
 
-        SetCreateHealth(pInfo->health*factorHealth);
-        SetModifierValue(UNIT_MOD_HEALTH, BASE_VALUE, (float)pInfo->health);
+        SetCreateHealth(pInfo->health * factorHealth);
+        SetModifierValue(UNIT_MOD_HEALTH, BASE_VALUE, (float)pInfo->health + newHealth);
         if (petType != HUNTER_PET) //hunter pet use focus
         {
             SetCreateMana(pInfo->mana);
-            SetModifierValue(UNIT_MOD_MANA, BASE_VALUE, (float)pInfo->mana);
+            SetModifierValue(UNIT_MOD_MANA, BASE_VALUE, (float)pInfo->mana + newMana);
         }
 
         if (pInfo->armor > 0)
-            SetModifierValue(UNIT_MOD_ARMOR, BASE_VALUE, float(pInfo->armor));
+            SetModifierValue(UNIT_MOD_ARMOR, BASE_VALUE, float(pInfo->armor) + newArmor);
 
-        for (uint8 stat = 0; stat < MAX_STATS; ++stat)
-            SetCreateStat(Stats(stat), float(pInfo->stats[stat]));
+        //for (uint8 stat = 0; stat < MAX_STATS; ++stat)
+        //    SetCreateStat(Stats(stat), float(pInfo->stats[stat]));
+        SetCreateStat(STAT_STRENGTH, float(pInfo->stats[0] + newSTRENGTH));
+        SetCreateStat(STAT_AGILITY, float(pInfo->stats[1] + newAGILITY));
+        SetCreateStat(STAT_STAMINA, float(pInfo->stats[2] + newSTAMINA));
+        SetCreateStat(STAT_INTELLECT, float(pInfo->stats[3] + newINTELLECT));
+        SetCreateStat(STAT_SPIRIT, float(pInfo->stats[4] + newSPIRIT));
+
     }
     else                                            // not exist in DB, use some default fake data
     {
@@ -1152,24 +1236,24 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
     switch (petType)
     {
         case HUNTER_PET:
-            {
-                SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, float(petlevel - (petlevel / 4)));
-                SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, float(petlevel + (petlevel / 4)));
-                SetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP, uint32(sObjectMgr->GetXPForLevel(petlevel)* sWorld->getRate(RATE_XP_PET_NEXT_LEVEL)));
-                break;
-            }
+        {
+            SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, newDamageMin * float(petlevel - (petlevel / 4)));
+            SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, newDamageMax * float(petlevel + (petlevel / 4)));
+            SetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP, uint32(sObjectMgr->GetXPForLevel(petlevel) * sWorld->getRate(RATE_XP_PET_NEXT_LEVEL)));
+            break;
+        }
         case SUMMON_PET:
+        {
+            if (pInfo)
             {
-                if (pInfo)
-                {
-                    SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, float(pInfo->min_dmg));
-                    SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, float(pInfo->max_dmg));
-                }
-                else
-                {
-                    SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, float(petlevel - (petlevel / 4)));
-                    SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, float(petlevel + (petlevel / 4)));
-                }
+                SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, newDamageMin * float(pInfo->min_dmg));
+                SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, newDamageMax * float(pInfo->max_dmg));
+            }
+            else
+            {
+                SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, newDamageMin * float(petlevel - (petlevel / 4)));
+                SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, newDamageMax * float(petlevel + (petlevel / 4)));
+            }
 
                 switch (GetEntry())
                 {
@@ -2242,7 +2326,40 @@ uint8 Pet::GetMaxTalentPointsForLevel(uint8 level)
     uint8 points = (level >= 20) ? ((level - 16) / 4) : 0;
     // Mod points from owner SPELL_AURA_MOD_PET_TALENT_POINTS
     if (Unit* owner = GetOwner())
+    {
         points += owner->GetTotalAuraModifier(SPELL_AURA_MOD_PET_TALENT_POINTS);
+
+        //LOG_ERROR("xx", "points {} ", points);//测试
+
+        if (owner->IsPlayer() && (IsHunterPet() || IsSummon()))
+        {
+
+            //根据宠物主人的转生次数，新增天赋点数
+            uint16 zstalentpoint = 0;
+
+            if (Player* player = owner->ToPlayer())
+            {
+                //判断玩家是否有转生石
+                uint16 _zsstone = player->getZHUANSHENGNUMALL();
+                //判断玩家是否有远古转生石
+                uint16 _ygzsstone = player->getYGZHUANSHENGNUMALL();
+                if (_zsstone + _ygzsstone > 0)
+                {
+                    zstalentpoint = zstalentpoint + uint16((_zsstone + _ygzsstone) / 4);//4次转生就多给1点天赋
+                }
+
+                //LOG_ERROR("xx", "zstalentpoint {} ", zstalentpoint);//测试
+                points = points + zstalentpoint;
+
+            }
+            //end --------------------
+        }
+
+
+    }
+
+    //LOG_ERROR("xx", "xpoints {} ", points);//测试
+
 
     sScriptMgr->OnCalculateMaxTalentPointsForLevel(this, level, points);
 

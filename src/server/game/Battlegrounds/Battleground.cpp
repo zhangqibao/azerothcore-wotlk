@@ -1355,6 +1355,13 @@ void Battleground::AddPlayer(Player* player)
     sBattlegroundMgr->BuildPlayerJoinedBattlegroundPacket(&data, player);
     SendPacketToTeam(teamId, &data, player, false);
 
+    //进战场和竞技场先清掉所有buff
+    player->RemoveAllAurasVisibility();
+
+    //清掉坐骑属性
+    player->_RemoveAllItemModsForHLDM();
+    //end ----------------
+
     player->RemoveAurasByType(SPELL_AURA_MOUNTED);
 
     // add arena specific auras

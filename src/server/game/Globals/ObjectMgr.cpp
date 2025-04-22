@@ -2488,7 +2488,8 @@ void ObjectMgr::LoadGameobjects()
                          //   18
                          "ScriptName "
                          "FROM gameobject LEFT OUTER JOIN game_event_gameobject ON gameobject.guid = game_event_gameobject.guid "
-                         "LEFT OUTER JOIN pool_gameobject ON gameobject.guid = pool_gameobject.guid");
+                         "LEFT OUTER JOIN pool_gameobject ON gameobject.guid = pool_gameobject.guid where gameobject.VerifiedBuild<90000 or gameobject.VerifiedBuild is null");
+
 
     if (!result)
     {
@@ -2736,8 +2737,9 @@ void ObjectMgr::LoadItemTemplates()
                          "TotemCategory, socketColor_1, socketContent_1, socketColor_2, socketContent_2, socketColor_3, socketContent_3, socketBonus, "
                          //                                            126                 127                     128            129            130            131         132         133
                          "GemProperties, RequiredDisenchantSkill, ArmorDamageModifier, duration, ItemLimitCategory, HolidayId, ScriptName, DisenchantID, "
-                         //                                           134        135            136
-                         "FoodType, minMoneyLoot, maxMoneyLoot, flagsCustom FROM item_template");
+                        //                                           134        135            136            137            138       139     140
+                        "FoodType, minMoneyLoot, maxMoneyLoot, flagsCustom, cost_item,cost_item_count,commandtext FROM item_template where VerifiedBuild<90000 or VerifiedBuild is null");
+
 
     if (!result)
     {
@@ -2864,6 +2866,10 @@ void ObjectMgr::LoadItemTemplates()
         itemTemplate.MinMoneyLoot            = fields[135].Get<uint32>();
         itemTemplate.MaxMoneyLoot            = fields[136].Get<uint32>();
         itemTemplate.FlagsCu                 = ItemFlagsCustom(fields[137].Get<uint32>());
+
+        itemTemplate.cost_item = fields[138].Get<uint32>();
+        itemTemplate.cost_item_count = fields[139].Get<uint32>();
+        itemTemplate.commandtext = fields[140].Get<std::string>();
 
         // Checks
         ItemEntry const* dbcitem = sItemStore.LookupEntry(entry);
@@ -9474,9 +9480,9 @@ void ObjectMgr::LoadGossipMenuItems()
     _gossipMenuItemsStore.clear();
 
     QueryResult result = WorldDatabase.Query(
-                             //      0       1         2           3           4                      5           6              7             8            9         10        11       12
-                             "SELECT MenuID, OptionID, OptionIcon, OptionText, OptionBroadcastTextID, OptionType, OptionNpcFlag, ActionMenuID, ActionPoiID, BoxCoded, BoxMoney, BoxText, BoxBroadcastTextID "
-                             "FROM gossip_menu_option ORDER BY MenuID, OptionID");
+        //      0       1         2           3           4                      5           6              7             8            9         10        11       12                 13
+        "SELECT MenuID, OptionID, OptionIcon, OptionText, OptionBroadcastTextID, OptionType, OptionNpcFlag, ActionMenuID, ActionPoiID, BoxCoded, BoxMoney, BoxText, BoxBroadcastTextID, `commandtext` "
+        "FROM gossip_menu_option ORDER BY MenuID, OptionID");
 
     if (!result)
     {
@@ -9504,6 +9510,7 @@ void ObjectMgr::LoadGossipMenuItems()
         gMenuItem.BoxMoney                  = fields[10].Get<uint32>();
         gMenuItem.BoxText                   = fields[11].Get<std::string>();
         gMenuItem.BoxBroadcastTextID        = fields[12].Get<uint32>();
+        gMenuItem.commandtext               = fields[13].Get<std::string>();
 
         if (gMenuItem.OptionIcon >= GOSSIP_ICON_MAX)
         {

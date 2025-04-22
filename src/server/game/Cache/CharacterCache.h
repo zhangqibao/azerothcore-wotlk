@@ -47,9 +47,9 @@ class AC_GAME_API CharacterCache
         static CharacterCache* instance();
 
         void LoadCharacterCacheStorage();
-        void RefreshCacheEntry(uint32 lowGuid);
+        void RefreshCacheEntry(uint32 lowGuid, uint32 guildid = 0);
 
-        void AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accountId, std::string const& name, uint8 gender, uint8 race, uint8 playerClass, uint8 level);
+        void AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accountId, std::string const& name, uint8 gender, uint8 race, uint8 playerClass, uint8 level, uint32 guild = 0);
         void DeleteCharacterCacheEntry(ObjectGuid const& guid, std::string const& name);
 
         void UpdateCharacterData(ObjectGuid const& guid, std::string const& name, Optional<uint8> gender = {}, Optional<uint8> race = {});

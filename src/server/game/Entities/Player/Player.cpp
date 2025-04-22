@@ -318,7 +318,10 @@ Player::Player(WorldSession* session): Unit(true), m_mover(this)
     }
 
     for (uint8 i = 0; i < MAX_COMBAT_RATING; i++)
+    {
         m_baseRatingValue[i] = 0;
+        m_baseRatingPCTValue[i] = 0;//攻速百分比初始化
+    }
 
     m_baseSpellPower = 0;
     m_baseFeralAP = 0;
@@ -1509,7 +1512,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
         // Check enter rights before map getting to avoid creating instance copy for player
         // this check not dependent from map instance copy and same for all instance copies of selected map
-        if (!(options & TELE_TO_GM_MODE) && sMapMgr->PlayerCannotEnter(mapid, this, false))
+        if (!(options & TELE_TO_GM_MODE) && sMapMgr->PlayerCannotEnter(mapid, this, false, true))
             return false;
 
         // if PlayerCannotEnter -> CanEnter: checked above
@@ -1643,6 +1646,14 @@ void Player::ProcessDelayedOperations()
 
     if (m_DelayedOperations & DELAYED_RESURRECT_PLAYER)
     {
+        if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+        {
+            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+            //如果是专家模式，这里不继续运行
+            if (!GetMap()->IsBattlegroundOrArena())
+                return;
+        }
+
         ResurrectPlayer(0.0f, false);
 
         if (GetMaxHealth() > m_resurrectHealth)
@@ -1906,6 +1917,7 @@ void Player::Regenerate(Powers power)
         return;
 
     float addvalue = 0.0f;
+    float _energyrate = 1.0f;
 
     switch (power)
     {
@@ -1934,6 +1946,16 @@ void Player::Regenerate(Powers power)
             break;
         case POWER_ENERGY:
             {
+                //判断如果是硬核玩家，按转生的次数最高能提高50%的能量回复
+                //if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL || !GetSession()->IsBot())
+                if (!GetSession()->IsBot())//让普通模式也可以生效
+                {
+                    if (power == POWER_ENERGY)
+                    {
+                        _energyrate = 1.0f + 0.025f * getZHUANSHENGNUMALL() + 0.025f * getYGZHUANSHENGNUMALL();
+                    }
+                }
+
                 float baseRegenRate = 10.0f * sWorld->getRate(RATE_POWER_ENERGY);
                 float hasteModifier = 1.0f;
 
@@ -1951,7 +1973,7 @@ void Player::Regenerate(Powers power)
 
                 float adjustedRegenRate = baseRegenRate * hasteModifier;
 
-                addvalue += adjustedRegenRate * 0.001f * m_regenTimer;
+                addvalue += adjustedRegenRate * 0.001f * m_regenTimer * _energyrate;
             }
             break;
         case POWER_RUNIC_POWER:
@@ -2086,6 +2108,238 @@ void Player::RegenerateHealth()
             ApplyPct(addvalue, GetTotalAuraModifier(SPELL_AURA_MOD_REGEN_DURING_COMBAT));
         }
     }
+
+    //获得玩家当前是否在战场或竞技场中
+    bool canusezuoqi = false;
+    if (IsInWorld() && isActiveObject())
+        if (GetMap() && GetAreaId() && GetAreaId())
+            canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+
+    if (IsPlayer() && !GetSession()->IsBot() && canusezuoqi)
+    {
+        /*
+        //判断身上是否有会员卡，有的话，触发会员卡对应的回血，只会触发最高级别的卡
+        if (GetItemCount(70911, true) > 0)
+        {
+            addvalue += (float)(maxValue * 0.044f) * 0.4f;
+        }
+        else
+        {
+            if (GetItemCount(70910, true) > 0)
+            {
+                addvalue += (float)(maxValue * 0.04f) * 0.4f;
+            }
+            else
+            {
+                if (GetItemCount(70909, true) > 0)
+                {
+                    addvalue += (float)(maxValue * 0.036f) * 0.4f;
+                }
+                else
+                {
+                    if (GetItemCount(70908, true) > 0)
+                    {
+                        addvalue += (float)(maxValue * 0.032f) * 0.4f;
+                    }
+                    else
+                    {
+                        if (GetItemCount(70907, true) > 0)
+                        {
+                            addvalue += (float)(maxValue * 0.028f) * 0.4f;
+                        }
+                        else
+                        {
+                            if (GetItemCount(70906, true) > 0)
+                            {
+                                addvalue += (float)(maxValue * 0.024f) * 0.4f;
+                            }
+                            else
+                            {
+                                if (GetItemCount(70905, true) > 0)
+                                {
+                                    addvalue += (float)(maxValue * 0.02f) * 0.4f;
+                                }
+                                else
+                                {
+                                    if (GetItemCount(70904, true) > 0)
+                                    {
+                                        addvalue += (float)(maxValue * 0.016f) * 0.4f;
+                                    }
+                                    else
+                                    {
+                                        if (GetItemCount(70903, true) > 0)
+                                        {
+                                            addvalue += (float)(maxValue * 0.012f) * 0.4f;
+                                        }
+                                        else
+                                        {
+                                            if (GetItemCount(70902, true) > 0)
+                                            {
+                                                addvalue += (float)(maxValue * 0.008f) * 0.4f;
+                                            }
+                                            else
+                                            {
+                                                if (GetItemCount(70901, true) > 0)
+                                                {
+                                                    addvalue += (float)(maxValue * 0.004f) * 0.4f;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //end
+        */
+
+
+        //判断身上是否有会员卡，有的话，触发会员卡对应的回血，只会触发最高级别的卡
+        if (getVIP20())
+        {
+            addvalue += (float)(maxValue * 0.040f) * 0.4f;
+        }
+        else
+        {
+            if (getVIP19())
+            {
+                addvalue += (float)(maxValue * 0.038f) * 0.4f;
+            }
+            else
+            {
+                if (getVIP18())
+                {
+                    addvalue += (float)(maxValue * 0.036f) * 0.4f;
+                }
+                else
+                {
+                    if (getVIP17())
+                    {
+                        addvalue += (float)(maxValue * 0.034f) * 0.4f;
+                    }
+                    else
+                    {
+                        if (getVIP16())
+                        {
+                            addvalue += (float)(maxValue * 0.032f) * 0.4f;
+                        }
+                        else
+                        {
+                            if (getVIP15())
+                            {
+                                addvalue += (float)(maxValue * 0.030f) * 0.4f;
+                            }
+                            else
+                            {
+                                if (getVIP14())
+                                {
+                                    addvalue += (float)(maxValue * 0.028f) * 0.4f;
+                                }
+                                else
+                                {
+                                    if (getVIP13())
+                                    {
+                                        addvalue += (float)(maxValue * 0.026f) * 0.4f;
+                                    }
+                                    else
+                                    {
+                                        if (getVIP12())
+                                        {
+                                            addvalue += (float)(maxValue * 0.024f) * 0.4f;
+                                        }
+                                        else
+                                        {
+                                            if (getVIP11())
+                                            {
+                                                addvalue += (float)(maxValue * 0.022f) * 0.4f;
+                                            }
+                                            else
+                                            {
+                                                if (getVIP10())
+                                                {
+                                                    addvalue += (float)(maxValue * 0.02f) * 0.4f;
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP9())
+                                                    {
+                                                        addvalue += (float)(maxValue * 0.018f) * 0.4f;
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP8())
+                                                        {
+                                                            addvalue += (float)(maxValue * 0.016f) * 0.4f;
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP7())
+                                                            {
+                                                                addvalue += (float)(maxValue * 0.014f) * 0.4f;
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP6())
+                                                                {
+                                                                    addvalue += (float)(maxValue * 0.012f) * 0.4f;
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP5())
+                                                                    {
+                                                                        addvalue += (float)(maxValue * 0.01f) * 0.4f;
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP4())
+                                                                        {
+                                                                            addvalue += (float)(maxValue * 0.008f) * 0.4f;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP3())
+                                                                            {
+                                                                                addvalue += (float)(maxValue * 0.006f) * 0.4f;
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP2())
+                                                                                {
+                                                                                    addvalue += (float)(maxValue * 0.004f) * 0.4f;
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    if (getVIP1())
+                                                                                    {
+                                                                                        addvalue += (float)(maxValue * 0.002f) * 0.4f;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //end
+
+    }
+
 
     // always regeneration bonus (including combat)
     addvalue += GetTotalAuraModifier(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT);
@@ -2365,6 +2619,198 @@ void Player::SetGMVisible(bool on)
     }
 }
 
+void Player::SetYHModelON(bool on, bool notify)//硬核模式
+{
+    if (on)
+    {
+        m_ExtraFlags |= PLAYER_EXTRA_YH_MODEL;          //add flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21666);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21668);//屏幕中间的提醒
+        }
+    }
+    else
+    {
+        m_ExtraFlags &= ~PLAYER_EXTRA_YH_MODEL;         //remove flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21667);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21669);//屏幕中间的提醒
+        }
+    }
+    UpdateAllStats();
+    if (GetPet())
+        GetPet()->UpdateAllStats();
+    // Sauvegarde directement pour que le site n'affiche plus le MJ parmis les joueurs co.
+    CharacterDatabase.Execute("UPDATE characters SET extra_flags = {} WHERE guid = {}", m_ExtraFlags, GetGUID().GetCounter());
+}
+
+void Player::SetYHModelPLUS1ON(bool on, bool notify)//乌龟模式
+{
+    if (on)
+    {
+        m_ExtraFlags |= PLAYER_EXTRA_YH_MODEL_PLUS1;          //add flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21682);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21684);//屏幕中间的提醒
+        }
+    }
+    else
+    {
+        m_ExtraFlags &= ~PLAYER_EXTRA_YH_MODEL_PLUS1;         //remove flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21683);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21685);//屏幕中间的提醒
+        }
+    }
+    UpdateAllStats();
+    if (GetPet())
+        GetPet()->UpdateAllStats();
+    // Sauvegarde directement pour que le site n'affiche plus le MJ parmis les joueurs co.
+    CharacterDatabase.Execute("UPDATE characters SET extra_flags = {} WHERE guid = {}", m_ExtraFlags, GetGUID().GetCounter());
+}
+
+void Player::SetYHModelPLUS2ON(bool on, bool notify)//流浪者模式
+{
+    if (on)
+    {
+        m_ExtraFlags |= PLAYER_EXTRA_YH_MODEL_PLUS2;          //add flag
+
+        //打开FFA PVP，乱斗模式
+        //SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_FFA_PVP);//乱斗标签
+        //SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_PVP_DESIRED);//PVP标签
+        //UpdatePvP(true);
+
+        //开模式自动退组
+        Group* group = GetGroup();
+        if (group)
+        {
+            group->RemoveMember(GetGUID());
+        }
+        //end -----
+
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21688);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21690);//屏幕中间的提醒
+        }
+    }
+    else
+    {
+        m_ExtraFlags &= ~PLAYER_EXTRA_YH_MODEL_PLUS2;         //remove flag
+        //关闭FFA PVP，乱斗模式
+        //RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_FFA_PVP);
+        //RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_PVP_DESIRED);
+        //UpdatePvP(false);
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21689);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21691);//屏幕中间的提醒
+        }
+    }
+    UpdateAllStats();
+    if (GetPet())
+        GetPet()->UpdateAllStats();
+    // Sauvegarde directement pour que le site n'affiche plus le MJ parmis les joueurs co.
+    CharacterDatabase.Execute("UPDATE characters SET extra_flags = {} WHERE guid = {}", m_ExtraFlags, GetGUID().GetCounter());
+}
+
+void Player::SetYHModelPLUS3ON(bool on, bool notify)//专家模式
+{
+    if (on)
+    {
+        m_ExtraFlags |= PLAYER_EXTRA_YH_MODEL_PLUS3;          //add flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21694);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21696);//屏幕中间的提醒
+        }
+    }
+    else
+    {
+        m_ExtraFlags &= ~PLAYER_EXTRA_YH_MODEL_PLUS3;         //remove flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21695);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21697);//屏幕中间的提醒
+        }
+    }
+    UpdateAllStats();
+    if (GetPet())
+        GetPet()->UpdateAllStats();
+    // Sauvegarde directement pour que le site n'affiche plus le MJ parmis les joueurs co.
+    CharacterDatabase.Execute("UPDATE characters SET extra_flags = {} WHERE guid = {}", m_ExtraFlags, GetGUID().GetCounter());
+}
+
+void Player::SetYHModelPLUS4ON(bool on, bool notify)//技艺模式
+{
+    if (!sWorld->getBoolConfig(CONFIG_BOOL_CHALLENGE_ARTMODE_ENABLE))
+        return;
+
+    if (on)
+    {
+        m_ExtraFlags |= PLAYER_EXTRA_YH_MODEL_PLUS4;          //add flag
+
+        /*
+        //学会所有采集和制作专业
+        CastSpell(this, 2155, true);//制皮
+        CastSpell(this, 8615, true);//剥皮
+        CastSpell(this, 3911, true);//裁缝
+        CastSpell(this, 2581, true);//采矿
+        CastSpell(this, 2020, true);//锻造
+        CastSpell(this, 25245, true);//珠宝
+        CastSpell(this, 4039, true);//工程学
+        CastSpell(this, 7414, true);//附魔
+        CastSpell(this, 2372, true);//草药学
+        CastSpell(this, 2275, true);//炼金术
+        CastSpell(this, 45375, true);//铭文
+
+        //end --------------
+        */
+
+        //脱下身上装备
+        for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+        {
+            AutoUnequipItemFromSlot(i);
+        }
+
+        //end ------------------
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21700);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21702);//屏幕中间的提醒
+        }
+    }
+    else
+    {
+        m_ExtraFlags &= ~PLAYER_EXTRA_YH_MODEL_PLUS4;         //remove flag
+
+        if (notify)
+        {
+            ChatHandler(GetSession()).SendSysMessage(21701);//对话框里的提醒
+            ChatHandler(GetSession()).SendNotification(21703);//屏幕中间的提醒
+        }
+    }
+    UpdateAllStats();
+    if (GetPet())
+        GetPet()->UpdateAllStats();
+    // Sauvegarde directement pour que le site n'affiche plus le MJ parmis les joueurs co.
+    CharacterDatabase.Execute("UPDATE characters SET extra_flags = {} WHERE guid = {}", m_ExtraFlags, GetGUID().GetCounter());
+}
+
+
 bool Player::IsGroupVisibleFor(Player const* p) const
 {
     switch (sWorld->getIntConfig(CONFIG_GROUP_VISIBILITY))
@@ -2514,6 +2960,10 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
 
     uint8 level = GetLevel();
 
+    //如果等级大于等于配置里的EarnXPMaxPlayerLevel参数，就不能获得经验
+    if (level >= sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+        return;
+
     // Favored experience increase START
     uint32 zone = GetZoneId();
     float favored_exp_mult = 0;
@@ -2542,6 +2992,257 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
     {
         return;
     }
+
+    //低等级号增加额外经验
+    if (this->GetLevel() <= uint32(sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_MAXLEVEL)))
+    {
+        xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_MULTIPLY);
+        //如果是精英怪，需要再乘以一次倍率
+        if (victim && ((Creature*)victim)->isElite())
+        {
+            xp *= sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_MULTIPLY);
+        }
+    }
+
+    //TN职业双倍合剂增加额外经验
+    if (this->GetClass())
+    {
+        uint8 playerrace;
+        //if (this->GetRace() == 2 || this->GetRace() == 5 || this->GetRace() == 6 || this->GetRace() == 8)
+        //   playerrace = 1;//部落
+        //else
+        //    playerrace = 0;//联盟
+
+        if (Player::TeamIdForRace(this->GetRace()) == TEAM_ALLIANCE)
+            playerrace = 0;//联盟
+        else if (Player::TeamIdForRace(this->GetRace()) == TEAM_HORDE)
+            playerrace = 1;//部落
+
+        if (playerrace == 1)
+        {
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CAMPBL);
+        }
+        if (playerrace == 0)
+        {
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CAMPLM);
+        }
+        switch (this->GetClass())
+        {
+        case CLASS_WARRIOR:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_WARRIOR);
+            break;
+        case CLASS_HUNTER:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_HUNTER);
+            break;
+        case CLASS_MAGE:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_MAGE);
+            break;
+        case CLASS_WARLOCK:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_WARLOCK);
+            break;
+        case CLASS_ROGUE:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_ROGUE);
+            break;
+        case CLASS_PALADIN:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_PALADIN);
+            break;
+        case CLASS_SHAMAN:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_SHAMAN);
+            break;
+        case CLASS_PRIEST:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_PRIEST);
+            break;
+        case CLASS_DRUID:
+            xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CLASS_DRUID);
+            break;
+        }
+    }
+
+
+    //双倍经验(光环buff可以随便改，这里用的是一个没什么用的加精神的。然后设置物品技能来触发)
+    if (HasAura(54303) && victim) {
+        xp = xp * 2;
+    }
+
+
+
+    //判断是否有转生石,包括银行
+    //uint32 zsstone = GetItemCount(70630, true);
+    uint16 zsstone = getZHUANSHENGNUMALL();
+    //LOG_ERROR("xx", "xp_zsstone {}  ", zsstone);//测试
+
+
+    //硬核模式经验翻倍
+    //if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL) && sWorld.getConfig(CONFIG_BOOL_D3_MODEL) && victim )//打怪经验
+    if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL)//所有经验
+    {
+        //if(!zsstone)//只有没转生过的第一世是双倍经验
+        xp = xp * sWorld->getRate(CONFIG_FLOAT_YH_XP_RATE);
+    }
+
+
+
+    //龟速模式经验为50%
+    if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS1)
+    {
+        //if (!zsstone)//没转生过的第一世是减50%，否则减75%
+        xp = xp / 2;
+        //else
+        //    xp = xp / 4;
+    }
+
+    //转生一次，经验获得减少30%，10转升级时经验为0.028，本来30000经验，现在是847
+    //判断玩家是否有转生石
+    //uint32 _zsstone = GetItemCount(70630, true);//在银行中也计算
+    //if (_zsstone > 0)
+    //{
+    //    xp = xp  * std::pow((1 - 0.9), _zsstone);//几次转生就用XP乘以0.9的几次方
+    //}
+
+    //end-------
+
+    //VIP卡增加经验倍率
+
+    if (getVIP20())
+    {
+        xp = uint32(xp * 2.0f);
+    }
+    else
+    {
+        if (getVIP19())
+        {
+            xp = uint32(xp * 1.95f);
+        }
+        else
+        {
+            if (getVIP18())
+            {
+                xp = uint32(xp * 1.9f);
+            }
+            else
+            {
+                if (getVIP17())
+                {
+                    xp = uint32(xp * 1.85f);
+                }
+                else
+                {
+                    if (getVIP16())
+                    {
+                        xp = uint32(xp * 1.8f);
+                    }
+                    else
+                    {
+                        if (getVIP15())
+                        {
+                            xp = uint32(xp * 1.75f);
+                        }
+                        else
+                        {
+                            if (getVIP14())
+                            {
+                                xp = uint32(xp * 1.7f);
+                            }
+                            else
+                            {
+                                if (getVIP13())
+                                {
+                                    xp = uint32(xp * 1.65f);
+                                }
+                                else
+                                {
+                                    if (getVIP12())
+                                    {
+                                        xp = uint32(xp * 1.6f);
+                                    }
+                                    else
+                                    {
+
+                                        if (getVIP11())
+                                        {
+                                            xp = uint32(xp * 1.55f);
+                                        }
+                                        else
+                                        {
+                                            if (getVIP10())
+                                            {
+                                                xp = uint32(xp * 1.5f);
+                                            }
+                                            else
+                                            {
+                                                if (getVIP9())
+                                                {
+                                                    xp = uint32(xp * 1.45f);
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP8())
+                                                    {
+                                                        xp = uint32(xp * 1.4f);
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP7())
+                                                        {
+                                                            xp = uint32(xp * 1.35f);
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP6())
+                                                            {
+                                                                xp = uint32(xp * 1.3f);
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP5())
+                                                                {
+                                                                    xp = uint32(xp * 1.25f);
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP4())
+                                                                    {
+                                                                        xp = uint32(xp * 1.2f);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP3())
+                                                                        {
+                                                                            xp = uint32(xp * 1.15f);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP2())
+                                                                            {
+                                                                                xp = uint32(xp * 1.1f);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP1())
+                                                                                {
+                                                                                    xp = uint32(xp * 1.05f);
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //end -------------
+
 
     SendLogXPGain(xp, victim, bonus_xp, recruitAFriend, group_rate);
 
@@ -2625,6 +3326,8 @@ void Player::GiveLevel(uint8 level)
 
     UpdateAllStats();
 
+    UpdateAllAttackSpeeds();//依据当前等级，更新攻速、施法速度，放这里测试看看
+
     if (sWorld->getBoolConfig(CONFIG_ALWAYS_MAXSKILL)) // Max weapon skill when leveling up
         UpdateSkillsToMaxSkillsForLevel();
 
@@ -2675,6 +3378,10 @@ void Player::GiveLevel(uint8 level)
     //npcbot: force bots to update stats
     _botMgr->SetBotsShouldUpdateStats();
     //end npcbot
+
+    //leveup升级日志写入
+    LOG_INFO("levelup", "Leveup player:{}[{}] levelup to {} from {}", GetName(), GetGUID().GetCounter(), level, oldLevel);
+
 }
 
 bool Player::IsMaxLevel() const
@@ -2684,7 +3391,186 @@ bool Player::IsMaxLevel() const
 
 void Player::InitTalentForLevel()
 {
-    uint32 talentPointsForLevel = CalculateTalentsPoints();
+    //根据玩家的转生次数，新增天赋点数
+    uint16 zstalentpoint = 0;
+
+    //判断玩家是否有转生石
+    //uint8 _zsstone = GetItemCount(70630, true);//在银行中也计算
+    uint16 _zsstone = getZHUANSHENGNUMALL();
+
+    //如果是满级机器人，固定转生石的数量（否则会因为每次不同导致加点被清空）
+    //if (_zsstone == 0 && GetSession()->IsBot() && GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+    //{
+    //    _zsstone = urand(0, 10);
+    //}
+
+    if (_zsstone > 0)
+    {
+        zstalentpoint = _zsstone;//几次转生就多给几点天赋
+    }
+
+    //判断玩家是否有流浪者之傲
+    if (GetItemCount(95995, true) > 0)
+    {
+        zstalentpoint = zstalentpoint + 5;
+    }
+
+
+    //判断玩家是否有远古转生石
+    uint16 _ygzsstone = getYGZHUANSHENGNUMALL();
+    if (_ygzsstone > 0)
+    {
+        zstalentpoint = zstalentpoint + _ygzsstone;//几次转生就多给几点天赋
+    }
+
+    /*
+    //根据V卡等级增加天赋，1级1点天赋
+
+    if (getVIP20())
+    {
+        zstalentpoint = zstalentpoint + 20;
+    }
+    else
+    {
+        if (getVIP19())
+        {
+            zstalentpoint = zstalentpoint + 19;
+        }
+        else
+        {
+            if (getVIP18())
+            {
+                zstalentpoint = zstalentpoint + 18;
+            }
+            else
+            {
+                if (getVIP17())
+                {
+                    zstalentpoint = zstalentpoint + 17;
+                }
+                else
+                {
+                    if (getVIP16())
+                    {
+                        zstalentpoint = zstalentpoint + 16;
+                    }
+                    else
+                    {
+                        if (getVIP15())
+                        {
+                            zstalentpoint = zstalentpoint + 15;
+                        }
+                        else
+                        {
+                            if (getVIP14())
+                            {
+                                zstalentpoint = zstalentpoint + 14;
+                            }
+                            else
+                            {
+                                if (getVIP13())
+                                {
+                                    zstalentpoint = zstalentpoint + 13;
+                                }
+                                else
+                                {
+                                    if (getVIP12())
+                                    {
+                                        zstalentpoint = zstalentpoint + 12;
+                                    }
+                                    else
+                                    {
+
+                                        if (getVIP11())
+                                        {
+                                            zstalentpoint = zstalentpoint + 11;
+                                        }
+                                        else
+                                        {
+                                            if (getVIP10())
+                                            {
+                                                zstalentpoint = zstalentpoint + 10;
+                                            }
+                                            else
+                                            {
+                                                if (getVIP9())
+                                                {
+                                                    zstalentpoint = zstalentpoint + 9;
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP8())
+                                                    {
+                                                        zstalentpoint = zstalentpoint + 8;
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP7())
+                                                        {
+                                                            zstalentpoint = zstalentpoint + 7;
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP6())
+                                                            {
+                                                                zstalentpoint = zstalentpoint + 6;
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP5())
+                                                                {
+                                                                    zstalentpoint = zstalentpoint + 5;
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP4())
+                                                                    {
+                                                                        zstalentpoint = zstalentpoint + 4;
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP3())
+                                                                        {
+                                                                            zstalentpoint = zstalentpoint + 3;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP2())
+                                                                            {
+                                                                                zstalentpoint = zstalentpoint + 2;
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP1())
+                                                                                {
+                                                                                    zstalentpoint = zstalentpoint + 1;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    */
+
+    //end -----------
+
+
+    uint32 talentPointsForLevel = CalculateTalentsPoints() + zstalentpoint;
+
 
     // xinef: more talent points that we have are used, reset
     if (m_usedTalentCount > talentPointsForLevel)
@@ -3350,7 +4236,32 @@ bool Player::_addSpell(uint32 spellId, uint8 addSpecMask, bool temporary, bool l
         if (skill_max_value < new_skill_max_value)
             skill_max_value = new_skill_max_value;
 
-        SetSkill(spellLearnSkill->skill, spellLearnSkill->step, skill_value, skill_max_value);
+        //专业奖励
+        switch (spellId)
+        {
+        case 13920://附魔 
+        case 10662://制皮 
+        case 10768://剥皮 
+        case 11993://草药 
+        case 11611://炼金 
+        case 12180://裁缝 
+        case 12656://工程 
+        case 10248://采矿 
+        case 9785://锻造 
+        case 18260://烹饪 
+        case 18248://钓鱼 
+        case 10846://急救
+        case 28895://珠宝加工
+        case 45360://珠宝加工
+            //被动技能生效
+            //SetSkill(skillLearnInfo->skill, value, max, skillLearnInfo->step, true);
+            SetSkill(spellLearnSkill->skill, spellLearnSkill->step, skill_value, skill_max_value, true);
+            break;
+        default:
+            SetSkill(spellLearnSkill->skill, spellLearnSkill->step, skill_value, skill_max_value);
+            break;
+        }
+
     }
     else
     {
@@ -3831,6 +4742,184 @@ bool Player::resetTalents(bool noResetCost)
 
     // xinef: get max available talent points amount
     uint32 talentPointsForLevel = CalculateTalentsPoints();
+
+    //根据玩家的转生次数，新增天赋点数
+    uint16 zstalentpoint = 0;
+
+    //判断玩家是否有转生石
+    //uint8 _zsstone = GetItemCount(70630, true);//在银行中也计算
+    uint16 _zsstone = getZHUANSHENGNUMALL();
+
+    //如果是满级机器人，随机转生石的数量（否则会因为每次不同导致加点被清空）
+    //if (_zsstone == 0 && GetSession()->IsBot() && GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+    //{
+    //    _zsstone = urand(0, 10);
+    //}
+
+    if (_zsstone > 0)
+    {
+        zstalentpoint = _zsstone;//几次转生就多给几点天赋
+    }
+
+    //判断玩家是否有流浪者之傲
+    if (GetItemCount(95995, true) > 0)
+    {
+        zstalentpoint = zstalentpoint + 5;
+    }
+
+
+    //判断玩家是否有远古转生石
+    uint16 _ygzsstone = getYGZHUANSHENGNUMALL();
+    if (_ygzsstone > 0)
+    {
+        zstalentpoint = zstalentpoint + _ygzsstone;//几次转生就多给几点天赋
+    }
+
+    /*
+    //根据V卡等级增加天赋，从VIP6开始，1级是1点天赋
+
+    if (getVIP20())
+    {
+        zstalentpoint = zstalentpoint + 20;
+    }
+    else
+    {
+        if (getVIP19())
+        {
+            zstalentpoint = zstalentpoint + 19;
+        }
+        else
+        {
+            if (getVIP18())
+            {
+                zstalentpoint = zstalentpoint + 18;
+            }
+            else
+            {
+                if (getVIP17())
+                {
+                    zstalentpoint = zstalentpoint + 17;
+                }
+                else
+                {
+                    if (getVIP16())
+                    {
+                        zstalentpoint = zstalentpoint + 16;
+                    }
+                    else
+                    {
+                        if (getVIP15())
+                        {
+                            zstalentpoint = zstalentpoint + 15;
+                        }
+                        else
+                        {
+                            if (getVIP14())
+                            {
+                                zstalentpoint = zstalentpoint + 14;
+                            }
+                            else
+                            {
+                                if (getVIP13())
+                                {
+                                    zstalentpoint = zstalentpoint + 13;
+                                }
+                                else
+                                {
+                                    if (getVIP12())
+                                    {
+                                        zstalentpoint = zstalentpoint + 12;
+                                    }
+                                    else
+                                    {
+
+                                        if (getVIP11())
+                                        {
+                                            zstalentpoint = zstalentpoint + 11;
+                                        }
+                                        else
+                                        {
+                                            if (getVIP10())
+                                            {
+                                                zstalentpoint = zstalentpoint + 10;
+                                            }
+                                            else
+                                            {
+                                                if (getVIP9())
+                                                {
+                                                    zstalentpoint = zstalentpoint + 9;
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP8())
+                                                    {
+                                                        zstalentpoint = zstalentpoint + 8;
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP7())
+                                                        {
+                                                            zstalentpoint = zstalentpoint + 7;
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP6())
+                                                            {
+                                                                zstalentpoint = zstalentpoint + 6;
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP5())
+                                                                {
+                                                                    zstalentpoint = zstalentpoint + 5;
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP4())
+                                                                    {
+                                                                        zstalentpoint = zstalentpoint + 4;
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP3())
+                                                                        {
+                                                                            zstalentpoint = zstalentpoint + 3;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP2())
+                                                                            {
+                                                                                zstalentpoint = zstalentpoint + 2;
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP1())
+                                                                                {
+                                                                                    zstalentpoint = zstalentpoint + 1;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    */
+    talentPointsForLevel = talentPointsForLevel + zstalentpoint;
+    //end -----------
+
 
     // xinef: no talent points are used, return
     if (m_usedTalentCount == 0)
@@ -4604,6 +5693,15 @@ void Player::BuildPlayerRepop()
 
 void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 {
+    if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "ResurrectPlayer");//测试
+        //如果玩家是专家模式，这里不运行复活代码，但玩家点复活按钮尸体会变成骷髅
+        //一旦恢复为非专家模式，玩家将直接复活，要在调用这个函数的外面进行判断，不去改变尸体的状态
+        if (!GetMap()->IsBattlegroundOrArena())
+            return;
+    }
+
     if (!sScriptMgr->OnPlayerCanResurrect(this))
         return;
 
@@ -4682,8 +5780,290 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     }
 }
 
+void Player::ResurrectPlayerByGM(float restore_percent, bool applySickness)
+{
+    WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4);        // remove spirit healer position
+    data << uint32(-1);
+    data << float(0);
+    data << float(0);
+    data << float(0);
+    GetSession()->SendPacket(&data);
+
+    // speed change, land walk
+
+    // remove death flag + set aura
+    SetByteValue(UNIT_FIELD_BYTES_1, UNIT_BYTES_1_OFFSET_ANIM_TIER, UNIT_BYTE1_FLAG_GROUND);
+    RemoveAurasDueToSpell(20584);                           // speed bonuses
+    RemoveAurasDueToSpell(8326);                            // SPELL_AURA_GHOST
+
+    if (GetSession()->IsARecruiter() || (GetSession()->GetRecruiterId() != 0))
+        SetDynamicFlag(UNIT_DYNFLAG_REFER_A_FRIEND);
+
+    setDeathState(DeathState::Alive);
+    SetMovement(MOVE_LAND_WALK);
+    SetMovement(MOVE_UNROOT);
+    SetWaterWalking(false);
+    m_deathTimer = 0;
+
+    // set health/powers (0- will be set in caller)
+    if (restore_percent > 0.0f)
+    {
+        SetHealth(uint32(GetMaxHealth() * restore_percent));
+        SetPower(POWER_MANA, uint32(GetMaxPower(POWER_MANA) * restore_percent));
+        SetPower(POWER_RAGE, 0);
+        SetPower(POWER_ENERGY, uint32(GetMaxPower(POWER_ENERGY) * restore_percent));
+    }
+
+    // trigger update zone for alive state zone updates
+    uint32 newzone, newarea;
+    GetZoneAndAreaId(newzone, newarea);
+    UpdateZone(newzone, newarea);
+    sOutdoorPvPMgr->HandlePlayerResurrects(this, newzone);
+
+    if (Battleground* bg = GetBattleground())
+        bg->HandlePlayerResurrect(this);
+
+    // update visibility
+    UpdateObjectVisibility();
+
+    sScriptMgr->OnPlayerResurrect(this, restore_percent, applySickness);
+
+    if (!applySickness)
+    {
+        return;
+    }
+
+    //Characters from level 1-10 are not affected by resurrection sickness.
+    //Characters from level 11-19 will suffer from one minute of sickness
+    //for each level they are above 10.
+    //Characters level 20 and up suffer from ten minutes of sickness.
+    int32 startLevel = sWorld->getIntConfig(CONFIG_DEATH_SICKNESS_LEVEL);
+
+    if (int32(GetLevel()) >= startLevel)
+    {
+        // set resurrection sickness
+        CastSpell(this, 15007, true);
+
+        // not full duration
+        if (int32(GetLevel()) < startLevel + 9)
+        {
+            int32 delta = (int32(GetLevel()) - startLevel + 1) * MINUTE;
+
+            if (Aura* aur = GetAura(15007, GetGUID()))
+            {
+                aur->SetDuration(delta * IN_MILLISECONDS);
+            }
+        }
+    }
+}
+
 void Player::KillPlayer()
 {
+    //判断是否在虚空，即地表以下，如果是就传送到地表，不执行死亡代码
+    if (GetMap())
+    {
+        float _z = GetMapHeight(GetPositionX(), GetPositionY(), GetPositionZ());//玩家当前位置xyz的地形实际高度
+        float _chkZ = GetMapWaterOrGroundLevel(GetPositionX(), GetPositionY(), GetPositionZ());//玩家当前位置xyz的地形实际高度
+        //LOG_ERROR("xx", "z {}  ", _z);//测试
+        //LOG_ERROR("xx", "_chkZ {} ", _chkZ);//测试
+        if (_chkZ > _z)
+        {
+            _z = _chkZ;
+            //LOG_ERROR("xx", "_z {} ", _z);//测试
+        }
+        if (_z <= INVALID_HEIGHT)//位于虚空
+        {
+            //LOG_ERROR("xx", "nodead teleport ");//测试
+             //不执行死亡，传送玩家到附近的墓地
+            GraveyardStruct const* ClosestGrave = nullptr;
+            ClosestGrave = sGraveyard->GetClosestGraveyard(this, GetTeamId());
+            if (ClosestGrave)
+            {
+                TeleportTo(ClosestGrave->Map, ClosestGrave->x, ClosestGrave->y, ClosestGrave->z, GetOrientation());
+            }
+            setDeathState(DeathState::Alive);
+            SetRooted(false);
+
+            return;
+        }
+    }
+
+
+    //判断是否在战场，如果不是在战场或竞技场区域，且未达到服务器设定的最高玩家等级，就执行死亡惩罚
+    if (!GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741 && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+
+        //在免死金牌之前判断
+        //判断是否是流浪者模式
+        //if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS2)
+        //{
+        //    //重置角色模式，关闭流浪者模式
+        //    SetYHModelPLUS2ON(false);
+        //}
+
+
+
+        //判断身上是否有护身符（免死金牌）
+        uint32 hsfcard = GetItemCount(70528, false);
+
+        //如果是专家模式，免死不生效
+        //if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3)
+        //{
+        //    hsfcard = 0;
+        //}
+        //end --------------
+
+
+        //判断身上是否有免罪金牌
+        uint32 mzcard = GetItemCount(70529, false) + GetItemCount(70530, false) + GetItemCount(70531, false) + GetItemCount(70532, false);
+        //如果是机器人，默认是有免罪金牌的
+        if (GetSession()->IsBot())
+        {
+            mzcard = 1;
+        }
+
+        if (hsfcard)
+        {
+            setDeathState(DeathState::Alive);
+            SetRooted(false);
+
+            // set health/powers (0- will be set in caller)
+            float restore_percent = 0.8f;
+            if (restore_percent > 0.0f)
+            {
+                SetHealth(uint32(GetMaxHealth() * restore_percent));
+                SetPower(POWER_MANA, uint32(GetMaxPower(POWER_MANA) * restore_percent));
+                SetPower(POWER_RAGE, 0);
+                SetPower(POWER_ENERGY, uint32(GetMaxPower(POWER_ENERGY) * restore_percent));
+            }
+            m_deathTimer = 0;
+
+            //清除PVP标识，这样免死用后，卫兵就不会再打了
+            ResetContestedPvP();
+
+            //先清掉假死的冷却然后再运行假死，否则遇到假死未冷却的情况触发免死金牌效果，假死会出现一直灰色
+            RemoveSpellCooldown(5384);
+            CastSpell(this, 5384, true);
+            CastSpell(this, 11392, true);//隐形15秒
+
+            //扣除护身符
+            DestroyItemCount(70528, 1, true);
+
+            return;
+        }
+        else
+        {
+            /*
+            //降低难度，流浪者模式死亡没有惩罚
+            if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS2) && !GetSession()->IsBot())
+            {
+                //重置角色模式，关闭流浪者模式
+                SetYHModelPLUS2ON(false);
+            }
+            */
+
+            //如果是专家模式
+            if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot())
+            {
+                if (sWorld->getBoolConfig(CONFIG_BOOL_PROFESSOR_DEAD_TO_NORMAL_ENABLE))
+                {
+                    //关闭专家模式
+                    SetYHModelPLUS3ON(false);
+                    ChatHandler(GetSession()).SendSysMessage(21741);//对话框里的提醒
+                }
+            }
+
+            //取消远古转生石死亡扣除
+            /*
+            bool vipcar5 = getVIP5() || getVIP6() || getVIP7() || getVIP8() || getVIP9() || getVIP10() || getVIP11() || getVIP12() || getVIP13() || getVIP14() || getVIP15() || getVIP16() || getVIP17() || getVIP18() || getVIP19() || getVIP20();
+            //判断是否有远古转生石，有就直接扣除1个
+            //古拉巴什竞技场内外圈都不检测
+            if (GetAreaId() != 1741 && GetAreaId() != 3217)
+            {
+                uint16 _ygzsstoneall = GetItemCount(70629, true);
+                if (_ygzsstoneall > 0 && !vipcar5)//如果有远古转生石，且VIP卡小于5级
+                {
+                    //20%几率扣除1个远古转生石
+                    uint8 randomN = urand(1, 100);
+                    if (randomN < 20)
+                    {
+                        DestroyItemCount(70629, 1, true);
+                        if (AddItem(70008, 150))//返还150红包券
+                        {
+                            ChatHandler(GetSession()).PSendSysMessage(21717);
+                        }
+                        //全服通告
+                        sWorld->SendWorldText(21718, GetName().c_str());
+                    }
+
+                }
+            }
+            */
+            //end ----------------
+
+            //判断是否是龟速模式，是就掉20%当前等级经验(经验槽4个格子)
+            if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS1)
+            {
+                uint32 curXP = GetUInt32Value(PLAYER_XP);
+                uint32 nextLvlXP = GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
+                uint32 delXP = nextLvlXP * 20 / 100;
+                uint32 newXP = (curXP > delXP) ? (curXP - delXP) : 0;
+                SetUInt32Value(PLAYER_XP, newXP);
+            }
+            //判断是否是玩家击杀玩家，且不是在战场里，是就掉一件随机装备,代码在unit.cpp里
+
+            //判断是否是硬核模式（轮回模式）
+            if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL)
+            {
+                if (!mzcard)//如果没有免罪金牌，就重置角色等级
+                {
+                    /*
+                    //每次掉10级的模式
+                    int32 start_level = GetLevel() - 10;
+                    if (start_level < 1)
+                        start_level = 1;
+                    */
+                    //去光环(火焰节之韧，合剂效果的光环不会清除)
+                    RemoveAllAurasOnDeath();
+
+                    //脱下身上等级不符的装备
+                    for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+                    {
+                        AutoUnequipItemFromSlot(i);
+                    }
+
+                    //重置角色等级为初始等级
+                    uint32 start_level = sWorld->getIntConfig(CONFIG_START_PLAYER_LEVEL);
+
+                    PlayerLevelInfo info;
+                    sObjectMgr->GetPlayerLevelInfo(getRace(true), getClass(), start_level, &info);
+
+                    PlayerClassLevelInfo classInfo;
+                    sObjectMgr->GetPlayerClassLevelInfo(getClass(), start_level, &classInfo);
+
+                    //GiveLevel(start_level);//这样写问题，会造成硬核掉到1级，反复刷攻速
+                    SetLevel(start_level);
+                    SetUInt32Value(PLAYER_XP, 0);
+
+                    UpdateSkillsForLevel();
+
+                    // save base values (bonuses already included in stored stats
+                    for (uint8 i = STAT_STRENGTH; i < MAX_STATS; ++i)
+                        SetCreateStat(Stats(i), info.stats[i]);
+
+                    SetCreateHealth(classInfo.basehealth);
+                    SetCreateMana(classInfo.basemana);
+
+                    InitTalentForLevel();
+                    UpdateAllAttackSpeeds();//更新攻速和施法速度
+
+                }
+            }
+
+        }
+
+    }
+
     if (IsFlying() && !GetTransport())
         GetMotionMaster()->MoveFall();
 
@@ -5248,8 +6628,57 @@ float Player::GetMeleeCritFromAgility()
     if (!critBase || !critRatio)
         return 0.0f;
 
-    float crit = critBase->base + GetStat(STAT_AGILITY) * critRatio->ratio;
-    return crit * 100.0f;
+    float crit = 0.0f;
+
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+    {
+        crit = critBase->base + GetStat(STAT_AGILITY) * critRatio->ratio;
+        return crit * 100.0f;
+    }
+    else
+    {
+        //新增2个档位
+        GtChanceToMeleeCritEntry     const* critRatio2 = sGtChanceToMeleeCritStore.LookupEntry((pclass - 1) * GT_MAX_LEVEL + level + 10 - 1);
+        if (!critRatio2)
+            return 0.0f;
+
+        GtChanceToMeleeCritEntry     const* critRatio3 = sGtChanceToMeleeCritStore.LookupEntry((pclass - 1) * GT_MAX_LEVEL + level + 20 - 1);
+        if (!critRatio3)
+            return 0.0f;
+        //end ------------------
+
+
+
+        //重新计算暴击，避免过高
+
+        //设置3个档位的系数
+
+        float agilityvalue = GetStat(STAT_AGILITY);
+
+        if (agilityvalue <= 300.0f)
+        {
+            crit = GetStat(STAT_AGILITY) * critRatio->ratio;
+        }
+        else if (agilityvalue > 300.0f && agilityvalue <= 800.0f)
+        {
+            crit = 300.0f * critRatio->ratio
+                + (agilityvalue - 300.0f) * critRatio2->ratio;
+        }
+        else if (agilityvalue > 800.0f)
+        {
+            crit = 300.0f * critRatio->ratio
+                + 500.0f * critRatio2->ratio
+                + (agilityvalue - 800.0f) * critRatio3->ratio;
+        }
+
+        //LOG_ERROR("xx", "basecrit {} ", 100.0f * critBase->base);//测试，自身敏捷数值
+        //LOG_ERROR("xx", "crit {} ", 100.0f * crit);//测试，自身敏捷数值
+
+        crit = 100.0f * (critBase->base + crit);
+        return crit;
+    }
+    return crit;
 }
 
 void Player::GetDodgeFromAgility(float& diminishing, float& nondiminishing)
@@ -5296,17 +6725,59 @@ void Player::GetDodgeFromAgility(float& diminishing, float& nondiminishing)
     if (!dodgeRatio || pclass > MAX_CLASSES)
         return;
 
+    //新增2个档位
+    // Dodge per agility is proportional to crit per agility, which is available from DBC files
+    GtChanceToMeleeCritEntry  const* dodgeRatio2 = sGtChanceToMeleeCritStore.LookupEntry((pclass - 1) * GT_MAX_LEVEL + level + 10 - 1);
+    if (!dodgeRatio2 || pclass > MAX_CLASSES)
+        return;
+
+    // Dodge per agility is proportional to crit per agility, which is available from DBC files
+    GtChanceToMeleeCritEntry  const* dodgeRatio3 = sGtChanceToMeleeCritStore.LookupEntry((pclass - 1) * GT_MAX_LEVEL + level + 20 - 1);
+    if (!dodgeRatio3 || pclass > MAX_CLASSES)
+        return;
+
+    //end ------------------
+
     /// @todo: research if talents/effects that increase total agility by x% should increase non-diminishing part
     float base_agility = GetCreateStat(STAT_AGILITY) * m_auraModifiersGroup[UNIT_MOD_STAT_START + static_cast<uint16>(STAT_AGILITY)][BASE_PCT];
     float bonus_agility = GetStat(STAT_AGILITY) - base_agility;
 
-    // calculate diminishing (green in char screen) and non-diminishing (white) contribution
-    diminishing = 100.0f * bonus_agility * dodgeRatio->ratio * crit_to_dodge[pclass - 1];
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+    {
+        // calculate diminishing (green in char screen) and non-diminishing (white) contribution
+        diminishing = 100.0f * bonus_agility * dodgeRatio->ratio * crit_to_dodge[pclass - 1];
+    }
+    else
+    {
+        //重新计算闪避，避免过高
+
+//设置3个档位的系数
+
+        if (bonus_agility <= 300.0f)
+        {
+            diminishing = 100.0f * bonus_agility * dodgeRatio->ratio * crit_to_dodge[pclass - 1];
+        }
+        else if (bonus_agility > 300.0f && bonus_agility <= 800.0f)
+        {
+            diminishing = 100.0f * 300.0f * dodgeRatio->ratio * crit_to_dodge[pclass - 1]
+                + 100.0f * (bonus_agility - 300.0f) * dodgeRatio2->ratio * crit_to_dodge[pclass - 1];
+        }
+        else if (bonus_agility > 800.0f)
+        {
+            diminishing = 100.0f * 300.0f * dodgeRatio->ratio * crit_to_dodge[pclass - 1]
+                + 100.0f * 500.0f * dodgeRatio2->ratio * crit_to_dodge[pclass - 1]
+                + 100.0f * (bonus_agility - 800.0f) * dodgeRatio3->ratio * crit_to_dodge[pclass - 1];
+        }
+    }
     nondiminishing = 100.0f * (dodge_base[pclass - 1] + base_agility * dodgeRatio->ratio * crit_to_dodge[pclass - 1]);
+
+
 }
 
 float Player::GetSpellCritFromIntellect()
 {
+    float intellectStat = GetStat(STAT_INTELLECT);
     uint8 level = GetLevel();
     uint32 pclass = getClass();
 
@@ -5318,13 +6789,78 @@ float Player::GetSpellCritFromIntellect()
     if (!critBase || !critRatio)
         return 0.0f;
 
-    float crit = critBase->base + GetStat(STAT_INTELLECT) * critRatio->ratio;
+    float crit = 0.f;
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+    {
+        crit = critBase->base + intellectStat * critRatio->ratio;
+    }
+    else
+    {
+        //新增2个档位
+        GtChanceToSpellCritEntry     const* critRatio2 = sGtChanceToSpellCritStore.LookupEntry((pclass - 1) * GT_MAX_LEVEL + level + 10 - 1);
+        if (!critRatio2)
+            return 0.0f;
+
+        GtChanceToSpellCritEntry     const* critRatio3 = sGtChanceToSpellCritStore.LookupEntry((pclass - 1) * GT_MAX_LEVEL + level + 20 - 1);
+        if (!critRatio3)
+            return 0.0f;
+
+
+        //重新计算，避免过高
+        float crit = 0.f;
+        float bonus_crit = 0.f;
+        //设置3个档位的系数
+
+        //智力不用300，600，800这几个档，改成600-1600，待测试的加强法系的是900-2400，1200/2000
+        /*
+        if (intellectStat <= 600.0f)
+        {
+            bonus_crit = intellectStat * critRatio->ratio;
+        }
+        else if (intellectStat > 600.0f && intellectStat <= 1600.0f)
+        {
+            bonus_crit = 600.0f * critRatio->ratio  + (intellectStat - 600.0f) * critRatio2->ratio;
+        }
+        else if (intellectStat > 1600.0f)
+        {
+            bonus_crit = 600.0f * critRatio->ratio + 1000.0f * critRatio2->ratio + (intellectStat - 1600.0f) * critRatio3->ratio;
+        }
+        */
+        if (intellectStat <= 900.0f)
+        {
+            bonus_crit = intellectStat * critRatio->ratio;
+        }
+        else if (intellectStat > 900.0f && intellectStat <= 2400.0f)
+        {
+            bonus_crit = 900.0f * critRatio->ratio + (intellectStat - 900.0f) * critRatio2->ratio;
+        }
+        else if (intellectStat > 1600.0f)
+        {
+            bonus_crit = 900.0f * critRatio->ratio + 1500.0f * critRatio2->ratio + (intellectStat - 2400.0f) * critRatio3->ratio;
+        }
+        crit = critBase->base + bonus_crit;
+    }
+
     return crit * 100.0f;
 }
 
 float Player::GetRatingMultiplier(CombatRating cr) const
 {
     uint8 level = GetLevel();
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    {
+        //用玩家等级+20 , 来计算急速等级的加成系数，避免过高的加成
+        level = level + 20;
+        //end -------
+    }
+    else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 70)
+    {
+        //用玩家等级+10 , 来计算急速等级的加成系数，避免过高的加成
+        level = level + 10;
+        //end -------
+    }
 
     if (level > GT_MAX_LEVEL)
         level = GT_MAX_LEVEL;
@@ -5360,6 +6896,21 @@ float Player::GetExpertiseDodgeOrParryReduction(WeaponAttackType attType) const
 float Player::OCTRegenHPPerSpirit()
 {
     uint8 level = GetLevel();
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    //如果玩家该项数值超过300，就按+20等级来算避免过高的加成
+    float _currNum = GetStat(STAT_SPIRIT);
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    {
+        if (_currNum >= 300)
+            level = level + 20;
+    }
+    else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 70)
+    {
+        if (_currNum >= 300)
+            level = level + 10;
+    }
+
+
     uint32 pclass = getClass();
 
     if (level > GT_MAX_LEVEL)
@@ -5383,6 +6934,20 @@ float Player::OCTRegenHPPerSpirit()
 float Player::OCTRegenMPPerSpirit()
 {
     uint8 level = GetLevel();
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    //如果玩家该项数值超过300，就按+20等级来算避免过高的加成
+    float _currNum = GetStat(STAT_SPIRIT);
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    {
+        if (_currNum >= 300)
+            level = level + 20;
+    }
+    else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 70)
+    {
+        if (_currNum >= 300)
+            level = level + 10;
+    }
+
     uint32 pclass = getClass();
 
     if (level > GT_MAX_LEVEL)
@@ -5401,13 +6966,15 @@ float Player::OCTRegenMPPerSpirit()
 
 void Player::ApplyRatingMod(CombatRating cr, int32 value, bool apply)
 {
-    float oldRating = m_baseRatingValue[cr];
+    //float oldRating = m_baseRatingValue[cr];
+    float oldRatingPCT = m_baseRatingPCTValue[cr];
     m_baseRatingValue[cr] += (apply ? value : -value);
     // explicit affected values
     if (cr == CR_HASTE_MELEE || cr == CR_HASTE_RANGED || cr == CR_HASTE_SPELL)
     {
         float const mult = GetRatingMultiplier(cr);
-        float const oldVal = oldRating * mult;
+        //float const oldVal = oldRating * mult;
+        float const oldVal = oldRatingPCT;
         float const newVal = m_baseRatingValue[cr] * mult;
         switch (cr)
         {
@@ -5416,14 +6983,17 @@ void Player::ApplyRatingMod(CombatRating cr, int32 value, bool apply)
                 ApplyAttackTimePercentMod(OFF_ATTACK, oldVal, false);
                 ApplyAttackTimePercentMod(BASE_ATTACK, newVal, true);
                 ApplyAttackTimePercentMod(OFF_ATTACK, newVal, true);
+                m_baseRatingPCTValue[CR_HASTE_MELEE] = newVal;
                 break;
             case CR_HASTE_RANGED:
                 ApplyAttackTimePercentMod(RANGED_ATTACK, oldVal, false);
                 ApplyAttackTimePercentMod(RANGED_ATTACK, newVal, true);
+                m_baseRatingPCTValue[CR_HASTE_RANGED] = newVal;
                 break;
             case CR_HASTE_SPELL:
                 ApplyCastTimePercentMod(oldVal, false);
                 ApplyCastTimePercentMod(newVal, true);
+                m_baseRatingPCTValue[CR_HASTE_SPELL] = newVal;
                 break;
             default:
                 break;
@@ -5469,7 +7039,7 @@ void Player::ModifySkillBonus(uint32 skillid, int32 val, bool talent)
 
 // This functions sets a skill line value (and adds if doesn't exist yet)
 // To "remove" a skill line, set it's values to zero
-void Player::SetSkill(uint16 id, uint16 step, uint16 newVal, uint16 maxVal)
+void Player::SetSkill(uint16 id, uint16 step, uint16 newVal, uint16 maxVal, bool jihuo)
 {
     if (!id)
         return;
@@ -5483,6 +7053,129 @@ void Player::SetSkill(uint16 id, uint16 step, uint16 newVal, uint16 maxVal)
         currVal = SKILL_VALUE(GetUInt32Value(PLAYER_SKILL_VALUE_INDEX(itr->second.pos)));
         if (newVal)
         {
+            //激活专业加成
+            if (jihuo)//如果要触发专业被动加成
+            {
+                //LOG_ERROR("xx", "skillid {} - currVal {} ", id, currVal);//测试
+                switch (id)
+                {
+                case 333://附魔 攻强提高40 法伤和治疗提高40 14049 18056
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 14049, true);
+                        CastSpell(this, 18056, true);
+                    }
+                    break;
+                case 165://制皮 所有命中提高2% 15465 23729（护甲提高300）15957
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 15465, true);
+                        CastSpell(this, 23729, true);
+                        CastSpell(this, 15957, true);
+                    }
+                    break;
+                case 393://剥皮 所有暴击提高2% 7598 18382
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 7598, true);
+                        CastSpell(this, 18382, true);
+                    }
+                    break;
+                case 182://草药 智力提高40点 14430 （敏捷提高20点  14384 耐力提高20点 14467）
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 14430, true);
+                        CastSpell(this, 14384, true);
+                        CastSpell(this, 14467, true);
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "kkk22 %u", currVal);//测试
+                    }
+                    break;
+                case 171://炼金 坐骑速度+3%  13587
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 13587, true);
+                    }
+                    break;
+                case 197://裁缝 每秒回蓝8点  21629（护甲提高200）14803
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 21629, true);
+                        CastSpell(this, 14803, true);
+                    }
+                    break;
+                case 202://工程 躲闪+2% 13670 （法伤和治疗提高30）14798
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 13670, true);
+                        CastSpell(this, 14798, true);
+                    }
+                    break;
+                case 186://采矿 防御增加10点 13390 （略微提高移动速度）23990
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 13390, true);
+                        CastSpell(this, 23990, true);
+                    }
+                    break;
+                case 164://锻造 格挡增加 3% 21475  （护甲提高400）17617 力量提高20点 14467
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 21475, true);
+                        CastSpell(this, 17617, true);
+                        CastSpell(this, 14492, true);
+                    }
+                    break;
+                case 185://烹饪 精神增加40点 14461
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 14461, true);
+                    }
+                    break;
+                case 356://钓鱼 耐力提高40点 14487
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 14487, true);
+                    }
+                    break;
+                case 129://急救 每秒回血8点 21109 （护甲提高180）18188 治疗效果增加40 18031
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 21109, true);
+                        CastSpell(this, 18188, true);
+                        CastSpell(this, 18031, true);
+                    }
+                    break;
+                case 755://珠宝加工 精准+35 法术穿透+35
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 85530, true);
+                        CastSpell(this, 44001, true);
+                    }
+                    break;
+                case 773://铭文 韧性+35
+                    if (currVal >= 300)
+                    {
+                        //被动技能生效
+                        CastSpell(this, 40042, true);
+                    }
+                    break;
+                }
+            }
+            //激活专业加成end-----
+
             // if skill value is going down, update enchantments before setting the new value
             if (newVal < currVal)
                 UpdateSkillEnchantments(id, currVal, newVal);
@@ -5880,6 +7573,145 @@ void Player::CheckAreaExploreAndOutdoor()
     uint32 areaId = GetAreaId();
     AreaTableEntry const* areaEntry = sAreaTableStore.LookupEntry(areaId);
 
+    //进行分阶段开放地图限制
+
+//获得配置项目
+    uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+
+    if (areaEntry && !IsGameMaster())
+    {
+        //530的开放地区vector
+        std::vector<uint32> m_530map = { 3430,3433,3455,3479,3487,3524,3525,3557,3431,3432,3460,3461,3462,3463,3464,3465,3466,3467,3468,3469,3470,3471,3472,3473,3474,3475,3476,3480,3481,3482,3484,3485,3488,3489,3490,3491,3492,3493,3494,3495,3496,3497,3498,3499,3500,3501,3502,3503,3504,3505,3506,3507,3508,3509,3510,3511,3512,3513,3514,3515,3516,3517,3526,3527,3528,3529,3530,3531,3532,3533,3534,3558,3559,3560,3561,3564,3566,3567,3568,3569,3570,3571,3572,3573,3574,3575,3576,3577,3578,3579,3580,3581,3583,3584,3585,3586,3587,3588,3589,3590,3591,3592,3593,3594,3595,3596,3597,3598,3599,3600,3601,3602,3603,3604,3608,3612,3639,3662,3663,3664,3665,3704,3823,3846,3856,3857,3861,3906,3907,3908,3909,3910,3911,3912,3913,3914,3915,3916,4081,4082,4083,4084,4086,4087,4088,4089,4090,4091,4092,4093,4094,4095 };
+        switch (areaEntry->mapid)
+        {
+        case 530:
+            if (m_530map.size() > 0)
+            {
+                auto it = std::find(m_530map.begin(), m_530map.end(), areaEntry->ID);
+                if (it != m_530map.end()) {
+                    //是允许的开放地区
+
+                }
+                else {
+                    if (wowpatch == 0)
+                    {
+                        //不允许的开放地区，传送回熊猫 -14410,698,22.673 0
+                        CastSpell(this, 12438, true);//防摔死
+                        TeleportTo(0, -14410.0f, 698.0f, 22.673f, GetOrientation(), TELE_TO_NOT_UNSUMMON_PET);
+                    }
+
+                }
+
+            }
+            break;
+        case 571:
+            if (wowpatch == 0 || wowpatch == 1)
+            {
+                //不允许的开放地区，传送回熊猫
+                CastSpell(this, 12438, true);//防摔死
+                TeleportTo(0, -14410.0f, 698.0f, 22.673f, GetOrientation(), TELE_TO_NOT_UNSUMMON_PET);
+            }
+
+            break;
+        }
+    }
+
+
+    //end------------------
+
+
+    //LOG_ERROR("xx", "areaId {} ", areaId);//测试
+    //if(_wasOutdoor)
+    //    LOG_ERROR("xx", "_wasOutdoor");//测试
+    //if (isOutdoor)
+    //    LOG_ERROR("xx", "isOutdoor");//测试
+    //LOG_ERROR("xx", "areaId---end {} ", areaId);//测试
+
+
+    //检查筋斗云，禁止战场里使用
+    if (IsPlayer() && HasAuraType(SPELL_AURA_MOUNTED) && GetMap()->IsBattlegroundOrArena())
+    {
+        for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
+        {
+            Aura* aura = iter->second->GetBase();
+            SpellInfo const* spell = aura->GetSpellInfo();
+            if (spell->Id == 900101 || spell->Id == 900103)
+            {
+                RemoveAura(iter);
+                SetCanFly(false);
+            }
+            else
+                ++iter;
+        }
+    }
+
+    //这里加判断代码玩家体验不好，改到Spell.cpp里释放筋斗云的地方判断
+    /*
+    //检查筋斗云，禁止组队时使用
+    if (IsPlayer() && HasAuraType(SPELL_AURA_MOUNTED) && GetMap()->IsDungeon())
+    {
+        for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
+        {
+            Aura* aura = iter->second->GetBase();
+            SpellInfo const* spell = aura->GetSpellInfo();
+            //if (spell->Id == 26655)
+            if (spell->Id == 900101 || spell->Id == 900103)
+            {
+                //如果玩家没有组队，但不在当前副本中需要传送的（先组队再离队），需要移除光环
+                if (!GetGroup() && m_InstanceValid == true)
+                {
+                    //如果玩家没有组队，就不移除骑乘光环
+                    //LOG_ERROR("xx", "xxxx1");//测试
+                    ++iter;
+                }
+                else
+                {
+                    //LOG_ERROR("xx", "xxxx2");//测试
+                    ChatHandler(GetSession()).SendSysMessage(21740);
+                    RemoveAura(iter);
+                    SetCanFly(false);
+                    AddAura(41252,this);//乌鸦
+                    //AddAura(43964, this);//黑色北极熊
+                }
+            }
+            else
+                ++iter;
+        }
+
+    }
+    */
+
+    //检查室内使用坐骑
+    if (IsPlayer() && !GetSession()->IsBot() && isOutdoor == false && HasAuraType(SPELL_AURA_MOUNTED))
+    {
+        bool vipcar5 = getVIP5() || getVIP6() || getVIP7() || getVIP8() || getVIP9() || getVIP10() || getVIP11() || getVIP12() || getVIP13() || getVIP14() || getVIP15() || getVIP16() || getVIP17() || getVIP18() || getVIP19() || getVIP20();
+        //LOG_ERROR("xx", "xxxvipcarnum {} ", vipcarnum);//测试
+
+        for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
+        {
+            Aura* aura = iter->second->GetBase();
+            SpellInfo const* spell = aura->GetSpellInfo();
+            //if (spell->Id == 26655)
+            if (spell->Id == 26657)
+            {
+                if (vipcar5)
+                {
+                    //如果玩家使用的是黑色其拉坦克，且VIP卡至少为5级卡，就不移除骑乘光环
+                    //LOG_ERROR("xx", "vipcarnum {} ", vipcarnum);//测试
+                    ++iter;
+                }
+                else
+                {
+                    RemoveAura(iter);
+                }
+            }
+            else
+                ++iter;
+        }
+    }
+    //end----
+
+
     if (sWorld->getBoolConfig(CONFIG_VMAP_INDOOR_CHECK) && _wasOutdoor != isOutdoor)
     {
         _wasOutdoor = isOutdoor;
@@ -6128,9 +7960,153 @@ void Player::RewardReputation(Unit* victim)
 
     TeamId teamId = GetTeamId(true); // Always check player original reputation when rewarding
 
+    //VIP卡增加声望倍率
+    float _vipplusrate = 1.0f;
+    if (getVIP20())
+    {
+        _vipplusrate = float(_vipplusrate * 2.0f);
+    }
+    else
+    {
+        if (getVIP19())
+        {
+            _vipplusrate = float(_vipplusrate * 1.95f);
+        }
+        else
+        {
+            if (getVIP18())
+            {
+                _vipplusrate = float(_vipplusrate * 1.9f);
+            }
+            else
+            {
+                if (getVIP17())
+                {
+                    _vipplusrate = float(_vipplusrate * 1.85f);
+                }
+                else
+                {
+                    if (getVIP16())
+                    {
+                        _vipplusrate = float(_vipplusrate * 1.8f);
+                    }
+                    else
+                    {
+                        if (getVIP15())
+                        {
+                            _vipplusrate = float(_vipplusrate * 1.75f);
+                        }
+                        else
+                        {
+                            if (getVIP14())
+                            {
+                                _vipplusrate = float(_vipplusrate * 1.7f);
+                            }
+                            else
+                            {
+                                if (getVIP13())
+                                {
+                                    _vipplusrate = float(_vipplusrate * 1.65f);
+                                }
+                                else
+                                {
+                                    if (getVIP12())
+                                    {
+                                        _vipplusrate = float(_vipplusrate * 1.6f);
+                                    }
+                                    else
+                                    {
+
+                                        if (getVIP11())
+                                        {
+                                            _vipplusrate = float(_vipplusrate * 1.55f);
+                                        }
+                                        else
+                                        {
+                                            if (getVIP10())
+                                            {
+                                                _vipplusrate = float(_vipplusrate * 1.5f);
+                                            }
+                                            else
+                                            {
+                                                if (getVIP9())
+                                                {
+                                                    _vipplusrate = float(_vipplusrate * 1.45f);
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP8())
+                                                    {
+                                                        _vipplusrate = float(_vipplusrate * 1.4f);
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP7())
+                                                        {
+                                                            _vipplusrate = float(_vipplusrate * 1.35f);
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP6())
+                                                            {
+                                                                _vipplusrate = float(_vipplusrate * 1.3f);
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP5())
+                                                                {
+                                                                    _vipplusrate = float(_vipplusrate * 1.25f);
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP4())
+                                                                    {
+                                                                        _vipplusrate = float(_vipplusrate * 1.2f);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP3())
+                                                                        {
+                                                                            _vipplusrate = float(_vipplusrate * 1.15f);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP2())
+                                                                            {
+                                                                                _vipplusrate = float(_vipplusrate * 1.1f);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP1())
+                                                                                {
+                                                                                    _vipplusrate = float(_vipplusrate * 1.05f);
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //end -------------
+
+
     if (Rep->RepFaction1 && (!Rep->TeamDependent || teamId == TEAM_ALLIANCE))
     {
         float donerep1 = CalculateReputationGain(REPUTATION_SOURCE_KILL, victim->GetLevel(), static_cast<float>(Rep->RepValue1), ChampioningFaction ? ChampioningFaction : Rep->RepFaction1);
+        donerep1 = donerep1 * _vipplusrate;//乘以倍率
 
         FactionEntry const* factionEntry1 = sFactionStore.LookupEntry(ChampioningFaction ? ChampioningFaction : Rep->RepFaction1);
         if (factionEntry1)
@@ -6142,6 +8118,7 @@ void Player::RewardReputation(Unit* victim)
     if (Rep->RepFaction2 && (!Rep->TeamDependent || teamId == TEAM_HORDE))
     {
         float donerep2 = CalculateReputationGain(REPUTATION_SOURCE_KILL, victim->GetLevel(), static_cast<float>(Rep->RepValue2), ChampioningFaction ? ChampioningFaction : Rep->RepFaction2);
+        donerep2 = donerep2 * _vipplusrate;//乘以倍率
 
         FactionEntry const* factionEntry2 = sFactionStore.LookupEntry(ChampioningFaction ? ChampioningFaction : Rep->RepFaction2);
         if (factionEntry2)
@@ -6198,6 +8175,151 @@ void Player::RewardReputation(Quest const* quest)
         {
             rep = CalculateReputationGain(REPUTATION_SOURCE_QUEST, GetQuestLevel(quest), rep, quest->RewardFactionId[i], false);
         }
+
+        //VIP卡增加声望倍率
+        float _vipplusrate = 1.0f;
+        if (getVIP20())
+        {
+            _vipplusrate = float(_vipplusrate * 2.0f);
+        }
+        else
+        {
+            if (getVIP19())
+            {
+                _vipplusrate = float(_vipplusrate * 1.95f);
+            }
+            else
+            {
+                if (getVIP18())
+                {
+                    _vipplusrate = float(_vipplusrate * 1.9f);
+                }
+                else
+                {
+                    if (getVIP17())
+                    {
+                        _vipplusrate = float(_vipplusrate * 1.85f);
+                    }
+                    else
+                    {
+                        if (getVIP16())
+                        {
+                            _vipplusrate = float(_vipplusrate * 1.8f);
+                        }
+                        else
+                        {
+                            if (getVIP15())
+                            {
+                                _vipplusrate = float(_vipplusrate * 1.75f);
+                            }
+                            else
+                            {
+                                if (getVIP14())
+                                {
+                                    _vipplusrate = float(_vipplusrate * 1.7f);
+                                }
+                                else
+                                {
+                                    if (getVIP13())
+                                    {
+                                        _vipplusrate = float(_vipplusrate * 1.65f);
+                                    }
+                                    else
+                                    {
+                                        if (getVIP12())
+                                        {
+                                            _vipplusrate = float(_vipplusrate * 1.6f);
+                                        }
+                                        else
+                                        {
+
+                                            if (getVIP11())
+                                            {
+                                                _vipplusrate = float(_vipplusrate * 1.55f);
+                                            }
+                                            else
+                                            {
+                                                if (getVIP10())
+                                                {
+                                                    _vipplusrate = float(_vipplusrate * 1.5f);
+                                                }
+                                                else
+                                                {
+                                                    if (getVIP9())
+                                                    {
+                                                        _vipplusrate = float(_vipplusrate * 1.45f);
+                                                    }
+                                                    else
+                                                    {
+                                                        if (getVIP8())
+                                                        {
+                                                            _vipplusrate = float(_vipplusrate * 1.4f);
+                                                        }
+                                                        else
+                                                        {
+                                                            if (getVIP7())
+                                                            {
+                                                                _vipplusrate = float(_vipplusrate * 1.35f);
+                                                            }
+                                                            else
+                                                            {
+                                                                if (getVIP6())
+                                                                {
+                                                                    _vipplusrate = float(_vipplusrate * 1.3f);
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (getVIP5())
+                                                                    {
+                                                                        _vipplusrate = float(_vipplusrate * 1.25f);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (getVIP4())
+                                                                        {
+                                                                            _vipplusrate = float(_vipplusrate * 1.2f);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (getVIP3())
+                                                                            {
+                                                                                _vipplusrate = float(_vipplusrate * 1.15f);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (getVIP2())
+                                                                                {
+                                                                                    _vipplusrate = float(_vipplusrate * 1.1f);
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    if (getVIP1())
+                                                                                    {
+                                                                                        _vipplusrate = float(_vipplusrate * 1.05f);
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //end -------------
+
+        rep = rep * _vipplusrate;//乘以倍率
+
 
         if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(quest->RewardFactionId[i]))
         {
@@ -6379,6 +8501,23 @@ bool Player::RewardHonor(Unit* uVictim, uint32 groupsize, int32 honor, bool awar
     honor_f *= sWorld->getRate(RATE_HONOR);
     // Back to int now
     honor = int32(honor_f);
+
+    //LOG_ERROR("xx", "honor  {}", honor);//测试
+    //如果是机器人，荣誉降低（好像反复击杀荣誉没有衰减）
+    if (uVictim)
+    {
+        if (Player* _botplayer = uVictim->ToPlayer())
+        {
+            if (_botplayer->GetSession()->IsBot() && honor > 1)
+            {
+                //honor = int32(honor*0.05);
+                honor = 1;
+            }
+        }
+    }
+    //LOG_ERROR("xx", "honorxx  {}", honor);//测试
+
+
     // honor - for show honor points in log
     // victim_guid - for show victim name in log
     // victim_rank [1..4]  HK: <dishonored rank>
@@ -6788,6 +8927,487 @@ void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
     LOG_DEBUG("entities.player.items", "_ApplyItemMods complete.");
 }
 
+
+void Player::_ApplyItemBonusesByHLDMForSPELL(ItemTemplate const* proto, uint8 slot, bool apply, bool only_level_scale /*= false*/)
+{
+    //LOG_ERROR("xx", "xxx1 slot{} ", slot);//测试
+    //赫拉迪姆魔盒，只看银行中前三个位置的装备slot:39,40,41
+    //if (slot < 39 || slot > 41 || !proto)
+    //	return;
+    //只看默认背包和默认银行中位置的装备
+    //if (slot < 23 || slot > 62 || !proto)
+    //    return;
+
+    //LOG_ERROR("xx", "_ApplyItemBonusesByHLDMForSPELL slot{} ", slot);//测试
+
+    //加上身上的位置也可以看
+    if (slot > 62 || !proto)
+        return;
+
+    //战斗中禁止使用魔盒
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+        return;
+    }
+
+    //禁止使用高于60级的装备(香草阶段屏蔽高等级装备放魔盒)
+    if (proto->RequiredLevel > 80)
+        return;
+
+    //if (slot >= INVENTORY_SLOT_BAG_END || !proto)
+    //    return;
+
+    ScalingStatDistributionEntry const* ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : nullptr;
+    if (only_level_scale && !ssd)
+        return;
+
+    // req. check at equip, but allow use for extended range if range limit max level, set proper level
+    uint32 ssd_level = GetLevel();
+    uint32 CustomScalingStatValue = 0;
+
+    sScriptMgr->OnPlayerCustomScalingStatValueBefore(this, proto, slot, apply, CustomScalingStatValue);
+
+    uint32 ScalingStatValue = proto->ScalingStatValue > 0 ? proto->ScalingStatValue : CustomScalingStatValue;
+
+    if (ssd && ssd_level > ssd->MaxLevel)
+        ssd_level = ssd->MaxLevel;
+
+    ScalingStatValuesEntry const* ssv = proto->ScalingStatValue ? sScalingStatValuesStore.LookupEntry(ssd_level) : nullptr;
+    if (only_level_scale && !ssv)
+        return;
+
+    for (uint8 i = 0; i < MAX_ITEM_PROTO_STATS; ++i)
+    {
+        uint32 statType = 0;
+        int32  val = 0;
+        // If set ScalingStatDistribution need get stats and values from it
+        if (ssv)
+        {
+            if (ssd)
+            {
+                if (ssd->StatMod[i] < 0)
+                    continue;
+
+                statType = ssd->StatMod[i];
+                val = (ssv->getssdMultiplier(ScalingStatValue) * ssd->Modifier[i]) / 10000;
+            }
+            else
+            {
+                if (i >= proto->StatsCount)
+                    continue;
+
+                // OnCustomScalingStatValue(Player* player, ItemTemplate const* proto, uint32& statType, int32& val, uint8 itemProtoStatNumber, uint32 ScalingStatValue, ScalingStatValuesEntry const* ssv)
+                sScriptMgr->OnPlayerCustomScalingStatValue(this, proto, statType, val, i, ScalingStatValue, ssv);
+            }
+        }
+        else
+        {
+            if (i >= proto->StatsCount)
+                continue;
+
+            statType = proto->ItemStat[i].ItemStatType;
+            val = proto->ItemStat[i].ItemStatValue;
+
+            sScriptMgr->OnPlayerApplyItemModsBefore(this, slot, apply, i, statType, val);
+        }
+
+        if (val == 0)
+            continue;
+
+        switch (statType)
+        {
+            //case ITEM_MOD_MANA:
+            //    HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(val), apply);
+            //    break;
+            //case ITEM_MOD_HEALTH:                           // modify HP
+            //    HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(val), apply);
+            //    break;
+            //case ITEM_MOD_AGILITY:                          // modify agility
+            //    HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(val), apply);
+            //    ApplyStatBuffMod(STAT_AGILITY, float(val), apply);
+            //    break;
+            //case ITEM_MOD_STRENGTH:                         //modify strength
+            //    HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(val), apply);
+            //    ApplyStatBuffMod(STAT_STRENGTH, float(val), apply);
+            //    break;
+            //case ITEM_MOD_INTELLECT:                        //modify intellect
+            //    HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(val), apply);
+            //    ApplyStatBuffMod(STAT_INTELLECT, float(val), apply);
+            //    break;
+            //case ITEM_MOD_SPIRIT:                           //modify spirit
+            //    HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(val), apply);
+            //    ApplyStatBuffMod(STAT_SPIRIT, float(val), apply);
+            //    break;
+            //case ITEM_MOD_STAMINA:                          //modify stamina
+            //    HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(val), apply);
+            //    ApplyStatBuffMod(STAT_STAMINA, float(val), apply);
+            //    break;
+        case ITEM_MOD_DEFENSE_SKILL_RATING:
+            ApplyRatingMod(CR_DEFENSE_SKILL, int32(val), apply);
+            break;
+        case ITEM_MOD_DODGE_RATING:
+            ApplyRatingMod(CR_DODGE, int32(val), apply);
+            break;
+        case ITEM_MOD_PARRY_RATING:
+            ApplyRatingMod(CR_PARRY, int32(val), apply);
+            break;
+        case ITEM_MOD_BLOCK_RATING:
+            ApplyRatingMod(CR_BLOCK, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_MELEE_RATING:
+            ApplyRatingMod(CR_HIT_MELEE, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_RANGED_RATING:
+            ApplyRatingMod(CR_HIT_RANGED, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_SPELL_RATING:
+            ApplyRatingMod(CR_HIT_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_MELEE_RATING:
+            ApplyRatingMod(CR_CRIT_MELEE, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_RANGED_RATING:
+            ApplyRatingMod(CR_CRIT_RANGED, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_SPELL_RATING:
+            ApplyRatingMod(CR_CRIT_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_TAKEN_MELEE_RATING:
+            ApplyRatingMod(CR_HIT_TAKEN_MELEE, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_TAKEN_RANGED_RATING:
+            ApplyRatingMod(CR_HIT_TAKEN_RANGED, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_TAKEN_SPELL_RATING:
+            ApplyRatingMod(CR_HIT_TAKEN_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_TAKEN_MELEE_RATING:
+            ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_TAKEN_RANGED_RATING:
+            ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_TAKEN_SPELL_RATING:
+            ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_HASTE_MELEE_RATING:
+            ApplyRatingMod(CR_HASTE_MELEE, int32(val), apply);
+            break;
+        case ITEM_MOD_HASTE_RANGED_RATING:
+            ApplyRatingMod(CR_HASTE_RANGED, int32(val), apply);
+            break;
+        case ITEM_MOD_HASTE_SPELL_RATING:
+            ApplyRatingMod(CR_HASTE_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_RATING:
+            ApplyRatingMod(CR_HIT_MELEE, int32(val), apply);
+            ApplyRatingMod(CR_HIT_RANGED, int32(val), apply);
+            ApplyRatingMod(CR_HIT_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_RATING:
+            ApplyRatingMod(CR_CRIT_MELEE, int32(val), apply);
+            ApplyRatingMod(CR_CRIT_RANGED, int32(val), apply);
+            ApplyRatingMod(CR_CRIT_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_HIT_TAKEN_RATING:
+            ApplyRatingMod(CR_HIT_TAKEN_MELEE, int32(val), apply);
+            ApplyRatingMod(CR_HIT_TAKEN_RANGED, int32(val), apply);
+            ApplyRatingMod(CR_HIT_TAKEN_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_CRIT_TAKEN_RATING:
+        case ITEM_MOD_RESILIENCE_RATING:
+            ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val), apply);
+            ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val), apply);
+            ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_HASTE_RATING:
+            ApplyRatingMod(CR_HASTE_MELEE, int32(val), apply);
+            ApplyRatingMod(CR_HASTE_RANGED, int32(val), apply);
+            ApplyRatingMod(CR_HASTE_SPELL, int32(val), apply);
+            break;
+        case ITEM_MOD_EXPERTISE_RATING:
+            ApplyRatingMod(CR_EXPERTISE, int32(val), apply);
+            break;
+        case ITEM_MOD_ATTACK_POWER:
+            //LOG_ERROR("xx", "ITEM_MOD_ATTACK_POWER {} ", float(val));//测试
+            //LOG_ERROR("xx", "UNIT_MOD_ATTACK_POWER_RANGED {} ", float(val));//测试
+            HandleStatModifier(UNIT_MOD_ATTACK_POWER, TOTAL_VALUE, float(val), apply);
+            HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(val), apply);
+            break;
+        case ITEM_MOD_RANGED_ATTACK_POWER:
+            HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(val), apply);
+            break;
+            //            case ITEM_MOD_FERAL_ATTACK_POWER:
+            //                ApplyFeralAPBonus(int32(val), apply);
+            //                break;
+        case ITEM_MOD_MANA_REGENERATION:
+            ApplyManaRegenBonus(int32(val), apply);
+            break;
+        case ITEM_MOD_ARMOR_PENETRATION_RATING:
+            ApplyRatingMod(CR_ARMOR_PENETRATION, int32(val), apply);
+            break;
+        case ITEM_MOD_SPELL_POWER:
+            ApplySpellPowerBonus(int32(val), apply);
+            break;
+        case ITEM_MOD_HEALTH_REGEN:
+            ApplyHealthRegenBonus(int32(val), apply);
+            break;
+        case ITEM_MOD_SPELL_PENETRATION:
+            ApplySpellPenetrationBonus(val, apply);
+            break;
+        case ITEM_MOD_BLOCK_VALUE:
+            HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(val), apply);
+            break;
+            /// @deprecated item mods
+        case ITEM_MOD_SPELL_HEALING_DONE:
+        case ITEM_MOD_SPELL_DAMAGE_DONE:
+            break;
+        }
+    }
+
+    // Apply Spell Power from ScalingStatValue if set
+    if (ssv)
+        if (int32 spellbonus = ssv->getSpellBonus(ScalingStatValue))
+            ApplySpellPowerBonus(spellbonus, apply);
+
+    // If set ScalingStatValue armor get it or use item armor
+    uint32 armor = proto->Armor;
+    if (ssv)
+    {
+        if (uint32 ssvarmor = ssv->getArmorMod(ScalingStatValue))
+            if (proto->ScalingStatValue > 0 || ssvarmor < proto->Armor) //Check to avoid higher values than stat itself (heirloom OR items with correct armor value)
+                armor = ssvarmor;
+    }
+    else if (armor && proto->ArmorDamageModifier)
+        armor -= uint32(proto->ArmorDamageModifier);
+
+    if (armor)
+    {
+        UnitModifierType modType = TOTAL_VALUE;
+        if (proto->Class == ITEM_CLASS_ARMOR)
+        {
+            switch (proto->SubClass)
+            {
+            case ITEM_SUBCLASS_ARMOR_CLOTH:
+            case ITEM_SUBCLASS_ARMOR_LEATHER:
+            case ITEM_SUBCLASS_ARMOR_MAIL:
+            case ITEM_SUBCLASS_ARMOR_PLATE:
+            case ITEM_SUBCLASS_ARMOR_SHIELD:
+                modType = BASE_VALUE;
+                break;
+            }
+        }
+        HandleStatModifier(UNIT_MOD_ARMOR, modType, float(armor), apply);
+    }
+
+    // Add armor bonus from ArmorDamageModifier if > 0
+    if (proto->ArmorDamageModifier > 0 && sScriptMgr->OnPlayerCanArmorDamageModifier(this))
+        HandleStatModifier(UNIT_MOD_ARMOR, TOTAL_VALUE, float(proto->ArmorDamageModifier), apply);
+
+    if (proto->Block)
+        HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(proto->Block), apply);
+
+    if (proto->HolyRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_HOLY, BASE_VALUE, float(proto->HolyRes), apply);
+
+    if (proto->FireRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_FIRE, BASE_VALUE, float(proto->FireRes), apply);
+
+    if (proto->NatureRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_NATURE, BASE_VALUE, float(proto->NatureRes), apply);
+
+    if (proto->FrostRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_FROST, BASE_VALUE, float(proto->FrostRes), apply);
+
+    if (proto->ShadowRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_SHADOW, BASE_VALUE, float(proto->ShadowRes), apply);
+
+    if (proto->ArcaneRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_ARCANE, BASE_VALUE, float(proto->ArcaneRes), apply);
+
+    //这里屏蔽掉slot15等武器引起的魔盒无限刷面板伤害的bug
+    //uint8 attType = Player::GetAttackBySlot(slot);
+    //if (attType != MAX_ATTACK)
+    //{
+    //    _ApplyWeaponDamage(slot, proto, ssv, apply);
+    //}
+
+    // Druids get feral AP bonus from weapon dps (also use DPS from ScalingStatValue)
+    if (IsClass(CLASS_DRUID, CLASS_CONTEXT_STATS))
+    {
+        int32 dpsMod = 0;
+        int32 feral_bonus = 0;
+        if (ssv)
+        {
+            dpsMod = ssv->getDPSMod(ScalingStatValue);
+            feral_bonus += ssv->getFeralBonus(ScalingStatValue);
+        }
+
+        feral_bonus += proto->getFeralBonus(dpsMod);
+        sScriptMgr->OnPlayerGetFeralApBonus(this, feral_bonus, dpsMod, proto, ssv);
+        if (feral_bonus)
+            ApplyFeralAPBonus(feral_bonus, apply);
+    }
+}
+
+void Player::_ApplyItemModsByHLDM(Item* item, uint8 slot, bool apply)
+{
+    //赫拉迪姆魔盒，只看银行中前三个位置的装备slot:39,40,41
+    //if (slot < 39 || slot > 41 || !item)
+    //	return;
+    //只看默认背包和默认银行中位置的装备
+    //if (slot < 23 || slot > 62 || !item)
+    //    return;
+
+    //LOG_ERROR("xx", "_ApplyItemModsByHLDM slot{} ", slot);//测试
+
+    //加上身上的位置也可以看
+    if (slot > 62 || !item)
+        return;
+
+    //战斗中禁止使用魔盒
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+        return;
+    }
+
+
+    ItemTemplate const* proto = item->GetTemplate();
+
+    if (!proto)
+        return;
+
+    //禁止使用高于60级的装备(香草阶段屏蔽高等级装备放魔盒)
+    if (proto->RequiredLevel > 80)
+        return;
+
+    if (apply)
+    {
+        //uint32 attacktype = Player::GetAttackBySlot(slot);
+        //if (attacktype < MAX_ATTACK)
+        //    _ApplyWeaponDependentAuraMods(item, WeaponAttackType(attacktype), true); //这个增加后会导致银行中SLOT 15的位置的武器和魔盒里的武器交换后无限刷面板伤害
+
+        //_ApplyItemBonusesByHLDM(proto, slot, true);
+        _ApplyItemBonusesByHLDMForSPELL(proto, slot, true);
+
+        ApplyItemEquipSpell(item, true);
+        //ApplyEnchantmentByHLDM(item, true);
+    }
+    else // order must be reversed when removing weapon dependent aura mods
+    {
+
+        ApplyItemEquipSpell(item, false);
+        //ApplyEnchantmentByHLDM(item, false);
+
+        //uint32 attacktype = Player::GetAttackBySlot(slot);
+        //if (attacktype < MAX_ATTACK)
+            //_ApplyWeaponDependentAuraMods(item, WeaponAttackType(attacktype), false);
+
+        //_ApplyItemBonusesByHLDM(proto, slot, false);
+        _ApplyItemBonusesByHLDMForSPELL(proto, slot, false);
+
+    }
+
+}
+
+
+/*
+void Player::_ApplyItemModsByHLDM(Item* item, uint8 slot, bool apply)
+{
+    //赫拉迪姆魔盒，只看银行中前三个位置的装备slot:39,40,41
+    //if (slot < 39 || slot > 41 || !item)
+    //	return;
+    //只看默认背包和默认银行中位置的装备
+    if (slot < 23 || slot > 62 || !item)
+        return;
+
+    //战斗中禁止使用魔盒
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+        return;
+    }
+
+    ItemTemplate const* proto = item->GetTemplate();
+
+    if (!proto)
+        return;
+
+    //// not apply/remove mods for broken item
+    //if (item->IsBroken())
+    //    return;
+
+    //LOG_DEBUG("entities.player", "applying mods for item {} ", item->GetGUID().ToString());
+
+    uint8 attacktype = Player::GetAttackBySlot(slot);
+
+    //if (item->HasSocket())                              //only (un)equipping of items with sockets can influence metagems, so no need to waste time with normal items
+    //    CorrectMetaGemEnchants(slot, apply);
+
+    if (attacktype < MAX_ATTACK)
+        _ApplyWeaponDependentAuraMods(item, WeaponAttackType(attacktype), apply);
+
+    //_ApplyItemBonuses(proto, slot, apply);
+    //_ApplyItemBonusesByHLDM(proto, slot, apply);
+    _ApplyItemBonusesByHLDMForSPELL(proto, slot, apply);
+
+    //if (slot == EQUIPMENT_SLOT_RANGED)
+    //    _ApplyAmmoBonuses();
+
+    ApplyItemEquipSpell(item, apply);
+    //ApplyEnchantment(item, apply);
+
+    LOG_DEBUG("entities.player.items", "_ApplyItemMods complete.");
+}
+*/
+
+void Player::_ApplyItemModsByMount(Item* item, uint8 slot, bool apply)
+{
+
+    //只看默认背包和默认银行中位置的装备
+    if (slot < 23 || slot > 62 || !item)
+        return;
+
+    //战斗中禁止使用魔盒
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+        return;
+    }
+
+    ItemTemplate const* proto = item->GetTemplate();
+
+    if (!proto)
+        return;
+
+    if (apply)
+    {
+        uint32 attacktype = Player::GetAttackBySlot(slot);
+        if (attacktype < MAX_ATTACK)
+            _ApplyWeaponDependentAuraMods(item, WeaponAttackType(attacktype), true);
+
+        _ApplyItemBonusesByMount(proto, slot, true);
+
+        ApplyItemEquipSpell(item, true);
+        //ApplyEnchantmentByHLDM(item, true);
+    }
+    else // order must be reversed when removing weapon dependent aura mods
+    {
+        ApplyItemEquipSpell(item, false);
+        //ApplyEnchantmentByHLDM(item, false);
+
+        uint32 attacktype = Player::GetAttackBySlot(slot);
+        if (attacktype < MAX_ATTACK)
+            _ApplyWeaponDependentAuraMods(item, WeaponAttackType(attacktype), false);
+
+        _ApplyItemBonusesByMount(proto, slot, false);
+
+    }
+
+}
+
 void Player::_ApplyItemBonuses(ItemTemplate const* proto, uint8 slot, bool apply, bool only_level_scale /*= false*/)
 {
     if (slot >= INVENTORY_SLOT_BAG_END || !proto)
@@ -7081,6 +9701,168 @@ void Player::_ApplyItemBonuses(ItemTemplate const* proto, uint8 slot, bool apply
         if (feral_bonus)
             ApplyFeralAPBonus(feral_bonus, apply);
     }
+}
+
+
+void Player::_ApplyItemBonusesByHLDM(ItemTemplate const* proto, uint8 slot, bool apply)
+{
+    //赫拉迪姆魔盒，只看银行中前三个位置的装备slot:39,40,41
+    if (slot < 39 || slot > 41 || !proto)
+        return;
+
+    //战斗中禁止使用魔盒
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+        return;
+    }
+
+    //禁止使用高于60级的装备(香草阶段屏蔽高等级装备放魔盒)
+    if (proto->RequiredLevel > 80)
+        return;
+
+
+    for (const auto& i : proto->ItemStat)
+    {
+        float val = float(i.ItemStatValue);
+
+        if (val == 0)
+            continue;
+
+        switch (i.ItemStatType)
+        {
+        case ITEM_MOD_MANA:
+            HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(val), apply);
+            break;
+        case ITEM_MOD_HEALTH:                           // modify HP
+            HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(val), apply);
+            break;
+        case ITEM_MOD_AGILITY:                          // modify agility
+            HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_AGILITY, float(val), apply);
+            break;
+        case ITEM_MOD_STRENGTH:                         //modify strength
+            HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_STRENGTH, float(val), apply);
+            break;
+        case ITEM_MOD_INTELLECT:                        //modify intellect
+            HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_INTELLECT, float(val), apply);
+            break;
+        case ITEM_MOD_SPIRIT:                           //modify spirit
+            HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_SPIRIT, float(val), apply);
+            break;
+        case ITEM_MOD_STAMINA:                          //modify stamina
+            HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_STAMINA, float(val), apply);
+            break;
+        }
+    }
+
+    if (proto->Armor)
+        HandleStatModifier(UNIT_MOD_ARMOR, BASE_VALUE, float(proto->Armor), apply);
+
+    if (proto->Block)
+        HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(proto->Block), apply);
+
+    if (proto->HolyRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_HOLY, BASE_VALUE, float(proto->HolyRes), apply);
+
+    if (proto->FireRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_FIRE, BASE_VALUE, float(proto->FireRes), apply);
+
+    if (proto->NatureRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_NATURE, BASE_VALUE, float(proto->NatureRes), apply);
+
+    if (proto->FrostRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_FROST, BASE_VALUE, float(proto->FrostRes), apply);
+
+    if (proto->ShadowRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_SHADOW, BASE_VALUE, float(proto->ShadowRes), apply);
+
+    if (proto->ArcaneRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_ARCANE, BASE_VALUE, float(proto->ArcaneRes), apply);
+
+}
+
+
+void Player::_ApplyItemBonusesByMount(ItemTemplate const* proto, uint8 slot, bool apply)
+{
+    //只看默认背包和默认银行中位置的装备
+    if (slot < 23 || slot > 62 || !proto)
+        return;
+
+    //战斗中禁止使用魔盒
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendNotification(21715);//屏幕中间的提醒
+        return;
+    }
+
+
+    for (const auto& i : proto->ItemStat)
+    {
+        float val = float(i.ItemStatValue);
+
+        if (val == 0)
+            continue;
+
+        switch (i.ItemStatType)
+        {
+        case ITEM_MOD_MANA:
+            HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(val), apply);
+            break;
+        case ITEM_MOD_HEALTH:                           // modify HP
+            HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(val), apply);
+            break;
+        case ITEM_MOD_AGILITY:                          // modify agility
+            HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_AGILITY, float(val), apply);
+            break;
+        case ITEM_MOD_STRENGTH:                         //modify strength
+            HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_STRENGTH, float(val), apply);
+            break;
+        case ITEM_MOD_INTELLECT:                        //modify intellect
+            HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_INTELLECT, float(val), apply);
+            break;
+        case ITEM_MOD_SPIRIT:                           //modify spirit
+            HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_SPIRIT, float(val), apply);
+            break;
+        case ITEM_MOD_STAMINA:                          //modify stamina
+            HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(val), apply);
+            ApplyStatBuffMod(STAT_STAMINA, float(val), apply);
+            break;
+        }
+    }
+
+    if (proto->Armor)
+        HandleStatModifier(UNIT_MOD_ARMOR, BASE_VALUE, float(proto->Armor), apply);
+
+    if (proto->Block)
+        HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(proto->Block), apply);
+
+    if (proto->HolyRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_HOLY, BASE_VALUE, float(proto->HolyRes), apply);
+
+    if (proto->FireRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_FIRE, BASE_VALUE, float(proto->FireRes), apply);
+
+    if (proto->NatureRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_NATURE, BASE_VALUE, float(proto->NatureRes), apply);
+
+    if (proto->FrostRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_FROST, BASE_VALUE, float(proto->FrostRes), apply);
+
+    if (proto->ShadowRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_SHADOW, BASE_VALUE, float(proto->ShadowRes), apply);
+
+    if (proto->ArcaneRes)
+        HandleStatModifier(UNIT_MOD_RESISTANCE_ARCANE, BASE_VALUE, float(proto->ArcaneRes), apply);
+
 }
 
 void Player::_ApplyWeaponDamage(uint8 slot, ItemTemplate const* proto, ScalingStatValuesEntry const* ssv, bool apply)
@@ -7492,6 +10274,8 @@ void Player::CastItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 
     for (uint8 e_slot = 0; e_slot < MAX_ENCHANTMENT_SLOT; ++e_slot)
     {
         uint32 enchant_id = item->GetEnchantmentId(EnchantmentSlot(e_slot));
+        if (!enchant_id)                                 //if no enchant go to next enchant(slot)
+            continue;
         SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
         if (!pEnchant)
             continue;
@@ -7574,6 +10358,375 @@ void Player::CastItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 
         }
     }
 }
+
+//近战武器攻击触发魔盒第一格
+void Player::CastItemCombatSpellByHLDM(Unit* Target, Item* item)
+{
+    if (!item)
+        return;
+
+    ItemTemplate const* proto = item->GetTemplate();
+    if (!proto)
+        return;
+
+    //禁止使用高于60级的装备(香草阶段屏蔽高等级装备放魔盒)
+    if (proto->RequiredLevel > 80)
+        return;
+
+    if (!Target || Target == this)
+        return;
+
+    //uint32 WeaponSpeed = proto->Delay;
+    uint32 WeaponSpeed = 1500;//单位毫秒。越慢的速度，触发几率越高，3.5秒的默认触发几率是5.83%
+
+    //魔盒中的装备的速度已经没有意义了，直接给固定的速度为1.5s
+    //if(proto->Delay && proto->Delay>0)//如果能取到魔盒中物品的delay字段且不为0，就使用这个delay字段的值
+    //	WeaponSpeed = proto->Delay;
+
+    for (const auto& spellData : proto->Spells)
+    {
+        // no spell
+        if (!spellData.SpellId)
+            continue;
+
+        // wrong triggering type
+        if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_CHANCE_ON_HIT)
+            continue;
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellData.SpellId);
+        if (!spellInfo)
+        {
+            continue;
+        }
+
+        //// not allow proc extra attack spell at extra attack
+        //if (GetExtraAttacks() && spellInfo->HasEffect(SPELL_EFFECT_ADD_EXTRA_ATTACKS))
+        //    return;
+
+        //// Need to check gcd here because the cast is triggered and skips it.
+        //if (GetCharmInfo()->GetGlobalCooldownMgr().HasGlobalCooldown(spellInfo))
+        //    continue;
+
+        float chance = (float)spellInfo->ProcChance;
+        if (spellData.SpellPPMRate)
+        {
+            chance = GetPPMProcChance(WeaponSpeed, spellData.SpellPPMRate, spellInfo);
+        }
+        else if (chance > 100.0f)
+            chance = GetPPMProcChance(WeaponSpeed, 1.0f, spellInfo);   // default to 1 PPM for unknown proc rates
+
+
+        if (roll_chance_f(chance))
+        {
+            //if (sScriptMgr->OnCastItemCombatSpell(this, Target, spellInfo, item))
+            //{
+                //CastSpell(Target, spellInfo->Id, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD), item);//加入技能和技能category的cd
+                //判断是否技能是冷却的
+            if (!HasSpellCooldown(spellInfo->Id))
+            {
+                Unit* unitTarget = spellInfo->IsPositive() ? this : Target;
+                CastSpell(unitTarget, spellInfo->Id, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_GCD), item);//加入公共CD
+            }
+
+            //}
+
+            //CastSpell(Target, spellInfo->Id, true, item);//没有CD，容易出现堆栈溢出
+        }
+
+    }
+
+    // item combat enchantments
+    //for (uint8 e_slot = 0; e_slot < MAX_ENCHANTMENT_SLOT; ++e_slot)
+    for (uint8 e_slot = 0; e_slot < MAX_INSPECTED_ENCHANTMENT_SLOT; ++e_slot)//减少栏位侦测，十字军附魔这种一般都是在前面几个位置
+    {
+        //uint32 enchant_id = item->GetEnchantmentId(EnchantmentSlot(e_slot));
+        if (uint32 enchant_id = item->GetEnchantmentId(EnchantmentSlot(e_slot)))//防崩测试
+        {
+            if (!enchant_id)                                 //if no enchant go to next enchant(slot)
+                continue;
+            SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+            if (!pEnchant) continue;
+            for (int s = 0; s < 3; ++s)
+            {
+                //LOG_ERROR("xx", "get proc_spell_id {}", pEnchant->spellid[s]);//测试
+                uint32 proc_spell_id = pEnchant->spellid[s];
+                if (pEnchant->type[s] != ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL)
+                    continue;
+                //LOG_ERROR("xx", "get2 proc_spell_id {}", pEnchant->spellid[s]);//测试,火舌武器没有到这里，速效毒药到这里了
+
+                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(proc_spell_id);
+                if (!spellInfo)
+                {
+                    continue;
+                }
+                //LOG_ERROR("xx", "get3 proc_spell_id {}", pEnchant->spellid[s]);//测试
+
+                SpellEnchantProcEntry const* entry = sSpellMgr->GetSpellEnchantProcEvent(enchant_id);
+                float chance = pEnchant->amount[s] != 0 ? float(pEnchant->amount[s]) : GetWeaponProcChance();
+
+                if (entry)
+                {
+                    if (entry->PPMChance)
+                        chance = GetPPMProcChance(proto->Delay, entry->PPMChance, spellInfo);
+                    else if (entry->customChance)
+                        chance = (float)entry->customChance;
+                }
+
+                //LOG_ERROR("xx", "get chance {}", chance);//测试
+
+                ApplySpellMod(spellInfo->Id, SPELLMOD_CHANCE_OF_SUCCESS, chance);
+
+                /*
+                //魔盒触发几率设置上限
+                if (chance > 30)
+                {
+                    chance = 30;
+                }
+                if (chance > 10)//魔盒触发的几率如果大于10，降低一半
+                {
+                    chance = chance / 2;
+                }
+                //end -----
+                */
+
+                if (roll_chance_f(chance))
+                {
+                    uint32 charges = item->GetEnchantmentCharges(EnchantmentSlot(e_slot));
+
+                    //魔盒没有cd容易出现堆栈溢出
+                    //// PMonsterSay("Casted spell %u with %u charges.", proc_spell_id, charges);
+                    //if (spellInfo->_IsPositiveSpell())
+                    //    CastSpell(this, spellInfo->Id, true, item);
+                    //else
+                    //    CastSpell(Target, spellInfo->Id, true, item);
+
+                    Unit* unitTarget = spellInfo->IsPositive() ? this : Target;
+                    //CastSpell(unitTarget, spellInfo, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD), item);
+
+                    //判断是否技能是冷却的
+                    if (!HasSpellCooldown(spellInfo->Id))
+                    {
+                        CastSpell(unitTarget, spellInfo, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_GCD), item);//加入公共CD
+                    }
+
+
+
+                    //不再更新使用次数
+                    //if (charges > 1)
+                    //    item->SetEnchantmentCharges(TEMP_ENCHANTMENT_SLOT, charges - 1);
+                    //else if (charges == 1)
+                    //{
+                    //    ApplyEnchantment(item, TEMP_ENCHANTMENT_SLOT, false);
+                    //    item->ClearEnchantment(TEMP_ENCHANTMENT_SLOT);
+                    //}
+                }
+            }
+        }
+    }
+}
+
+//这个函数可以调用被动以及主动的装备特效
+void Player::CastItemCombatSpellPlusByHLDM(Unit* Target, Item* item, uint32 spellid, bool shunfa)//加入触发的spellid，避免由同个技能触发技能导致死循环
+{
+    if (!item)
+        return;
+
+    ItemTemplate const* proto = item->GetTemplate();
+    if (!proto)
+        return;
+
+    //禁止使用高于60级的装备(香草阶段屏蔽高等级装备放魔盒)
+    if (proto->RequiredLevel > 80)
+        return;
+
+    //法系或治疗职业有可能无目标施法，也得能触发
+    //if (!Target || Target == this)
+    //	return;
+
+    uint32 WeaponSpeed = 4800;//单位毫秒。越慢的速度，触发几率越高，3.5秒的默认触发几率是5.83%
+
+    if (shunfa)
+        WeaponSpeed = 1500;
+
+
+    //魔盒中的装备的速度已经没有意义了，直接给固定的速度为1.5s
+    //if(proto->Delay && proto->Delay>0)//如果能取到魔盒中物品的delay字段且不为0，就使用这个delay字段的值
+    //	WeaponSpeed = proto->Delay;
+
+    for (const auto& spellData : proto->Spells)
+    {
+        // no spell
+        if (!spellData.SpellId)
+            continue;
+
+
+        if (spellid)
+        {
+            //如果本次是由技能spellid触发的，那就不再触发同一个技能spellid，测试防堆栈溢出
+            if (spellid == spellData.SpellId)
+            {
+                continue;
+            }
+
+            SpellInfo const* _spellTriggeredProto = sSpellMgr->GetSpellInfo(spellid);
+            //如果本次是由技能spellid的触发技能触发的，就跳出
+            for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+            {
+                if (_spellTriggeredProto->Effects[i].TriggerSpell == spellid)
+                {
+                    continue;
+                }
+            }
+
+
+        }
+        //-----------------
+
+        if (spellData.SpellTrigger == ITEM_SPELLTRIGGER_CHANCE_ON_HIT)
+        {
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellData.SpellId);
+            if (!spellInfo)
+            {
+                continue;
+            }
+
+            //// not allow proc extra attack spell at extra attack
+            //if (GetExtraAttacks() && spellInfo->HasEffect(SPELL_EFFECT_ADD_EXTRA_ATTACKS))
+            //    return;
+
+            //// Need to check gcd here because the cast is triggered and skips it.
+            //if (GetCharmInfo()->GetGlobalCooldownMgr().HasGlobalCooldown(spellInfo))
+            //    continue;
+
+            float chance = (float)spellInfo->ProcChance;
+
+            if (spellData.SpellPPMRate)
+            {
+                chance = GetPPMProcChance(WeaponSpeed, spellData.SpellPPMRate, spellInfo);
+            }
+            else if (chance > 100.0f)
+                chance = GetPPMProcChance(WeaponSpeed, 1.0f, spellInfo);   // default to 1 PPM for unknown proc rates
+
+            /*
+            //魔盒触发几率设置上限
+            //如果是这些连击技能，设置上限
+            if (spellData.SpellId)
+            {
+                //如果是这些连击技能，设置上限
+                //                                    正义之手    痛击之刃，反对者（铸铁之怒），两次攻击
+                std::vector<uint32> _limitspells = { 15600,15601,  21919,    15494,             18943};
+
+                if (_limitspells.size() > 0)
+                {
+                    auto it = std::find(_limitspells.begin(), _limitspells.end(), spellInfo->Id);
+
+                    if (it != _limitspells.end()) {
+                        //是限制技能
+                        if (chance > 10)
+                        {
+                            chance = 10;
+                        }
+
+                    }
+                    else
+                    {
+                        if (chance > 30)
+                        {
+                            chance = 30;
+                        }
+
+                    }
+
+                }
+
+                //end ----------
+            }
+
+            //end -----
+            */
+            //LOG_ERROR("xx", "roll_chance_f {}", spellInfo->Id);//测试
+            if (roll_chance_f(chance))
+            {
+                //if (sScriptMgr->OnCastItemCombatSpell(this, Target, spellInfo, item))//这个有时候会崩，注释掉
+                //{
+                    //CastSpell(Target, spellInfo->Id, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD), item);
+
+                //LOG_ERROR("xx", "meleex {}", spellInfo->Id);//测试
+                    //判断是否技能是冷却的
+                if (!HasSpellCooldown(spellInfo->Id))
+                {
+                    Unit* unitTarget = spellInfo->IsPositive() ? this : Target;
+                    //LOG_ERROR("xx", "melee4x {}", spellInfo->Id);//测试
+                    CastSpell(unitTarget, spellInfo->Id, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_GCD), item);
+                }
+
+                //}
+
+
+                //CastSpell(Target, spellInfo->Id, true, item);//魔盒没有cd，容易引起堆栈溢出
+            }
+        }
+        else if (spellData.SpellTrigger == ITEM_SPELLTRIGGER_ON_USE)
+        {
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellData.SpellId);
+            if (!spellInfo)
+            {
+                continue;
+            }
+
+            //如果该技能是召唤出另一个物品的，跳过，否则会因为找不到item而崩溃
+            if (spellInfo->Effects[0].ItemType || spellInfo->Effects[1].ItemType || spellInfo->Effects[2].ItemType)
+                continue;
+            //end-----------
+
+            //// not allow proc extra attack spell at extra attack
+            //if (GetExtraAttacks() && spellInfo->HasEffect(SPELL_EFFECT_ADD_EXTRA_ATTACKS))
+            //    return;
+
+            //// Need to check gcd here because the cast is triggered and skips it.
+            //if (GetCharmInfo()->GetGlobalCooldownMgr().HasGlobalCooldown(spellInfo))
+            //    continue;
+
+            float chance = 0.0f;
+
+            chance = GetPPMProcChance(WeaponSpeed, 1.0f, spellInfo);   // default to 1 PPM for unknown proc rates
+
+            ////魔盒触发几率设置上限
+            //if (chance > 30)
+            //{
+            //    chance = 30;
+            //}
+            //if (chance > 10)//魔盒触发的几率如果大于10，降低一半
+            //{
+            //    chance = chance / 2;
+            //}
+            ////end -----
+
+            if (roll_chance_f(chance))
+            {
+                //if (sScriptMgr->OnCastItemCombatSpell(this, Target, spellInfo, item))
+                //{
+                     //判断是否技能是冷却的
+                if (!HasSpellCooldown(spellInfo->Id))
+                {
+                    Unit* unitTarget = spellInfo->IsPositive() ? this : Target;
+                    CastSpell(unitTarget, spellInfo->Id, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_GCD), item);
+                    //CastSpell(unitTarget, spellInfo->Id, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD), item);
+                }
+
+                //}
+
+
+                //CastSpell(Target, spellInfo->Id, true, item);//魔盒没有cd，容易引起堆栈溢出
+            }
+        }
+
+    }
+    //法术伤害或治疗，不触发魔盒武器的附魔，以此来屏蔽问题:魔盒第一格武器被加了火舌武器，就会在治疗和法术无目标攻击时，对自己造成伤害
+    //打卡扎克导致了卡扎克的扭曲反射为玩家回血25000，然后玩家每次攻击卡扎克，都会造成火舌对自己伤害，然后同时卡扎克的扭曲反射对玩家治疗
+
+}
+
 
 void Player::CastItemUseSpell(Item* item, SpellCastTargets const& targets, uint8 cast_count, uint32 glyphIndex)
 {
@@ -7665,6 +10818,8 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets const& targets, uint8
     for (uint8 e_slot = 0; e_slot < MAX_ENCHANTMENT_SLOT; ++e_slot)
     {
         uint32 enchant_id = item->GetEnchantmentId(EnchantmentSlot(e_slot));
+        if (!enchant_id)                                 //if no enchant go to next enchant(slot)
+            continue;
         SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
         if (!pEnchant)
             continue;
@@ -7760,6 +10915,174 @@ void Player::_RemoveAllItemMods()
     LOG_DEBUG("entities.player.items", "_RemoveAllItemMods complete.");
 }
 
+void Player::_RemoveAllItemModsForHLDM()
+{
+    LOG_DEBUG("entities.player.items", "_RemoveAllItemModsForHLDM start.");
+    /*
+    for (uint8 i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+    {
+        if (m_items[i])
+        {
+            ItemTemplate const* proto = m_items[i]->GetTemplate();
+            if (!proto)
+                continue;
+
+            // item set bonuses not dependent from item broken state
+            if (proto->ItemSet)
+                RemoveItemsSetItem(this, proto);
+
+            if (m_items[i]->IsBroken() || !CanUseAttackType(GetAttackBySlot(i)))
+                continue;
+
+            ApplyItemEquipSpell(m_items[i], false);
+            ApplyEnchantment(m_items[i], false);
+        }
+    }
+
+    for (uint8 i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+    {
+        if (m_items[i])
+        {
+            if (m_items[i]->IsBroken() || !CanUseAttackType(GetAttackBySlot(i)))
+                continue;
+            ItemTemplate const* proto = m_items[i]->GetTemplate();
+            if (!proto)
+                continue;
+
+            uint32 attacktype = Player::GetAttackBySlot(i);
+            if (attacktype < MAX_ATTACK)
+                _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), false);
+
+            _ApplyItemBonuses(proto, i, false);
+
+            if (i == EQUIPMENT_SLOT_RANGED)
+                _ApplyAmmoBonuses();
+        }
+    }
+
+    */
+
+
+    //判断是否拥有赫拉迪姆魔盒
+    //uint32 hldmbox = GetItemCount(91666, true);
+    //if (hldmbox)
+    if (getHLDM())
+    {
+        //如果有魔盒，看银行中前三个位置的装备slot:39,40,41
+        for (int i = 39; i < 42; ++i)
+        {
+            if (m_items[i])
+            {
+                ItemTemplate const* proto = m_items[i]->GetTemplate();
+                if (!proto)
+                    continue;
+                if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
+                {
+                    uint32 attacktype = Player::GetAttackBySlot(i);
+                    if (attacktype < MAX_ATTACK)
+                        _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), false);
+
+                    //_ApplyItemBonusesByHLDM(proto, i, false);
+                    _ApplyItemBonusesByHLDMForSPELL(proto, i, false);
+
+                }
+
+            }
+        }
+
+        for (int i = 39; i < 42; ++i)
+        {
+            if (m_items[i])
+            {
+                ItemTemplate const* proto = m_items[i]->GetTemplate();
+                if (!proto)
+                    continue;
+                if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
+                {
+                    // item set bonuses not dependent from item broken state
+                    if (proto->ItemSet)
+                        RemoveItemsSetItem(this, proto);//套装属性
+
+                    ApplyItemEquipSpell(m_items[i], false);//装备绿字属性
+                    //ApplyEnchantmentByHLDM(m_items[i], false);//随机附魔和附魔的属性加成
+                }
+
+            }
+        }
+
+    }
+
+
+    //判断是否有赞助坐骑
+    if (m_zuoqis.size() > 0)
+    {
+        uint32 zzmount = 0;
+        for (auto zuoqis : m_zuoqis)
+        {
+            zzmount += GetItemCount(zuoqis, true);
+        }
+
+        if (zzmount)
+        {
+            //如果有赞助坐骑，遍历默认背包的所有格子和银行默认格子（除了魔盒的格子39，40，41）
+            //背包默认格子23-38；银行默认格子39-62（除去魔盒的格子39，40，41）
+            for (int i = 23; i < 63; ++i)
+            {
+                if (i == 39 || i == 40 || i == 41)
+                    continue;
+
+                if (m_items[i])
+                {
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1GetEntry %u", m_items[i]->GetEntry());//测试
+                    ItemTemplate const* proto = m_items[i]->GetTemplate();
+                    if (!proto)
+                        continue;
+
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                    {
+                        continue;
+                    }
+                    uint32 attacktype = Player::GetAttackBySlot(i);
+                    if (attacktype < MAX_ATTACK)
+                        _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), false);
+
+                    _ApplyItemBonusesByMount(proto, i, false);
+
+                }
+            }
+            for (int i = 23; i < 63; ++i)
+            {
+                if (i == 39 || i == 40 || i == 41)
+                    continue;
+
+                if (m_items[i])
+                {
+                    ItemTemplate const* proto = m_items[i]->GetTemplate();
+                    if (!proto)
+                        continue;
+
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                    {
+                        continue;
+                    }
+
+                    // item set bonuses not dependent from item broken state
+                    if (proto->ItemSet)
+                        RemoveItemsSetItem(this, proto);
+
+                    ApplyItemEquipSpell(m_items[i], false);
+                    ApplyEnchantmentByHLDM(m_items[i], false);
+
+                }
+            }
+
+        }
+
+    }
+
+    LOG_DEBUG("entities.player.items", "_RemoveAllItemModsForHLDM complete.");
+}
+
 void Player::_ApplyAllItemMods()
 {
     LOG_DEBUG("entities.player.items", "_ApplyAllItemMods start.");
@@ -7805,6 +11128,132 @@ void Player::_ApplyAllItemMods()
             ApplyEnchantment(m_items[i], true);
         }
     }
+
+    //判断是否拥有赫拉迪姆魔盒
+//uint32 hldmbox = GetItemCount(91666, true);
+//if (hldmbox)
+//获得玩家当前是否在战场或竞技场中
+    bool canusezuoqi = true;
+    //这里不能加这个判断，因为_ApplyAllItemMods会在角色未加载到地图上的时候在_LoadInventory里调用
+    if (IsInWorld() && isActiveObject())
+        if (GetMap() && GetAreaId() && GetAreaId())
+            canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+
+    if (getHLDM() && canusezuoqi)
+    {
+
+
+        //如果有魔盒，看银行中前三个位置的装备slot:39,40,41
+        for (int i = 39; i < 42; ++i)
+        {
+            if (m_items[i])
+            {
+                ItemTemplate const* proto = m_items[i]->GetTemplate();
+                if (!proto)
+                    continue;
+                if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
+                {
+                    uint32 attacktype = Player::GetAttackBySlot(i);
+                    if (attacktype < MAX_ATTACK)
+                        _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), true);
+
+                    //_ApplyItemBonusesByHLDM(proto, i, true);
+                    _ApplyItemBonusesByHLDMForSPELL(proto, i, true);
+
+                }
+
+            }
+        }
+
+        for (int i = 39; i < 42; ++i)
+        {
+            if (m_items[i])
+            {
+                ItemTemplate const* proto = m_items[i]->GetTemplate();
+                if (!proto)
+                    continue;
+                if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
+                {
+                    // item set bonuses not dependent from item broken state
+                    if (proto->ItemSet)
+                        AddItemsSetItem(this, m_items[i]);//套装属性
+
+                    ApplyItemEquipSpell(m_items[i], true);//装备绿字属性
+                    //ApplyEnchantmentByHLDM(m_items[i], true);//随机附魔和附魔的属性加成
+                }
+
+            }
+        }
+
+    }
+
+    //判断是否有赞助坐骑
+    if (m_zuoqis.size() > 0)
+    {
+        //uint32 zzmount = 0;
+        //for (auto zuoqis : m_zuoqis)
+        //{
+        //    zzmount += GetItemCount(zuoqis, true);
+        //}
+
+        if (canusezuoqi)
+        {
+            //如果有赞助坐骑，遍历默认背包的所有格子和银行默认格子（除了魔盒的格子39，40，41）
+            //背包默认格子23-38；银行默认格子39-62（除去魔盒的格子39，40，41）
+            for (int i = 23; i < 63; ++i)
+            {
+                if (i == 39 || i == 40 || i == 41)
+                    continue;
+
+                if (m_items[i])
+                {
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1GetEntry %u", m_items[i]->GetEntry());//测试
+                    ItemTemplate const* proto = m_items[i]->GetTemplate();
+                    if (!proto)
+                        continue;
+
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                    {
+                        continue;
+                    }
+                    uint32 attacktype = Player::GetAttackBySlot(i);
+                    if (attacktype < MAX_ATTACK)
+                        _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), true);
+
+                    _ApplyItemBonusesByMount(proto, i, true);
+
+                }
+            }
+            for (int i = 23; i < 63; ++i)
+            {
+                if (i == 39 || i == 40 || i == 41)
+                    continue;
+
+                if (m_items[i])
+                {
+                    ItemTemplate const* proto = m_items[i]->GetTemplate();
+                    if (!proto)
+                        continue;
+
+                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                    {
+                        continue;
+                    }
+
+                    // item set bonuses not dependent from item broken state
+                    if (proto->ItemSet)
+                        AddItemsSetItem(this, m_items[i]);
+
+                    ApplyItemEquipSpell(m_items[i], true);
+                    ApplyEnchantmentByHLDM(m_items[i], true);
+
+                }
+            }
+
+        }
+
+    }
+
 
     LOG_DEBUG("entities.player.items", "_ApplyAllItemMods complete.");
 }
@@ -8338,6 +11787,408 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             break;
         default:
             break;
+    }
+
+    // need know merged fishing/corpse loot type for achievements
+    loot->loot_type = loot_type;
+
+    if (!sScriptMgr->OnAllowedToLootContainerCheck(this, guid))
+    {
+        SendLootError(guid, LOOT_ERROR_DIDNT_KILL);
+        return;
+    }
+
+    if (permission != NONE_PERMISSION)
+    {
+        SetLootGUID(guid);
+
+        WorldPacket data(SMSG_LOOT_RESPONSE, (9 + 50));         // we guess size
+        data << guid;
+        data << uint8(loot_type);
+        data << LootView(*loot, this, permission);
+
+        SendDirectMessage(&data);
+
+        // add 'this' player as one of the players that are looting 'loot'
+        loot->AddLooter(GetGUID());
+
+        if (loot_type == LOOT_CORPSE && !guid.IsItem())
+            SetUnitFlag(UNIT_FLAG_LOOTING);
+    }
+    else
+        SendLootError(guid, LOOT_ERROR_DIDNT_KILL);
+}
+
+void Player::SendLootPlus(ObjectGuid guid, LootType loot_type)
+{
+    if (ObjectGuid lguid = GetLootGUID())
+        m_session->DoLootRelease(lguid, true);
+
+    Loot* loot = 0;
+    PermissionTypes permission = ALL_PERMISSION;
+
+    LOG_DEBUG("loot", "Player::SendLoot");
+
+    // remove FD and invisibility at all loots
+    constexpr std::array<AuraType, 2> toRemove = { SPELL_AURA_MOD_INVISIBILITY, SPELL_AURA_FEIGN_DEATH };
+    for (const auto& aura : toRemove)
+    {
+        RemoveAurasByType(aura);
+    }
+    // remove stealth only if looting a corpse
+    if (loot_type == LOOT_CORPSE && !guid.IsItem())
+    {
+        RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
+    }
+
+    if (guid.IsGameObject())
+    {
+        LOG_DEBUG("loot", "guid.IsGameObject");
+        GameObject* go = GetMap()->GetGameObject(guid);
+
+        // not check distance for GO in case owned GO (fishing bobber case, for example)
+        // And permit out of range GO with no owner in case fishing hole
+        if (!go || (loot_type != LOOT_FISHINGHOLE && ((loot_type != LOOT_FISHING && loot_type != LOOT_FISHING_JUNK) || go->GetOwnerGUID() != GetGUID()) && !go->IsWithinDistInMap(this)) || (loot_type == LOOT_CORPSE && go->GetRespawnTime() && go->isSpawnedByDefault()))
+        {
+            go->ForceValuesUpdateAtIndex(GAMEOBJECT_BYTES_1);
+            SendLootRelease(guid);
+            return;
+        }
+
+        loot = &go->loot;
+
+        // Xinef: loot was generated and respawntime has passed since then, allow to recreate loot
+        // Xinef: to avoid bugs, this rule covers spawned gameobjects only
+        if (go->isSpawnedByDefault() && go->getLootState() == GO_ACTIVATED && !go->loot.isLooted() && go->GetLootGenerationTime() + go->GetRespawnDelay() < GameTime::GetGameTime().count())
+            go->SetLootState(GO_READY);
+
+        if (go->getLootState() == GO_READY)
+        {
+            uint32 lootid = go->GetGOInfo()->GetLootId();
+
+            //TODO: fix this big hack
+            if ((go->GetEntry() == BG_AV_OBJECTID_MINE_N || go->GetEntry() == BG_AV_OBJECTID_MINE_S))
+                if (Battleground* bg = GetBattleground())
+                    if (bg->GetBgTypeID(true) == BATTLEGROUND_AV)
+                        if (!bg->ToBattlegroundAV()->PlayerCanDoMineQuest(go->GetEntry(), GetTeamId()))
+                        {
+                            go->ForceValuesUpdateAtIndex(GAMEOBJECT_BYTES_1);
+                            SendLootRelease(guid);
+                            return;
+                        }
+
+            if (lootid)
+            {
+                loot->clear();
+
+                Group* group = GetGroup();
+                bool groupRules = (group && go->GetGOInfo()->type == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules);
+
+                // check current RR player and get next if necessary
+                if (groupRules)
+                    group->UpdateLooterGuid(go, true);
+
+                loot->FillLoot(lootid, LootTemplates_Gameobject, this, !groupRules, false, go->GetLootMode(), go);
+                go->SetLootGenerationTime();
+
+                // get next RR player (for next loot)
+                if (groupRules && !go->loot.empty())
+                    group->UpdateLooterGuid(go);
+            }
+            if (GameObjectTemplateAddon const* addon = go->GetTemplateAddon())
+                loot->generateMoneyLoot(addon->mingold, addon->maxgold);
+
+            //npcbot: fill wandering bot kill reward
+            if (lootid)
+            {
+                if (go->GetEntry() == GO_BOT_MONEY_BAG)
+                    BotMgr::OnBotWandererKilled(go);
+            }
+            //end npcbot
+
+            if (loot_type == LOOT_FISHING)
+                go->GetFishLoot(loot, this);
+            else if (loot_type == LOOT_FISHING_JUNK)
+                go->GetFishLoot(loot, this, true);
+
+            if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
+            {
+                if (Group* group = GetGroup())
+                {
+                    switch (group->GetLootMethod())
+                    {
+                    case GROUP_LOOT:
+                        // GroupLoot: rolls items over threshold. Items with quality < threshold, round robin
+                        group->GroupLoot(loot, go);
+                        break;
+                    case NEED_BEFORE_GREED:
+                        group->NeedBeforeGreed(loot, go);
+                        break;
+                    case MASTER_LOOT:
+                        group->MasterLoot(loot, go);
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+
+            go->SetLootState(GO_ACTIVATED, this);
+        }
+
+        if (go->getLootState() == GO_ACTIVATED)
+        {
+            if (Group* group = GetGroup())
+            {
+                switch (group->GetLootMethod())
+                {
+                case MASTER_LOOT:
+                    permission = group->GetMasterLooterGuid() == GetGUID() ? MASTER_PERMISSION : RESTRICTED_PERMISSION;
+                    break;
+                case FREE_FOR_ALL:
+                    permission = ALL_PERMISSION;
+                    break;
+                case ROUND_ROBIN:
+                    permission = ROUND_ROBIN_PERMISSION;
+                    break;
+                default:
+                    permission = GROUP_PERMISSION;
+                    break;
+                }
+            }
+            else
+                permission = ALL_PERMISSION;
+        }
+    }
+    else if (guid.IsItem())
+    {
+        Item* item = GetItemByGuid(guid);
+
+        if (!item)
+        {
+            SendLootRelease(guid);
+            return;
+        }
+
+        permission = OWNER_PERMISSION;
+
+        loot = &item->loot;
+
+        // Xinef: Store container id
+        loot->containerGUID = item->GetGUID();
+
+        if (!item->m_lootGenerated && !sLootItemStorage->LoadStoredLoot(item, this))
+        {
+            item->m_lootGenerated = true;
+            loot->clear();
+
+            switch (loot_type)
+            {
+            case LOOT_DISENCHANTING:
+                loot->FillLoot(item->GetTemplate()->DisenchantID, LootTemplates_Disenchant, this, true);
+                break;
+            case LOOT_PROSPECTING:
+                loot->FillLoot(item->GetEntry(), LootTemplates_Prospecting, this, true);
+                break;
+            case LOOT_MILLING:
+                loot->FillLoot(item->GetEntry(), LootTemplates_Milling, this, true);
+                break;
+            default:
+                loot->generateMoneyLoot(item->GetTemplate()->MinMoneyLoot, item->GetTemplate()->MaxMoneyLoot);
+                loot->FillLoot(item->GetEntry(), LootTemplates_Item, this, true, loot->gold != 0);
+
+                // Xinef: Add to storage
+                if (loot->gold > 0 || loot->unlootedCount > 0)
+                    sLootItemStorage->AddNewStoredLoot(loot, this);
+
+                break;
+            }
+        }
+    }
+    else if (guid.IsCorpse())                          // remove insignia
+    {
+        Corpse* bones = ObjectAccessor::GetCorpse(*this, guid);
+
+        if (!bones || !(loot_type == LOOT_CORPSE || loot_type == LOOT_INSIGNIA) || bones->GetType() != CORPSE_BONES || !bones->HasFlag(CORPSE_FIELD_DYNAMIC_FLAGS, CORPSE_DYNFLAG_LOOTABLE))
+        {
+            SendLootRelease(guid);
+            return;
+        }
+
+        loot = &bones->loot;
+
+        if (loot->loot_type == LOOT_NONE)
+        {
+            uint32 pLevel = bones->loot.gold;
+            bones->loot.clear();
+
+            loot->FillLoot(GetTeamId(), LootTemplates_Player, this, true);
+
+            // It may need a better formula
+            // Now it works like this: lvl10: ~6copper, lvl70: ~9silver
+            bones->loot.gold = uint32(urand(50, 150) * 0.016f * pow(float(pLevel) / 5.76f, 2.5f) * sWorld->getRate(RATE_DROP_MONEY));
+        }
+
+        if (bones->lootRecipient != this)
+            permission = NONE_PERMISSION;
+        else
+            permission = OWNER_PERMISSION;
+    }
+    else
+    {
+        Creature* creature = GetMap()->GetCreature(guid);
+        if (!creature)
+            return;
+
+        // must be in range and creature must be alive for pickpocket and must be dead for another loot
+        //if (!creature || creature->IsAlive() != (loot_type == LOOT_PICKPOCKETING) || !creature->IsWithinDistInMap(this, INTERACTION_DISTANCE))
+        if (!creature || creature->IsAlive() != (loot_type == LOOT_PICKPOCKETING))
+        {
+            SendLootRelease(guid);
+            return;
+        }
+
+        if (loot_type == LOOT_PICKPOCKETING && IsFriendlyTo(creature))
+        {
+            SendLootRelease(guid);
+            return;
+        }
+
+        loot = &creature->loot;
+
+        if (loot_type == LOOT_PICKPOCKETING)
+        {
+            if (!loot || loot->loot_type != LOOT_PICKPOCKETING)
+            {
+                if (creature->CanGeneratePickPocketLoot())
+                {
+                    creature->SetPickPocketLootTime();
+                    loot->clear();
+
+                    if (uint32 lootid = creature->GetCreatureTemplate()->pickpocketLootId)
+                        loot->FillLoot(lootid, LootTemplates_Pickpocketing, this, true);
+
+                    // Generate extra money for pick pocket loot
+                    const uint32 a = urand(0, creature->GetLevel() / 2);
+                    const uint32 b = urand(0, GetLevel() / 2);
+                    loot->gold = uint32(10 * (a + b) * sWorld->getRate(RATE_DROP_MONEY));
+                    permission = OWNER_PERMISSION;
+                }
+                else
+                {
+                    permission = NONE_PERMISSION;
+                    SendLootError(guid, LOOT_ERROR_ALREADY_PICKPOCKETED);
+                    return;
+                }
+            }
+        }
+        else
+        {
+            // Xinef: Exploit fix
+            if (!creature->HasDynamicFlag(UNIT_DYNFLAG_LOOTABLE))
+            {
+                SendLootError(guid, LOOT_ERROR_DIDNT_KILL);
+                return;
+            }
+
+            // the player whose group may loot the corpse
+            Player* recipient = creature->GetLootRecipient();
+            Group* recipientGroup = creature->GetLootRecipientGroup();
+            if (!recipient && !recipientGroup)
+                return;
+
+            if (loot->loot_type == LOOT_NONE)
+            {
+                // for creature, loot is filled when creature is killed.
+                if (recipientGroup)
+                {
+                    switch (recipientGroup->GetLootMethod())
+                    {
+                    case GROUP_LOOT:
+                        // GroupLoot: rolls items over threshold. Items with quality < threshold, round robin
+                        recipientGroup->GroupLoot(loot, creature);
+                        break;
+                    case NEED_BEFORE_GREED:
+                        recipientGroup->NeedBeforeGreed(loot, creature);
+                        break;
+                    case MASTER_LOOT:
+                        recipientGroup->MasterLoot(loot, creature);
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+
+            // if loot is already skinning loot then don't do anything else
+            if (loot->loot_type == LOOT_SKINNING)
+            {
+                loot_type = LOOT_SKINNING;
+                permission = creature->GetLootRecipientGUID() == GetGUID() ? OWNER_PERMISSION : NONE_PERMISSION;
+            }
+            else if (loot_type == LOOT_SKINNING)
+            {
+                loot->clear();
+                loot->FillLoot(creature->GetCreatureTemplate()->SkinLootId, LootTemplates_Skinning, this, true);
+                permission = OWNER_PERMISSION;
+
+                //Inform instance if creature is skinned.
+                if (InstanceScript* mapInstance = creature->GetInstanceScript())
+                {
+                    mapInstance->CreatureLooted(creature, LOOT_SKINNING);
+                }
+
+                // Xinef: Set new loot recipient
+                creature->SetLootRecipient(this, false);
+            }
+            // set group rights only for loot_type != LOOT_SKINNING
+            else
+            {
+                if (recipientGroup)
+                {
+                    if (GetGroup() == recipientGroup)
+                    {
+                        switch (recipientGroup->GetLootMethod())
+                        {
+                        case MASTER_LOOT:
+                            permission = recipientGroup->GetMasterLooterGuid() == GetGUID() ? MASTER_PERMISSION : RESTRICTED_PERMISSION;
+                            break;
+                        case FREE_FOR_ALL:
+                            permission = ALL_PERMISSION;
+                            break;
+                        case ROUND_ROBIN:
+                            permission = ROUND_ROBIN_PERMISSION;
+                            break;
+                        default:
+                            permission = GROUP_PERMISSION;
+                            break;
+                        }
+                    }
+                    else
+                        permission = NONE_PERMISSION;
+                }
+                else if (recipient == this)
+                    permission = OWNER_PERMISSION;
+                else
+                    permission = NONE_PERMISSION;
+            }
+        }
+    }
+
+    // LOOT_INSIGNIA and LOOT_FISHINGHOLE unsupported by client
+    switch (loot_type)
+    {
+    case LOOT_INSIGNIA:
+        loot_type = LOOT_SKINNING;
+        break;
+    case LOOT_FISHINGHOLE:
+        loot_type = LOOT_FISHING;
+        break;
+    case LOOT_FISHING_JUNK:
+        loot_type = LOOT_FISHING;
+        break;
+    default:
+        break;
     }
 
     // need know merged fishing/corpse loot type for achievements
@@ -10463,6 +14314,39 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     if (nodes.size() < 2)
         return false;
 
+    //瞬飞代码
+//判断身上是否有瞬飞卷轴
+    uint32 sfcard = GetItemCount(70071, false) + GetItemCount(70050, false) + GetItemCount(70051, false) + GetItemCount(70052, false) + GetItemCount(70053, false);
+
+    if (sfcard)
+    {
+        if (nodes.size())
+        {
+            uint32 nodesizeis = nodes.size();
+            uint32 finalnodeis = nodes[nodesizeis - 1];//出发点是0，终点是size-1
+            if (nodesizeis)
+            {
+                TaxiNodesEntry const* finalnode = sTaxiNodesStore.LookupEntry(finalnodeis);
+                if (finalnode)
+                {
+                    if (GetDistance(finalnode->x, finalnode->y, finalnode->z) < 50.0f)
+                    {
+                        //如果出发点和结束点太近，可能是飞行轰炸任务，就取消瞬飞
+                    }
+                    else
+                    {
+                        TeleportTo(finalnode->map_id, finalnode->x, finalnode->y, finalnode->z, GetOrientation(), TELE_TO_NOT_UNSUMMON_PET);//瞬飞
+                        return true;
+                    }
+
+                }
+            }
+
+
+        }
+    }
+
+
     // not let cheating with start flight in time of logout process || while in combat || has type state: stunned || has type state: root
     if (GetSession()->isLogingOut() || IsInCombat() || HasUnitState(UNIT_STATE_STUNNED) || HasUnitState(UNIT_STATE_ROOT))
     {
@@ -10870,7 +14754,7 @@ void Player::InitDisplayIds()
     }
 }
 
-inline bool Player::_StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 count, uint8 bag, uint8 slot, int32 price, ItemTemplate const* pProto, Creature* pVendor, VendorItem const* crItem, bool bStore)
+inline bool Player::_StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 count, uint8 bag, uint8 slot, int32 price, ItemTemplate const* pProto, Creature* pVendor, VendorItem const* crItem, bool bStore, uint32 costitem, uint32 costitemcount)
 {
     ItemPosCountVec vDest;
     uint16 uiDest = 0;
@@ -10884,6 +14768,88 @@ inline bool Player::_StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 c
     }
 
     ModifyMoney(-price);
+
+    //item表里直接设定的购买需要物品，进行扣除
+    if (costitem > 0 && costitemcount > 0)
+    {
+        //扣除购买商品的点券类物品并记录日志
+        DestroyItemCount(costitem, costitemcount, true);
+        //--------------------------------------
+
+        /*
+        //如果购买的是新人关怀卷轴，全服霹雷
+        if (item == 70533)
+        {
+
+            //全服通告
+            sWorld->SendWorldText(21719);
+            //给所有未满级的玩家上buff光环
+            for (SessionMap::const_iterator itr = sWorld->GetAllSessions().begin(); itr != sWorld->GetAllSessions().end(); ++itr)
+            {
+                if (!itr->second || !itr->second->GetPlayer() || !itr->second->GetPlayer()->IsInWorld() || itr->second->GetPlayer()->GetSession()->IsBot() || itr->second->GetPlayer()->GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+                    continue;
+                //上光环
+                itr->second->GetPlayer()->AddAura(22888, itr->second->GetPlayer());
+                itr->second->GetPlayer()->AddAura(24425, itr->second->GetPlayer());
+                //itr->second->GetPlayer()->AddAura(16609, itr->second->GetPlayer());
+                itr->second->GetPlayer()->CastSpell(itr->second->GetPlayer(), 16609, true);//这个用castspell是为了出法术霹雷的效果
+            }
+        }
+        else
+        {
+
+            //如果购买物品大于250点券或500红包券，全服劈雷
+            if ((costitem == 70000 && costitemcount > 180) || (costitem == 70008 && costitemcount > 360) || (costitem == 70001 && costitemcount > 720))
+            {
+
+                //如果是管理员购买
+                if (GetGUID().GetCounter() == 1)
+                {
+                    //全服通告
+                    sWorld->SendWorldText(21719);
+                    //给所有未满级的玩家上buff光环
+                    for (SessionMap::const_iterator itr = sWorld->GetAllSessions().begin(); itr != sWorld->GetAllSessions().end(); ++itr)
+                    {
+                        if (!itr->second || !itr->second->GetPlayer() || !itr->second->GetPlayer()->IsInWorld() || itr->second->GetPlayer()->GetSession()->IsBot() || itr->second->GetPlayer()->GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+                            continue;
+                        //上光环
+                        itr->second->GetPlayer()->AddAura(22888, itr->second->GetPlayer());
+                        itr->second->GetPlayer()->AddAura(24425, itr->second->GetPlayer());
+                        //itr->second->GetPlayer()->AddAura(16609, itr->second->GetPlayer());
+                        itr->second->GetPlayer()->CastSpell(itr->second->GetPlayer(), 16609, true);//这个用castspell是为了出法术霹雷的效果
+                    }
+                }
+                else
+                {
+
+                    //全服通告
+                    sWorld->SendWorldText(21720, GetName().c_str());
+                    //给所有玩家上buff光环
+                    for (SessionMap::const_iterator itr = sWorld->GetAllSessions().begin(); itr != sWorld->GetAllSessions().end(); ++itr)
+                    {
+                        if (!itr->second || !itr->second->GetPlayer() || !itr->second->GetPlayer()->IsInWorld() || itr->second->GetPlayer()->GetSession()->IsBot() ) // ||TeamIdForRace(this->GetRace()) != TeamIdForRace(itr->second->GetPlayer()->GetRace())
+                            continue;
+                        //上光环
+                        itr->second->GetPlayer()->AddAura(22888, itr->second->GetPlayer());
+                        itr->second->GetPlayer()->AddAura(24425, itr->second->GetPlayer());
+                        //itr->second->GetPlayer()->AddAura(16609, itr->second->GetPlayer());
+                        itr->second->GetPlayer()->CastSpell(itr->second->GetPlayer(), 16609, true);//这个用castspell是为了出法术霹雷的效果
+                    }
+                }
+
+            }
+
+        }
+        //end ---------------
+        */
+
+
+    }
+
+    //添加从NPC购买拾取物品log
+    if (item)
+        GetSession()->LootItemAddLog(this, pVendor->GetGUID(), item, count);
+
 
     if (crItem->ExtendedCost)                            // case for new honor system
     {
@@ -11080,6 +15046,22 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     }
 
     uint32 price = 0;
+
+    uint32 costitem = pProto->cost_item;//消耗cost_itemID
+    uint32 costitemcount = pProto->cost_item_count * count;//消耗cost_item的数量
+
+    //如果购买的商品需要消耗点券等物品，判断角色包里是否有需要的点券物品和足够的数量
+    if (costitemcount != 0 && GetItemCount(costitem) < costitemcount)
+    {
+        SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, creature, item, 0);
+        ItemTemplate const* vProto = sObjectMgr->GetItemTemplate(costitem);
+        if (vProto)
+            ChatHandler(GetSession()).PSendSysMessage(LANG_CURRENCY_NOT_ENOUGH, vProto ? vProto->Name1 : nullptr, vProto ? vProto->Name1 : nullptr, costitemcount);
+        return false;
+    }
+    //--------------------------------------
+
+
     if (crItem->IsGoldRequired(pProto) && pProto->BuyPrice > 0) //Assume price cannot be negative (do not know why it is int32)
     {
         uint32 maxCount = MAX_MONEY_AMOUNT / pProto->BuyPrice;
@@ -11102,7 +15084,7 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
 
     if ((bag == NULL_BAG && slot == NULL_SLOT) || IsInventoryPos(bag, slot))
     {
-        if (!_StoreOrEquipNewItem(vendorslot, item, count, bag, slot, price, pProto, creature, crItem, true))
+        if (!_StoreOrEquipNewItem(vendorslot, item, count, bag, slot, price, pProto, creature, crItem, true, costitem, costitemcount))
             return false;
     }
     else if (IsEquipmentPos(bag, slot))
@@ -11112,7 +15094,7 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
             SendEquipError(EQUIP_ERR_ITEM_CANT_BE_EQUIPPED, nullptr, nullptr);
             return false;
         }
-        if (!_StoreOrEquipNewItem(vendorslot, item, count, bag, slot, price, pProto, creature, crItem, false))
+        if (!_StoreOrEquipNewItem(vendorslot, item, count, bag, slot, price, pProto, creature, crItem, false, costitem, costitemcount))
             return false;
     }
     else
@@ -12071,7 +16053,7 @@ void Player::resetSpells()
 
     LearnDefaultSkills();
     LearnCustomSpells();
-    learnQuestRewardedSpells();
+    //learnQuestRewardedSpells();//这行存在会导致转职过的玩家，执行.reset spell后会学会之前任务的所有技能，需要注销掉，玩家重新上线就是正常的
 }
 
 void Player::LearnCustomSpells()
@@ -12750,6 +16732,40 @@ void Player::AutoUnequipOffhandIfNeed(bool force /*= false*/)
     UpdateTitansGrip();
 }
 
+void Player::AutoUnequipItemFromSlot(uint32 slot)
+{
+    Item* offItem = GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+    if (!offItem)
+    {
+        UpdateTitansGrip();
+        return;
+    }
+
+    ItemPosCountVec off_dest;
+    uint8 off_msg = CanStoreItem(NULL_BAG, NULL_SLOT, off_dest, offItem, false);
+    if (off_msg == EQUIP_ERR_OK)
+    {
+        //RemoveItem(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND, true);//原代码就脱了副手武器？
+        RemoveItem(INVENTORY_SLOT_BAG_0, slot, true);
+        StoreItem(off_dest, offItem, true);
+    }
+    else
+    {
+        //MoveItemFromInventory(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND, true);//原代码就脱了副手武器？
+        MoveItemFromInventory(INVENTORY_SLOT_BAG_0, slot, true);
+        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+        offItem->DeleteFromInventoryDB(trans);                   // deletes item from character's inventory
+        offItem->SaveToDB(trans);                                // recursive and not have transaction guard into self, item not in inventory and can be save standalone
+
+        std::string subject = GetSession()->GetAcoreString(LANG_NOT_EQUIPPED_ITEM);
+        MailDraft(subject, "There were problems with equipping one or several items").AddItem(offItem).SendMailTo(trans, this, MailSender(this, MAIL_STATIONERY_GM), MAIL_CHECK_MASK_COPIED);
+
+        CharacterDatabase.CommitTransaction(trans);
+    }
+    UpdateTitansGrip();
+}
+
+
 OutdoorPvP* Player::GetOutdoorPvP() const
 {
     return sOutdoorPvPMgr->GetOutdoorPvPToZoneId(GetZoneId());
@@ -13064,6 +17080,14 @@ uint32 Player::GetBaseWeaponSkillValue(WeaponAttackType attType) const
 
 void Player::ResurectUsingRequestData()
 {
+    if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+        //如果是专家模式，这里不继续运行
+        if (!GetMap()->IsBattlegroundOrArena())
+            return;
+    }
+
     /// Teleport before resurrecting by player, otherwise the player might get attacked from creatures near his corpse
     TeleportTo(m_resurrectMap, m_resurrectX, m_resurrectY, m_resurrectZ, GetOrientation());
 
@@ -13540,10 +17564,29 @@ void Player::InitGlyphsForLevel()
         value |= 0x08;
     if (level >= 50)
         value |= 0x04;
-    if (level >= 70)
-        value |= 0x10;
-    if (level >= 80)
-        value |= 0x20;
+    //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
+    if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+    {
+        if (level >= 70)
+            value |= 0x10;
+        if (level >= 80)
+            value |= 0x20;
+    }
+    else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 70)
+    {
+        if (level >= 60)
+            value |= 0x10;
+        if (level >= 70)
+            value |= 0x20;
+    }
+    else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    {
+        if (level >= 55)
+            value |= 0x10;
+        if (level >= 60)
+            value |= 0x20;
+    }
+
 
     SetUInt32Value(PLAYER_GLYPHS_ENABLED, value);
 }
@@ -14195,6 +18238,20 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank, bool command /*= fa
             return;
         }
     }
+
+    //战斗中禁止点天赋
+    if (IsInCombat())
+    {
+        ChatHandler(GetSession()).SendSysMessage(21715);//LANG_YOU_IN_COMBAT
+        ChatHandler(GetSession()).SendNotification(21715);//LANG_YOU_IN_COMBAT
+        return;
+    }
+    //有缴械debuff禁止点天赋
+    if (HasAuraType(SPELL_AURA_MOD_DISARM))
+    {
+        return;
+    }
+
 
     TalentEntry const* talentInfo = sTalentStore.LookupEntry(talentId);
     if (!talentInfo)

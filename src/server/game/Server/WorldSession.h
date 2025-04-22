@@ -352,6 +352,10 @@ public:
         uint32 recruiter, bool isARecruiter, bool skipQueue, uint32 TotalTime, bool isBot = false);
     ~WorldSession();
 
+    //增加当前选中的训练师
+    ObjectGuid GetCurrentTranerGuid() const { return m_currentTranerGuid; }
+    void SetCurrentTranerGuid(ObjectGuid ctranerguid) { m_currentTranerGuid = ctranerguid; }
+
     bool IsGMAccount() const;
 
     bool PlayerLoading() const { return m_playerLoading; }
@@ -451,6 +455,7 @@ public:
     void SendNameQueryOpcode(ObjectGuid guid);
 
     void SendTrainerList(ObjectGuid guid);
+    void SendTrainerList(ObjectGuid guid, ObjectGuid toguid);
     void SendTrainerList(ObjectGuid guid, std::string const& strTitle);
     void SendListInventory(ObjectGuid guid, uint32 vendorEntry = 0);
     void SendShowBank(ObjectGuid guid);
@@ -522,7 +527,7 @@ public:
 
     void BuildPartyMemberStatsChangedPacket(Player* player, WorldPacket* data);
 
-    void DoLootRelease(ObjectGuid lguid);
+    void DoLootRelease(ObjectGuid lguid, bool quick = false);
 
     // Account mute time
     time_t m_muteTime;
@@ -629,6 +634,17 @@ public:                                                 // opcodes handlers
     void HandleAutostoreLootItemOpcode(WorldPacket& recvPacket);
     void HandleLootMoneyOpcode(WorldPacket& recvPacket);
     void HandleLootOpcode(WorldPacket& recvPacket);
+
+    //一键拾取
+    void HandleLootOpcodePlus(Player* player, ObjectGuid guid);
+    void HandleLootMoneyOpcodePlus(Player* player, ObjectGuid guid);
+    void HandleAutostoreLootItemOpcodePlus(Player* player, ObjectGuid guid, uint8 lootSlot);
+    void HandleLootReleaseOpcodePlus(Player* player, ObjectGuid guid);
+
+    //拾取日志
+    void LootItemAddLog(Player* player, ObjectGuid guid, uint32 itemid, uint32 itemcount, Player* Leader = nullptr);
+    void LootMoneyAddLog(Player* player, ObjectGuid guid, uint32 money);
+
     void HandleLootReleaseOpcode(WorldPacket& recvPacket);
     void HandleLootMasterGiveOpcode(WorldPacket& recvPacket);
     void HandleWhoOpcode(WorldPacket& recvPacket);
@@ -939,6 +955,10 @@ public:                                                 // opcodes handlers
     //Battleground
     void HandleBattlemasterHelloOpcode(WorldPacket& recvData);
     void HandleBattlemasterJoinOpcode(WorldPacket& recvData);
+
+    //eluna调用
+    void HandleBattlemasterJoinOpcodeForEluna(Player* player, ObjectGuid guid, uint32 instanceId, uint32 mapId, uint8 joinAsGroup, bool isPremade = false);
+
     void HandleBattlegroundPlayerPositionsOpcode(WorldPacket& recvData);
     void HandlePVPLogDataOpcode(WorldPacket& recvData);
     void HandleBattleFieldPortOpcode(WorldPacket& recvData);
@@ -954,6 +974,10 @@ public:                                                 // opcodes handlers
     void HandleFarSightOpcode(WorldPacket& recvData);
     void HandleSetDungeonDifficultyOpcode(WorldPacket& recvData);
     void HandleSetRaidDifficultyOpcode(WorldPacket& recvData);
+    //英雄本命令调用函数
+    void HandleSetDungeonDifficultyOpcodePlus(uint32 mode);
+    void HandleSetRaidDifficultyOpcodePlus(uint32 mode);
+
     void HandleMoveSetCanFlyAckOpcode(WorldPacket& recvData);
     void HandleSetTitleOpcode(WorldPacket& recvData);
     void HandleRealmSplitOpcode(WorldPacket& recvData);
@@ -1178,6 +1202,8 @@ private:
     // this stores the GUIDs of the characters who can login
     // characters who failed on Player::BuildEnumData shouldn't login
     GuidSet _legitCharacters;
+
+    ObjectGuid m_currentTranerGuid;//增加当前的训练师id
 
     ObjectGuid::LowType m_GUIDLow;                     // set logined or recently logout player (while m_playerRecentlyLogout set)
     Player* _player;

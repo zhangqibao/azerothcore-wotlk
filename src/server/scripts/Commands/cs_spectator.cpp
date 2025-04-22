@@ -32,12 +32,12 @@ public:
     {
         static ChatCommandTable spectatorCommandTable =
         {
-            { "version",  HandleSpectatorVersionCommand,  SEC_PLAYER, Console::No },
-            { "reset",    HandleSpectatorResetCommand,    SEC_PLAYER, Console::No },
-            { "spectate", HandleSpectatorSpectateCommand, SEC_PLAYER, Console::No },
-            { "watch",    HandleSpectatorWatchCommand,    SEC_PLAYER, Console::No },
-            { "leave",    HandleSpectatorLeaveCommand,    SEC_PLAYER, Console::No },
-            { "",         HandleSpectatorCommand,         SEC_PLAYER, Console::No }
+            { "version",  HandleSpectatorVersionCommand,  SEC_GAMEMASTER, Console::No },
+            { "reset",    HandleSpectatorResetCommand,    SEC_GAMEMASTER, Console::No },
+            { "spectate", HandleSpectatorSpectateCommand, SEC_GAMEMASTER, Console::No },
+            { "watch",    HandleSpectatorWatchCommand,    SEC_GAMEMASTER, Console::No },
+            { "leave",    HandleSpectatorLeaveCommand,    SEC_GAMEMASTER, Console::No },
+            { "",         HandleSpectatorCommand,         SEC_GAMEMASTER, Console::No }
         };
         static ChatCommandTable commandTable =
         {

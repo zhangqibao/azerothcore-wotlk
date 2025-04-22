@@ -209,6 +209,142 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
     SendPacket(&data);
 }
 
+
+void WorldSession::SendTrainerList(ObjectGuid guid, ObjectGuid toguid)
+{
+    LOG_DEBUG("network", "WORLD: SendTrainerList");
+    //LOG_ERROR("xx", "SendTrainerList {} mapname {} playername {} ",guid.GetCounter(), GetPlayer()->GetMap()->GetMapName(), GetPlayer()->GetName());//测试
+
+
+    Creature* unit = GetPlayer()->GetMap()->GetCreature(guid);
+    if (!unit)
+    {
+        //LOG_ERROR("xx", "nounit");//测试
+        //LOG_DEBUG("network", "WORLD: SendTrainerList - Unit ({}) not found or you can not interact with him.", guid.ToString());
+        return;
+    }
+    //LOG_ERROR("xx", "unitinfo guid{} entry{} x{} y{} z{} map{} ", guid.GetCounter(), guid.GetEntry(), unit->m_positionX, unit->m_positionY, unit->m_positionZ, GetPlayer()->GetMap()->GetId());//测试
+
+
+
+    // remove fake death
+    if (GetPlayer()->HasUnitState(UNIT_STATE_DIED))
+        GetPlayer()->RemoveAurasByType(SPELL_AURA_FEIGN_DEATH);
+
+    CreatureTemplate const* ci = unit->GetCreatureTemplate();
+
+    if (!ci)
+    {
+        LOG_DEBUG("network", "WORLD: SendTrainerList - ({}) NO CREATUREINFO!", guid.ToString());
+        return;
+    }
+
+    TrainerSpellData const* trainer_spells = unit->GetTrainerSpells();
+    if (!trainer_spells)
+    {
+        LOG_DEBUG("network", "WORLD: SendTrainerList - Training spells not found for creature ({})", guid.ToString());
+        return;
+    }
+
+    std::string strTitle = GetAcoreString(LANG_NPC_TAINER_HELLO);
+    //LOG_ERROR("xx", "strTitle {}", strTitle);//测试
+    WorldPacket data(SMSG_TRAINER_LIST, 8 + 4 + 4 + trainer_spells->spellList.size() * 38 + strTitle.size() + 1);
+    data << toguid;
+    data << uint32(trainer_spells->trainerType);
+
+    size_t count_pos = data.wpos();
+    data << uint32(trainer_spells->spellList.size());
+
+    // reputation discount
+    float fDiscountMod = _player->GetReputationPriceDiscount(unit);
+    bool can_learn_primary_prof = GetPlayer()->GetFreePrimaryProfessionPoints() > 0;
+
+    uint32 count = 0;
+    for (TrainerSpellMap::const_iterator itr = trainer_spells->spellList.begin(); itr != trainer_spells->spellList.end(); ++itr)
+    {
+        TrainerSpell const* tSpell = &itr->second;
+
+        bool valid = true;
+        bool primary_prof_first_rank = false;
+        for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+        {
+            if (!tSpell->learnedSpell[i])
+                continue;
+            if (!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell[i]))
+            {
+                valid = false;
+                break;
+            }
+            SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(tSpell->learnedSpell[i]);
+            if (learnedSpellInfo && learnedSpellInfo->IsPrimaryProfessionFirstRank())
+                primary_prof_first_rank = true;
+        }
+
+        if (!valid)
+            continue;
+
+        if (tSpell->reqSpell && !_player->HasSpell(tSpell->reqSpell))
+        {
+            continue;
+        }
+
+        TrainerSpellState state = _player->GetTrainerSpellState(tSpell);
+
+        data << uint32(tSpell->spell);                      // learned spell (or cast-spell in profession case)
+        data << uint8(state == TRAINER_SPELL_GREEN_DISABLED ? TRAINER_SPELL_GREEN : state);
+        //如果是大财主的技能学习，显示降低为25%
+        if (toguid.GetEntry() == 60013 || toguid.GetEntry() == 11325)
+        {
+            data << uint32(floor(tSpell->spellCost * sWorld->getRate(CONFIG_FLOAT_SPELL_LEARN_COST) * sWorld->getRate(CONFIG_FLOAT_SPELL_LEARN_COST_SPECIALNPC) * fDiscountMod));
+        }
+        else
+        {
+            data << uint32(floor(tSpell->spellCost * sWorld->getRate(CONFIG_FLOAT_SPELL_LEARN_COST) * fDiscountMod));
+        }
+        data << uint32(primary_prof_first_rank && can_learn_primary_prof ? 1 : 0);
+        // primary prof. learn confirmation dialog
+        data << uint32(primary_prof_first_rank ? 1 : 0);    // must be equal prev. field to have learn button in enabled state
+        data << uint8(tSpell->reqLevel);
+        data << uint32(tSpell->reqSkill);
+        data << uint32(tSpell->reqSkillValue);
+        //prev + req or req + 0
+        uint8 maxReq = 0;
+        for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+        {
+            if (!tSpell->learnedSpell[i])
+                continue;
+            if (uint32 prevSpellId = sSpellMgr->GetPrevSpellInChain(tSpell->learnedSpell[i]))
+            {
+                data << uint32(prevSpellId);
+                ++maxReq;
+            }
+            if (maxReq == 3)
+                break;
+            SpellsRequiringSpellMapBounds spellsRequired = sSpellMgr->GetSpellsRequiredForSpellBounds(tSpell->learnedSpell[i]);
+            for (SpellsRequiringSpellMap::const_iterator itr2 = spellsRequired.first; itr2 != spellsRequired.second && maxReq < 3; ++itr2)
+            {
+                data << uint32(itr2->second);
+                ++maxReq;
+            }
+            if (maxReq == 3)
+                break;
+        }
+        while (maxReq < 3)
+        {
+            data << uint32(0);
+            ++maxReq;
+        }
+
+        ++count;
+    }
+
+    data << strTitle;
+
+    data.put<uint32>(count_pos, count);
+    SendPacket(&data);
+}
+
+
 void WorldSession::HandleTrainerBuySpellOpcode(WorldPacket& recvData)
 {
     ObjectGuid guid;
@@ -227,47 +363,129 @@ void WorldSession::HandleTrainerBuySpellOpcode(WorldPacket& recvData)
     if (GetPlayer()->HasUnitState(UNIT_STATE_DIED))
         GetPlayer()->RemoveAurasByType(SPELL_AURA_FEIGN_DEATH);
 
-    // check present spell in trainer spell list
-    TrainerSpellData const* trainer_spells = unit->GetTrainerSpells();
-    if (!trainer_spells)
-        return;
-
-    // not found, cheat?
-    TrainerSpell const* trainer_spell = trainer_spells->Find(spellId);
-    if (!trainer_spell)
-        return;
-
-    if (trainer_spell->reqSpell && !_player->HasSpell(trainer_spell->reqSpell))
+    if (guid.GetTypeName() == "Pet" || guid.GetEntry() == 60013 || guid.GetEntry() == 11325)
     {
-        return;
+        Creature* cCreature = GetPlayer()->GetMap()->GetCreature(GetCurrentTranerGuid()) ? GetPlayer()->GetMap()->GetCreature(GetCurrentTranerGuid()) : GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_TRAINER);
+
+        if (cCreature)
+        {
+
+            //获得职业训练师的列表
+            TrainerSpellData const* cSpells = cCreature->GetTrainerSpells();
+            //获得助理自己的武器大师训练列表
+            TrainerSpellData const* xcSpells = unit->GetTrainerSpells();
+
+            if (!cSpells && !xcSpells)
+                return;
+
+            // not found, cheat?
+            TrainerSpell const* trainer_spell = cSpells ? cSpells->Find(spellId) : nullptr;
+            if (!trainer_spell && xcSpells)
+            {
+                //尝试武器大师列表
+                trainer_spell = xcSpells->Find(spellId);
+            }
+            if (trainer_spell->reqSpell && !_player->HasSpell(trainer_spell->reqSpell))
+            {
+                return;
+            }
+
+            // can't be learn, cheat? Or double learn with lags...
+            if (_player->GetTrainerSpellState(trainer_spell) != TRAINER_SPELL_GREEN)
+                return;
+
+            // apply reputation discount
+            uint32 nSpellCost = uint32(floor(trainer_spell->spellCost * sWorld->getRate(CONFIG_FLOAT_SPELL_LEARN_COST) * _player->GetReputationPriceDiscount(unit)));
+            uint32 nSpellCostSpecialNPC = uint32(floor(trainer_spell->spellCost * sWorld->getRate(CONFIG_FLOAT_SPELL_LEARN_COST) * sWorld->getRate(CONFIG_FLOAT_SPELL_LEARN_COST_SPECIALNPC) * _player->GetReputationPriceDiscount(unit)));
+
+            // check money requirement
+
+            if (guid.GetEntry() != 60013 && guid.GetEntry() != 11325)
+            {
+                if (!_player->HasEnoughMoney(nSpellCost))
+                    return;
+            }
+            else
+            {
+                if (!_player->HasEnoughMoney(nSpellCostSpecialNPC))
+                    return;
+            }
+
+
+            //如果不是大财主的技能学习，扣钱
+
+            if (guid.GetEntry() != 60013 && guid.GetEntry() != 11325)
+            {
+                _player->ModifyMoney(-int32(nSpellCost));
+            }
+            else
+            {
+                _player->ModifyMoney(-int32(nSpellCostSpecialNPC));
+            }
+
+
+
+            unit->SendPlaySpellVisual(179); // 53 SpellCastDirected
+            unit->SendPlaySpellImpact(_player->GetGUID(), 362); // 113 EmoteSalute
+
+            // learn explicitly or cast explicitly
+            if (trainer_spell->IsCastable())
+                _player->CastSpell(_player, trainer_spell->spell, true);
+            else
+                _player->learnSpell(spellId);
+
+            WorldPacket data(SMSG_TRAINER_BUY_SUCCEEDED, 12);
+            data << guid;
+            data << uint32(spellId);                                // should be same as in packet from client
+            SendPacket(&data);
+        }
+    }
+    else
+    {
+
+        // check present spell in trainer spell list
+        TrainerSpellData const* trainer_spells = unit->GetTrainerSpells();
+        if (!trainer_spells)
+            return;
+
+        // not found, cheat?
+        TrainerSpell const* trainer_spell = trainer_spells->Find(spellId);
+        if (!trainer_spell)
+            return;
+
+        if (trainer_spell->reqSpell && !_player->HasSpell(trainer_spell->reqSpell))
+        {
+            return;
+        }
+
+        // can't be learn, cheat? Or double learn with lags...
+        if (_player->GetTrainerSpellState(trainer_spell) != TRAINER_SPELL_GREEN)
+            return;
+
+        // apply reputation discount
+        uint32 nSpellCost = uint32(std::floor(trainer_spell->spellCost * _player->GetReputationPriceDiscount(unit)));
+
+        // check money requirement
+        if (!_player->HasEnoughMoney(nSpellCost))
+            return;
+
+        _player->ModifyMoney(-int32(nSpellCost));
+
+        unit->SendPlaySpellVisual(179); // 53 SpellCastDirected
+        unit->SendPlaySpellImpact(_player->GetGUID(), 362); // 113 EmoteSalute
+
+        // learn explicitly or cast explicitly
+        if (trainer_spell->IsCastable())
+            _player->CastSpell(_player, trainer_spell->spell, true);
+        else
+            _player->learnSpell(spellId);
+
+        WorldPacket data(SMSG_TRAINER_BUY_SUCCEEDED, 12);
+        data << guid;
+        data << uint32(spellId);                                // should be same as in packet from client
+        SendPacket(&data);
     }
 
-    // can't be learn, cheat? Or double learn with lags...
-    if (_player->GetTrainerSpellState(trainer_spell) != TRAINER_SPELL_GREEN)
-        return;
-
-    // apply reputation discount
-    uint32 nSpellCost = uint32(std::floor(trainer_spell->spellCost * _player->GetReputationPriceDiscount(unit)));
-
-    // check money requirement
-    if (!_player->HasEnoughMoney(nSpellCost))
-        return;
-
-    _player->ModifyMoney(-int32(nSpellCost));
-
-    unit->SendPlaySpellVisual(179); // 53 SpellCastDirected
-    unit->SendPlaySpellImpact(_player->GetGUID(), 362); // 113 EmoteSalute
-
-    // learn explicitly or cast explicitly
-    if (trainer_spell->IsCastable())
-        _player->CastSpell(_player, trainer_spell->spell, true);
-    else
-        _player->learnSpell(spellId);
-
-    WorldPacket data(SMSG_TRAINER_BUY_SUCCEEDED, 12);
-    data << guid;
-    data << uint32(spellId);                                // should be same as in packet from client
-    SendPacket(&data);
 }
 
 void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)
@@ -315,7 +533,27 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)
     if (!sScriptMgr->OnGossipHello(_player, unit))
     {
         //        _player->TalkedToCreature(unit->GetEntry(), unit->GetGUID());
-        _player->PrepareGossipMenu(unit, unit->GetCreatureTemplate()->GossipMenuId, true);
+        //如果NPC是PET，只允许主人对话
+        //if ((unit->IsPet() || unit->IsSummon()))//可能误伤到普通召唤NPC
+        if (unit->GetEntry() == 11325 || unit->GetEntry() == 11326 || unit->GetEntry() == 11327 || unit->GetEntry() == 60017 ||
+            unit->GetEntry() == 60017 || unit->GetEntry() == 60016 || unit->GetEntry() == 60015 || unit->GetEntry() == 60014)
+        {
+            if (_player->GetGUID() != unit->GetOwnerGUID())
+            {
+                //LOG_ERROR("xx", "xxxx2");//测试
+                _player->PrepareGossipMenu(unit, 61002);
+            }
+            else
+            {
+                _player->PrepareGossipMenu(unit, unit->GetCreatureTemplate()->GossipMenuId, true);
+            }
+        }
+        else
+        {
+            //LOG_ERROR("xx", "xxxx3");//测试
+            _player->PrepareGossipMenu(unit, unit->GetCreatureTemplate()->GossipMenuId, true);
+        }
+
         _player->SendPreparedGossip(unit);
     }
     unit->AI()->sGossipHello(_player);
@@ -386,6 +624,14 @@ void WorldSession::HandleSpiritHealerActivateOpcode(WorldPacket& recvData)
 
 void WorldSession::SendSpiritResurrect()
 {
+    if ((_player->m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !_player->GetSession()->IsBot() && _player->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+        //如果是专家模式，这里不继续运行
+        if (!_player->GetMap()->IsBattlegroundOrArena())
+            return;
+    }
+
     _player->ResurrectPlayer(0.5f, true);
 
     _player->DurabilityLossAll(0.25f, true);

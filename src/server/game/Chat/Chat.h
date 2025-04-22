@@ -206,8 +206,8 @@ public:
         SetSentErrorMessage(true);
     }
 
-    bool _ParseCommands(std::string_view text);
-    virtual bool ParseCommands(std::string_view text);
+    bool _ParseCommands(std::string_view text, bool itemuse = false);
+    virtual bool ParseCommands(std::string_view text, bool itemuse = false);
 
     void SendGlobalSysMessage(const char* str);
 
@@ -278,7 +278,7 @@ public:
     // overwrite functions
     std::string GetAcoreString(uint32 entry) const override;
     void SendSysMessage(std::string_view, bool escapeCharacters) override;
-    bool ParseCommands(std::string_view str) override;
+    bool ParseCommands(std::string_view str, bool itemuse = false) override;
     std::string GetNameLink() const override;
     bool needReportToTarget(Player* chr) const override;
     LocaleConstant GetSessionDbcLocale() const override;
@@ -296,7 +296,7 @@ class AC_GAME_API AddonChannelCommandHandler : public ChatHandler
 {
     public:
         using ChatHandler::ChatHandler;
-        bool ParseCommands(std::string_view str) override;
+        bool ParseCommands(std::string_view str, bool itemuse = false) override;
         void SendSysMessage(std::string_view str, bool escapeCharacters) override;
         using ChatHandler::SendSysMessage;
         bool IsHumanReadable() const override { return humanReadable; }

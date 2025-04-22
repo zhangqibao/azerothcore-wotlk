@@ -79,7 +79,9 @@ public:
             { "level",          HandleCharacterLevelCommand,            SEC_GAMEMASTER, Console::Yes },
             { "rename",         HandleCharacterRenameCommand,           SEC_GAMEMASTER, Console::Yes },
             { "reputation",     HandleCharacterReputationCommand,       SEC_GAMEMASTER, Console::Yes },
-            { "titles",         HandleCharacterTitlesCommand,           SEC_GAMEMASTER, Console::Yes }
+            { "titles",         HandleCharacterTitlesCommand,           SEC_GAMEMASTER, Console::Yes },
+            { "FillFlys",       HandleCharacterFillFlysCommand,         SEC_GAMEMASTER, Console::Yes }
+
         };
 
         static ChatCommandTable commandTable =
@@ -904,6 +906,22 @@ public:
         handler->GetSession()->SendShowBank(handler->GetSession()->GetPlayer()->GetGUID());
         return true;
     }
+
+    static bool HandleCharacterFillFlysCommand(ChatHandler* handler)
+    {
+        if (Player* player = handler->GetSession()->GetPlayer())
+        {
+            if (player->TeamIdForRace(player->GetRace()) == TEAM_ALLIANCE)
+                player->m_taxi.LoadTaxiMask("3456411898 2148078928 49991 0 0 0 0 0 ");
+            else
+                player->m_taxi.LoadTaxiMask("830150144 315656864 56504 0 0 0 0 0 ");
+
+            handler->PSendSysMessage("Fly paths unlocked for %s.", player->GetName());
+            return true;
+        }
+        return false;
+    }
+
 
     static bool HandleCharacterCheckBagCommand(ChatHandler* handler, uint8 BagSlot)
     {

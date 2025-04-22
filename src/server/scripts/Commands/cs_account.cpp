@@ -87,6 +87,7 @@ public:
             { "set",        accountSetCommandTable                                       },
             { "password",   HandleAccountPasswordCommand,    SEC_PLAYER,    Console::No  },
             { "remove",     accountRemoveCommandTable                                    },
+            { "chkpwd",     HandleAccountChkPasswordCommand,             SEC_CONSOLE,        Console::Yes },
             { "",           HandleAccountCommand,            SEC_PLAYER,    Console::No  }
         };
 
@@ -576,6 +577,44 @@ public:
         }
 
         return true;
+    }
+
+
+    static bool HandleAccountChkPasswordCommand(ChatHandler* handler, char const* args)
+    {
+        if (!*args)
+        {
+            handler->SendErrorMessage(LANG_CMD_SYNTAX);
+            return false;
+        }
+
+        char* _accountName = strtok((char*)args, " ");
+        char* _password = strtok(nullptr, " ");
+
+        if (!_accountName || !_password)
+        {
+            handler->SendErrorMessage(LANG_CMD_SYNTAX);
+            return false;
+        }
+
+        std::string accountName = _accountName;
+        std::string password = _password;
+
+
+        uint32 accId = AccountMgr::GetId(accountName);
+
+        if (!AccountMgr::CheckPassword(accId, password))
+        {
+            handler->SendSysMessage(LANG_COMMAND_WRONGOLDPASSWORD);
+            sScriptMgr->OnFailedPasswordChange(accId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+
     }
 
     static bool HandleAccountSet2FACommand(ChatHandler* handler, char const* args)

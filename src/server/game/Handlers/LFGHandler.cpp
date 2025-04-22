@@ -436,17 +436,22 @@ void WorldSession::SendLfgRoleCheckUpdate(lfg::LfgRoleCheck const& roleCheck)
 
 void WorldSession::SendLfgJoinResult(lfg::LfgJoinResultData const& joinData)
 {
-    uint32 size = 0;
-    for (lfg::LfgLockPartyMap::const_iterator it = joinData.lockmap.begin(); it != joinData.lockmap.end(); ++it)
-        size += 8 + 4 + uint32(it->second.size()) * (4 + 4);
+    //流浪者模式禁止使用副本组队
+    if (!(GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) || GetPlayer()->GetLevel() >= sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
 
-    LOG_DEBUG("network", "SMSG_LFG_JOIN_RESULT [{}] checkResult: {} checkValue: {}", GetPlayer()->GetGUID().ToString(), joinData.result, joinData.state);
-    WorldPacket data(SMSG_LFG_JOIN_RESULT, 4 + 4 + size);
-    data << uint32(joinData.result);                       // Check Result
-    data << uint32(joinData.state);                        // Check Value
-    if (!joinData.lockmap.empty())
-        BuildPartyLockDungeonBlock(data, joinData.lockmap);
-    SendPacket(&data);
+        uint32 size = 0;
+        for (lfg::LfgLockPartyMap::const_iterator it = joinData.lockmap.begin(); it != joinData.lockmap.end(); ++it)
+            size += 8 + 4 + uint32(it->second.size()) * (4 + 4);
+
+        LOG_DEBUG("network", "SMSG_LFG_JOIN_RESULT [{}] checkResult: {} checkValue: {}", GetPlayer()->GetGUID().ToString(), joinData.result, joinData.state);
+        WorldPacket data(SMSG_LFG_JOIN_RESULT, 4 + 4 + size);
+        data << uint32(joinData.result);                       // Check Result
+        data << uint32(joinData.state);                        // Check Value
+        if (!joinData.lockmap.empty())
+            BuildPartyLockDungeonBlock(data, joinData.lockmap);
+        SendPacket(&data);
+    }
 }
 
 void WorldSession::SendLfgQueueStatus(lfg::LfgQueueStatusData const& queueData)

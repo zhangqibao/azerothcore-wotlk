@@ -2559,6 +2559,40 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
     if (!entry)
         return;
 
+    //LOG_ERROR("xx", "EffectSummonType ");//测试
+    if (m_CastItem)
+    {
+        if (m_spellInfo->Id && m_spellInfo->Id == 17707)
+        {
+            if ((m_CastItem->GetEntry() == 89999 || m_CastItem->GetEntry() == 70163 || m_CastItem->GetEntry() == 70069))
+            {
+                //熊猫私人助理
+                //根据召唤熊猫的皮肤卡片，获得熊猫的皮肤，以后再添加代码
+            }
+            if (m_CastItem->GetEntry() == 90110 || m_CastItem->GetEntry() == 70071)
+            {
+                //副本传送助理
+                entry = 60014;
+            }
+            if (m_CastItem->GetEntry() == 90111)
+            {
+                //随身商店
+                entry = 60015;
+            }
+            if (m_CastItem->GetEntry() == 90112)
+            {
+                //随身仓库
+                entry = 60016;
+            }
+            if (m_CastItem->GetEntry() == 90113)
+            {
+                //随身修理
+                entry = 60017;
+            }
+        }
+    }
+
+
     SummonPropertiesEntry const* properties = sSummonPropertiesStore.LookupEntry(m_spellInfo->Effects[effIndex].MiscValueB);
     if (!properties)
     {
@@ -4595,10 +4629,24 @@ void Spell::EffectApplyGlyph(SpellEffIndex effIndex)
             minLevel = 30;
             break;
         case 4:
-            minLevel = 70;
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+                minLevel = 70;
+            else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 70)
+                minLevel = 60;
+            else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+                minLevel = 55;
+            else
+                minLevel = 70;
             break;
         case 5:
-            minLevel = 80;
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
+                minLevel = 80;
+            else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 70)
+                minLevel = 70;
+            else if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+                minLevel = 60;
+            else
+                minLevel = 80;
             break;
     }
     if (minLevel && m_caster->GetLevel() < minLevel)
@@ -4984,6 +5032,151 @@ void Spell::EffectReputation(SpellEffIndex effIndex)
         return;
 
     repChange = player->CalculateReputationGain(REPUTATION_SOURCE_SPELL, 0, repChange, factionId);
+
+    //VIP卡增加声望倍率
+    float _vipplusrate = 1.0f;
+    if (player->getVIP20())
+    {
+        _vipplusrate = float(_vipplusrate * 2.0f);
+    }
+    else
+    {
+        if (player->getVIP19())
+        {
+            _vipplusrate = float(_vipplusrate * 1.95f);
+        }
+        else
+        {
+            if (player->getVIP18())
+            {
+                _vipplusrate = float(_vipplusrate * 1.9f);
+            }
+            else
+            {
+                if (player->getVIP17())
+                {
+                    _vipplusrate = float(_vipplusrate * 1.85f);
+                }
+                else
+                {
+                    if (player->getVIP16())
+                    {
+                        _vipplusrate = float(_vipplusrate * 1.8f);
+                    }
+                    else
+                    {
+                        if (player->getVIP15())
+                        {
+                            _vipplusrate = float(_vipplusrate * 1.75f);
+                        }
+                        else
+                        {
+                            if (player->getVIP14())
+                            {
+                                _vipplusrate = float(_vipplusrate * 1.7f);
+                            }
+                            else
+                            {
+                                if (player->getVIP13())
+                                {
+                                    _vipplusrate = float(_vipplusrate * 1.65f);
+                                }
+                                else
+                                {
+                                    if (player->getVIP12())
+                                    {
+                                        _vipplusrate = float(_vipplusrate * 1.6f);
+                                    }
+                                    else
+                                    {
+
+                                        if (player->getVIP11())
+                                        {
+                                            _vipplusrate = float(_vipplusrate * 1.55f);
+                                        }
+                                        else
+                                        {
+                                            if (player->getVIP10())
+                                            {
+                                                _vipplusrate = float(_vipplusrate * 1.5f);
+                                            }
+                                            else
+                                            {
+                                                if (player->getVIP9())
+                                                {
+                                                    _vipplusrate = float(_vipplusrate * 1.45f);
+                                                }
+                                                else
+                                                {
+                                                    if (player->getVIP8())
+                                                    {
+                                                        _vipplusrate = float(_vipplusrate * 1.4f);
+                                                    }
+                                                    else
+                                                    {
+                                                        if (player->getVIP7())
+                                                        {
+                                                            _vipplusrate = float(_vipplusrate * 1.35f);
+                                                        }
+                                                        else
+                                                        {
+                                                            if (player->getVIP6())
+                                                            {
+                                                                _vipplusrate = float(_vipplusrate * 1.3f);
+                                                            }
+                                                            else
+                                                            {
+                                                                if (player->getVIP5())
+                                                                {
+                                                                    _vipplusrate = float(_vipplusrate * 1.25f);
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (player->getVIP4())
+                                                                    {
+                                                                        _vipplusrate = float(_vipplusrate * 1.2f);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (player->getVIP3())
+                                                                        {
+                                                                            _vipplusrate = float(_vipplusrate * 1.15f);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            if (player->getVIP2())
+                                                                            {
+                                                                                _vipplusrate = float(_vipplusrate * 1.1f);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                if (player->getVIP1())
+                                                                                {
+                                                                                    _vipplusrate = float(_vipplusrate * 1.05f);
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //end -------------
+
+    repChange = repChange * _vipplusrate;//乘以倍率
+
     player->GetReputationMgr().ModifyReputation(factionEntry, repChange);
 }
 
@@ -5100,6 +5293,14 @@ void Spell::EffectSelfResurrect(SpellEffIndex effIndex)
         return;
     if (!m_caster->IsInWorld())
         return;
+
+    if ((((Player*)m_caster)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && !((Player*)m_caster)->GetSession()->IsBot() && ((Player*)m_caster)->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+        //如果是专家模式，这里不继续运行
+        if (!((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())
+            return;
+    }
 
     uint32 health = 0;
     uint32 mana = 0;
@@ -5430,7 +5631,10 @@ void Spell::EffectDispelMechanic(SpellEffIndex effIndex)
 
     for (; dispel_list.size(); dispel_list.pop())
     {
-        unitTarget->RemoveAura(dispel_list.front().first, dispel_list.front().second, 0, AURA_REMOVE_BY_ENEMY_SPELL);
+        if (dispel_list.front().first != 26657 && dispel_list.front().first != 900101)//如果是副本坦克，就不让眩晕导致下马
+        {
+            unitTarget->RemoveAura(dispel_list.front().first, dispel_list.front().second, 0, AURA_REMOVE_BY_ENEMY_SPELL);
+        }
     }
 
     // put in combat

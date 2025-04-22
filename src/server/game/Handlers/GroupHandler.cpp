@@ -91,6 +91,14 @@ void WorldSession::HandleGroupInviteOpcode(WorldPacket& recvData)
         return;
     }
 
+    //如果玩家是流浪者，不能组队
+    //if (invitingPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2 || invitedPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2)
+    if ((invitingPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && invitingPlayer->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        ChatHandler(invitingPlayer->GetSession()).PSendSysMessage(21735);
+        return;
+    }
+
     if (!sScriptMgr->OnPlayerCanGroupInvite(invitingPlayer, membername))
         return;
 
@@ -226,6 +234,14 @@ void WorldSession::HandleGroupAcceptOpcode(WorldPacket& recvData)
 
     if (!group)
         return;
+
+    //如果玩家是流浪者，不能组队
+    if ((GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS2) && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+    {
+        GetPlayer()->UninviteFromGroup();//释放邀请
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage(21735);
+        return;
+    }
 
     // Remove player from invitees in any case
     group->RemoveInvite(GetPlayer());

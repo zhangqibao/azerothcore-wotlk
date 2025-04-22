@@ -75,6 +75,11 @@
 #include "botmgr.h"
 //end npcbot
 
+//特殊氪金buff列表，需要的地方比如战场竞技场要先移除这些buff
+static const std::unordered_set<uint32> permanentAuras = {
+3169,6615,6724,8373,10667,10668,10669,10692,10693,11359,11392,11405,15231,15233,15235,15279,15366,16323,16327,16329,16609,16610,17038,17450,17538,17539,17540,17626,17627,17628,17629,22817,22818,22820,22888,23735,23736,23737,23738,23766,23767,23768,23769,24382,24383,24417,24425,24705,24799,25947,26035,26393,26655,26657,29175,29235,29333,29334,29338,29534,900101,900103
+};
+
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
     2.5f,                  // MOVE_WALK
@@ -862,6 +867,11 @@ void Unit::DealDamageMods(Unit const* victim, uint32& damage, uint32* absorb)
 
 uint32 Unit::DealDamage(Unit* attacker, Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellInfo const* spellProto, bool durabilityLoss, bool /*allowGM*/, Spell const* damageSpell /*= nullptr*/)
 {
+    if (!attacker || !victim)//防崩测试
+    {
+        return 0;
+    }
+
     // Xinef: initialize damage done for rage calculations
     // Xinef: its rare to modify damage in hooks, however training dummy's sets damage to 0
     uint32 rage_damage = damage + ((cleanDamage != nullptr) ? cleanDamage->absorbed_damage : 0);
@@ -1164,6 +1174,11 @@ uint32 Unit::DealDamage(Unit* attacker, Unit* victim, uint32 damage, CleanDamage
 
     if (health <= damage)
     {
+        // Can't kill gods 不能杀死GM
+        if (Player* pPlayer = victim->ToPlayer())
+            if (pPlayer->GetSession()->GetSecurity() == AccountTypes(SEC_ADMINISTRATOR))
+                return 0;
+
         LOG_DEBUG("entities.unit", "DealDamage: victim just died");
 
         //if (attacker && victim->IsPlayer() && victim != attacker)
@@ -1190,12 +1205,77 @@ uint32 Unit::DealDamage(Unit* attacker, Unit* victim, uint32 damage, CleanDamage
 
             if (attacker)
             {
+                float threat = damage;
+
                 if (spellProto && victim->CanHaveThreatList() && !victim->HasUnitState(UNIT_STATE_EVADE) && !victim->IsInCombatWith(attacker))
                 {
                     victim->CombatStart(attacker, !(spellProto->AttributesEx3 & SPELL_ATTR3_SUPPRESS_TARGET_PROCS));
+
+                    //根据玩家的防御值来增加造成伤害的仇恨
+//if (attacker->IsPlayer() && (((Player*)attacker)->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL))//现在允许非硬核模式生效
+//{
+                    float addthreatRate = float(attacker->GetDefenseSkillValue() / 300);
+                    if (addthreatRate > 1.0f)
+                    {
+                        threat = threat * addthreatRate;
+                    }
+                    //}
+
+                    //增加硬核猎人的宠物伤害
+                    //如果是玩家的宠物
+                    //if (IsPet() && (((Pet*)this)->getPetType() == HUNTER_PET || ((Pet*)this)->getPetType() == SUMMON_PET))
+                    if (attacker->IsPet() && ((Pet*)attacker)->getPetType() == HUNTER_PET)
+                    {
+
+                        if (Unit* owner = attacker->GetOwner())
+                        {
+                            if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                            {
+                                //获得主人近战攻击强度整体加成
+                                float ownerpower = 0.0f;
+                                //如果主人是硬核模式
+                                //if (((Player*)owner)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)//现在允许非硬核模式生效
+                                //{
+                                ownerpower = ((Player*)owner)->GetSession()->GetPlayer()->GetTotalAttackPowerValue(RANGED_ATTACK);//取远程攻强
+                                if (spellProto)
+                                {
+                                    if (spellProto->SpellIconID && spellProto->Id)
+                                    {
+                                        //挫志尖啸增加仇恨
+                                        if (spellProto->SpellIconID == 1579)
+                                        {
+                                            switch (spellProto->Id)
+                                            {
+                                            case 24423:
+                                            case 24577:
+                                            case 24578:
+                                            case 24579:
+                                            case 27051:
+                                                threat = threat + uint32(ownerpower * 0.075);
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                }
+
+                                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "value %f", value);//测试，这里可以获取到低吼的威胁值
+                            //}
+
+                            }
+                        }
+
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "threat %f", threat);//测试，可以获取到宠物尖啸和普通攻击的仇恨，spell_threat 表里增加4级尖啸24579的multiplier没有效果
+                    }
+                    //if (IsPlayer())
+                    //{
+                    //	sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "threat %f", threat);//测试,战士的挫志咆哮没有打印出来，只有攻击有打印出来
+                    //}
+                    //end ------
+
                 }
 
-                victim->AddThreat(attacker, float(damage), damageSchoolMask, spellProto);
+                victim->AddThreat(attacker, float(threat), damageSchoolMask, spellProto);
             }
         }
         else                                                // victim is a player
@@ -2141,7 +2221,33 @@ void Unit::DealMeleeDamage(CalcDamageInfo* damageInfo, bool durabilityLoss)
     }
 
     if (IsPlayer())
-        ToPlayer()->CastItemCombatSpell(victim, damageInfo->attackType, damageInfo->procVictim, damageInfo->procEx);
+    {
+        // on weapon hit casts
+        if (IsPlayer() && victim->IsAlive())
+        {
+            ToPlayer()->CastItemCombatSpell(victim, damageInfo->attackType, damageInfo->procVictim, damageInfo->procEx);//触发当前伤害所属武器的被动特效
+
+            if (!ToPlayer()->GetSession()->IsBot())
+            {
+                //如果玩家带有赫拉迪姆魔盒，且第一个栏位放了武器，这里每次攻击都尝试调用该武器的触发特效
+                //判断是否拥有赫拉迪姆魔盒
+                //uint32 hldmbox = ((Player*)this)->GetItemCount(91666, true);
+                //if (hldmbox)
+                if (((Player*)this)->getHLDM())
+                {
+                    //如果有魔盒，看银行中第一个位置的装备slot:39
+                    Item* hldmitem = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
+                    if (hldmitem && (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR))
+                    {
+                        ((Player*)this)->CastItemCombatSpellByHLDM(victim, hldmitem);
+                    }
+                }
+            }
+
+        }
+
+
+    }
     //npcbot - CastItemCombatSpell for bots
     else if (IsNPCBot())
     {
@@ -2330,6 +2436,163 @@ uint32 Unit::CalcArmorReducedDamage(Unit const* attacker, Unit const* victim, co
 float Unit::GetEffectiveResistChance(Unit const* owner, SpellSchoolMask schoolMask, Unit const* victim)
 {
     float victimResistance = float(victim->GetResistance(schoolMask));
+
+    //如果是玩家被法术攻击，且是在英雄本或团本中，降低实际抗性
+    float raidResistMod = 1.0f;//抗性降低的系数
+
+
+    //获得配置项目wowpatch,大于2的时候
+    uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+    if (wowpatch > 2)
+    {
+
+        if (victim->IsPlayer())
+        {
+            //如果是5人本，且是英雄副本
+            if (victim->GetMap()->IsDungeon() && !victim->GetMap()->IsRaid())
+            {
+                //如果是英雄模式
+                //if (victim->GetMap()->IsHeroic())
+                //{
+                //    raidResistMod = raidResistMod * 0.5f;
+                //}
+                //根据不同的团本，在基础难度系数上再进行微调
+                switch (victim->GetMap()->GetId())
+                {
+                case 269:	//开启黑暗之门
+                case 540:	//地狱火堡垒：破碎大厅
+                case 542:	//地狱火堡垒：鲜血熔炉
+                case 543:	//地狱火堡垒：城墙
+                case 545:	//盘牙湖泊：蒸汽地窟
+                case 546:	//盘牙湖泊：幽暗沼泽
+                case 547:	//盘牙湖泊：奴隶围栏
+                case 552:	//风暴要塞：禁魔监狱
+                case 553:	//风暴要塞：生态船
+                case 554:	//风暴要塞：能源舰
+                case 555:	//奥金顿：暗影迷宫
+                case 556:	//奥金顿：塞泰克大厅
+                case 557:	//奥金顿：法力墓穴
+                case 558:	//奥金顿：奥金尼地穴
+                case 560:	//逃离敦霍尔德
+                case 574:	//乌特加德城堡
+                case 575:	//乌特加德之巅
+                case 576:	//魔枢
+                case 578:	//魔环
+                case 585:	//魔导师平台
+                case 595:	//净化斯坦索姆
+                case 599:	//岩石大厅
+                case 600:	//达克萨隆要塞
+                case 601:	//艾卓-尼鲁布
+                case 602:	//闪电大厅
+                case 604:	//古达克
+                case 608:	//紫罗兰监狱
+                case 619:	//安卡赫特：古代王国
+                case 632:	//灵魂洪炉
+                case 650:	//冠军的试炼
+                case 658:	//萨隆深渊
+                case 668:	//映像大厅
+                    //raidResistMod = raidResistMod * 0.2f;
+                    raidResistMod = raidResistMod;//原版抗性系数
+                    break;
+                default:
+                    break;
+                }
+            }
+
+
+            //判断地图，如果是在团本或战场中，抗性降低
+            if (victim->GetMap()->GetId() && (victim->GetMap()->IsRaid() || victim->GetMap()->IsBattlegroundOrArena()))//如果是团队
+            {
+
+                //如果是英雄模式
+                //if (victim->GetMap()->IsHeroic())
+                //{
+                //    raidResistMod = raidResistMod * 0.5f;
+                //}
+
+                //根据具体团本地图，进行难度加强
+                switch (victim->GetMap()->GetId())
+                {
+                case 309://ZUG
+                    raidResistMod = raidResistMod * 0.5f;
+                    break;
+                case 409://MC
+                    raidResistMod = raidResistMod * 0.4f;
+                    break;
+                case 509://安其拉废墟
+                    raidResistMod = raidResistMod * 0.5f;
+                    break;
+                case 249://黑龙
+                    //raidResistMod = raidResistMod * 0.2f;
+                    break;
+                case 469://BWL
+                    raidResistMod = raidResistMod * 0.3f;
+                    break;
+                case 531://安其拉神庙
+                    raidResistMod = raidResistMod * 0.2f;
+                    break;
+                case 533://NAXX
+                    //raidResistMod = raidResistMod * 0.2f;
+                    break;
+                case 30://奥特兰克山谷
+                case 489://战歌峡谷
+                case 529://阿拉希盆地
+                    raidResistMod = raidResistMod * 0.2f;
+                    break;
+                    //新世界
+                case 532://卡拉赞
+                case 565://格鲁尔的巢穴
+                case 544://玛瑟里顿的巢穴
+                case 548://盘牙湖泊：毒蛇神殿
+                case 550://风暴要塞
+                case 568://祖阿曼
+                    raidResistMod = raidResistMod * 0.2f;
+                    break;
+                case 564://黑暗神殿
+                case 534://海加尔山之战
+                case 580://太阳之井
+                    raidResistMod = raidResistMod * 0.2f;
+                    break;
+                case 603://奥杜尔
+                case 615://黑曜石圣殿
+                case 616://永恒之眼
+                case 624://阿尔卡冯的宝库
+                case 631://冰冠堡垒
+                case 649://十字军的试炼
+                case 724://红玉圣殿
+                    //raidResistMod = raidResistMod * 0.2f;
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            //判断是否是野外boss
+            if (owner)
+            {
+                if (owner->GetEntry())
+                {
+                    switch (owner->GetEntry())
+                    {
+                    case 12397:
+                    case 14890:
+                    case 14888:
+                    case 14887:
+                    case 14889:
+                    case 6109:
+                    case 17711://末日行者
+                    case 18728://外域 末日领主卡扎克
+                        raidResistMod = raidResistMod * 0.2f;
+                        break;
+                    }
+                }
+            }
+
+        }
+        //end ------------
+
+    }
+
     if (owner)
     {
         // Xinef: pets inherit 100% of masters penetration
@@ -2354,7 +2617,18 @@ float Unit::GetEffectiveResistChance(Unit const* owner, SpellSchoolMask schoolMa
 
     victimResistance = std::max(victimResistance, 0.0f);
     if (owner)
-        victimResistance += std::max((float(victim->GetLevel()) - float(owner->GetLevel())) * 5.0f, 0.0f);
+    {
+        uint16 _zsstoneall = 0;
+        if (owner->GetTypeId() == TYPEID_PLAYER)
+        {
+            //根据转生次数进行调整
+            _zsstoneall = owner->ToPlayer()->getZHUANSHENGNUMALL() + owner->ToPlayer()->getYGZHUANSHENGNUMALL();
+            //end -----------
+        }
+
+
+        victimResistance += std::max((float(victim->GetLevel()) - float(owner->GetLevel()) - float(_zsstoneall / 2)) * 5.0f, 0.0f);
+    }
 
     static uint32 const BOSS_LEVEL = 83;
     static float const BOSS_RESISTANCE_CONSTANT = 510.0f;
@@ -2366,7 +2640,9 @@ float Unit::GetEffectiveResistChance(Unit const* owner, SpellSchoolMask schoolMa
     else
         resistanceConstant = level * 5.0f;
 
-    return victimResistance / (victimResistance + resistanceConstant);
+    //return victimResistance / (victimResistance + resistanceConstant);
+    return victimResistance * raidResistMod / (victimResistance * raidResistMod + resistanceConstant);
+
 }
 
 void Unit::CalcAbsorbResist(DamageInfo& dmgInfo, bool Splited)
@@ -3013,11 +3289,244 @@ void Unit::AddExtraAttacks(uint32 count)
 
 MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackType attType) const
 {
+    //计算武器技能差值
+    int32 _skillDiff = int32(GetWeaponSkillValue(attType, victim)) - int32(victim->GetMaxSkillValueForLevel(this));
+    //特别设置，在卡60的情况下，如果玩家等级是60级，重新设置skillDiff
+    if ((IsPlayer() || (IsPet() && GetOwner())) && GetLevel() == 60 && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    {
+        if (_skillDiff < -15)
+            _skillDiff = -15 + (_skillDiff + 15) * 0.4;//(_skillDiff+15) 的范围是 -5 到 -85 ，最终得到的_skillDiff最小是-49，相当于原来60打70怪的设置
+    }
+    //60打80的怪，初始的misschance是40.6
+
+    float raidDodgeMod = 1.0f;//闪避降低的系数
+
+    //获得配置项目wowpatch,大于2的时候
+    uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+
+    //如果是5人本，且是英雄副本
+    if (GetMap()->IsDungeon() && !GetMap()->IsRaid())
+    {
+        //如果是英雄模式
+        if (GetMap()->IsHeroic())
+        {
+            //根据不同的团本，在基础难度系数上再进行微调
+            switch (GetMap()->GetId())
+            {
+            case 269:	//开启黑暗之门
+            case 540:	//地狱火堡垒：破碎大厅
+            case 542:	//地狱火堡垒：鲜血熔炉
+            case 543:	//地狱火堡垒：城墙
+            case 545:	//盘牙湖泊：蒸汽地窟
+            case 546:	//盘牙湖泊：幽暗沼泽
+            case 547:	//盘牙湖泊：奴隶围栏
+            case 552:	//风暴要塞：禁魔监狱
+            case 553:	//风暴要塞：生态船
+            case 554:	//风暴要塞：能源舰
+            case 555:	//奥金顿：暗影迷宫
+            case 556:	//奥金顿：塞泰克大厅
+            case 557:	//奥金顿：法力墓穴
+            case 558:	//奥金顿：奥金尼地穴
+            case 560:	//逃离敦霍尔德
+            case 574:	//乌特加德城堡
+            case 575:	//乌特加德之巅
+            case 576:	//魔枢
+            case 578:	//魔环
+            case 585:	//魔导师平台
+            case 595:	//净化斯坦索姆
+            case 599:	//岩石大厅
+            case 600:	//达克萨隆要塞
+            case 601:	//艾卓-尼鲁布
+            case 602:	//闪电大厅
+            case 604:	//古达克
+            case 608:	//紫罗兰监狱
+            case 619:	//安卡赫特：古代王国
+            case 632:	//灵魂洪炉
+            case 650:	//冠军的试炼
+            case 658:	//萨隆深渊
+            case 668:	//映像大厅
+                //raidDodgeMod = raidDodgeMod * 0.2f;
+                raidDodgeMod = raidDodgeMod;//原版躲闪
+                break;
+            default:
+                break;
+            }
+        }
+
+    }
+
+    //判断地图，如果是在团本或战场中，闪避降低
+    if (GetMap()->GetId() && (GetMap()->IsRaid() || GetMap()->IsBattlegroundOrArena()))//如果是团队
+    {
+
+        //如果是英雄模式
+        //if (GetMap()->IsHeroic())
+        //{
+        //    raidDodgeMod = raidDodgeMod * 0.5f;
+        //}
+
+        //如果启用了团本难度加强，就降低闪避
+        if (sWorld->getBoolConfig(CONFIG_BOOL_RAID_DIFFICULT_ENABLE) && wowpatch > 2)
+        {
+            //根据具体团本地图，进行难度加强
+            switch (GetMap()->GetId())
+            {
+            case 309://ZUG
+                raidDodgeMod = raidDodgeMod * 0.5f;
+                break;
+            case 409://MC
+                raidDodgeMod = raidDodgeMod * 0.3f;
+                break;
+            case 509://安其拉废墟
+                raidDodgeMod = raidDodgeMod * 0.5f;
+                break;
+            case 249://黑龙
+                //raidDodgeMod = raidDodgeMod * 0.2f;
+                break;
+            case 469://BWL
+                raidDodgeMod = raidDodgeMod * 0.2f;
+                break;
+            case 531://安其拉神庙
+                raidDodgeMod = raidDodgeMod * 0.2f;
+                break;
+            case 533://NAXX
+                //raidDodgeMod = raidDodgeMod * 0.2f;
+                break;
+            case 30://奥特兰克山谷
+            case 489://战歌峡谷
+            case 529://阿拉希盆地
+                raidDodgeMod = raidDodgeMod * 0.2f;
+                break;
+                //新世界
+            case 532://卡拉赞
+            case 534://海加尔山之战
+            case 544://玛瑟里顿的巢穴
+            case 548://盘牙湖泊：毒蛇神殿
+            case 550://风暴要塞
+            case 564://黑暗神殿
+            case 565://格鲁尔的巢穴
+            case 568://祖阿曼
+            case 580://太阳之井
+            case 603://奥杜尔
+            case 615://黑曜石圣殿
+            case 616://永恒之眼
+            case 624://阿尔卡冯的宝库
+            case 631://冰冠堡垒
+            case 649://十字军的试炼
+            case 724://红玉圣殿
+                raidDodgeMod = raidDodgeMod * 0.2f;
+                break;
+            default:
+                break;
+            }
+        }
+
+        // This is only wrapper
+
+        // Miss chance based on melee
+        //float miss_chance = MeleeMissChanceCalc(victim, attType);
+        float miss_chance = MeleeSpellMissChance(victim, attType, _skillDiff, 0);
+
+        //如果启用了团本难度加强，就降低闪避
+        if (!sWorld->getBoolConfig(CONFIG_BOOL_RAID_DIFFICULT_ENABLE) && wowpatch > 2)
+        {
+
+            // Critical hit chance
+            float crit_chance = GetUnitCriticalChance(attType, victim);
+            if (crit_chance < 0)
+                crit_chance = 0;
+
+            float dodge_chance = victim->GetUnitDodgeChance();
+            float block_chance = victim->GetUnitBlockChance();
+            float parry_chance = victim->GetUnitParryChance();
+
+            // Useful if want to specify crit & miss chances for melee, else it could be removed
+            //LOG_DEBUG("entities.unit", "MELEE OUTCOME: miss {} crit {} dodge {} parry {} block {}", miss_chance, crit_chance, dodge_chance, parry_chance, block_chance);
+
+            return RollMeleeOutcomeAgainst(victim, attType, int32(crit_chance * 100), int32(miss_chance * 100), int32(dodge_chance * 100), int32(parry_chance * 100), int32(block_chance * 100));
+
+        }
+        else
+        {
+            // Critical hit chance
+            //float crit_chance = GetUnitCriticalChance(attType, victim);
+            float crit_chance = GetUnitCriticalChance(attType, victim) < 10.0f ? GetUnitCriticalChance(attType, victim) : (10.0f + (GetUnitCriticalChance(attType, victim) - 10.0f) * 0.33f * raidDodgeMod);
+            if (crit_chance < 0)
+                crit_chance = 0;
+
+            float const dodge_chance = victim->GetUnitDodgeChance() < 10.0f ? victim->GetUnitDodgeChance() : (10.0f + (victim->GetUnitDodgeChance() - 10.0f) * 0.33f * raidDodgeMod);
+            float const block_chance = victim->GetUnitBlockChance() < 10.0f ? victim->GetUnitBlockChance() : (10.0f + (victim->GetUnitBlockChance() - 10.0f) * 0.33f * raidDodgeMod);
+            float const parry_chance = victim->GetUnitParryChance() < 10.0f ? victim->GetUnitParryChance() : (10.0f + (victim->GetUnitParryChance() - 10.0f) * 0.33f * raidDodgeMod);
+
+            // Useful if want to specify crit & miss chances for melee, else it could be removed
+            //LOG_DEBUG("entities.unit", "MELEE OUTCOME: miss {} crit {} dodge {} parry {} block {}", miss_chance, crit_chance, dodge_chance, parry_chance, block_chance);
+
+            return RollMeleeOutcomeAgainst(victim, attType, int32(crit_chance * 100), int32(miss_chance * 100), int32(dodge_chance * 100), int32(parry_chance * 100), int32(block_chance * 100));
+        }
+    }
+    else
+    {
+        //如果启用了团本难度加强，就降低闪避
+        if (sWorld->getBoolConfig(CONFIG_BOOL_RAID_DIFFICULT_ENABLE) && wowpatch > 2)
+        {
+            //判断是否是野外boss
+            if (GetEntry())
+            {
+                switch (GetEntry())
+                {
+                case 12397:
+                case 14890:
+                case 14888:
+                case 14887:
+                case 14889:
+                case 6109:
+                case 17711://末日行者
+                case 18728://外域 末日领主卡扎克
+                    float raidDodgeMod = 1.0f;//闪避降低的系数
+                    raidDodgeMod = raidDodgeMod * 0.1f;
+
+
+                    // This is only wrapper
+
+                    // Miss chance based on melee
+                    //float miss_chance = MeleeMissChanceCalc(victim, attType);
+                    float miss_chance = MeleeSpellMissChance(victim, attType, _skillDiff, 0);
+
+                    // Critical hit chance
+                    //float crit_chance = GetUnitCriticalChance(attType, victim);
+                    float crit_chance = GetUnitCriticalChance(attType, victim) < 10.0f ? GetUnitCriticalChance(attType, victim) : (10.0f + (GetUnitCriticalChance(attType, victim) - 10.0f) * 0.33f * raidDodgeMod);
+                    if (crit_chance < 0)
+                        crit_chance = 0;
+
+                    //LOG_ERROR("xx", "1dodge_chance {} ", victim->GetUnitDodgeChance());//测试
+                    //LOG_ERROR("xx", "1block_chance {} ", victim->GetUnitBlockChance());//测试
+                    //LOG_ERROR("xx", "1parry_chance {} ", victim->GetUnitParryChance());//测试
+
+                    float const dodge_chance = victim->GetUnitDodgeChance() < 10.0f ? victim->GetUnitDodgeChance() : (10.0f + (victim->GetUnitDodgeChance() - 10.0f) * 0.33f * raidDodgeMod);
+                    float const block_chance = victim->GetUnitBlockChance() < 10.0f ? victim->GetUnitBlockChance() : (10.0f + (victim->GetUnitBlockChance() - 10.0f) * 0.33f * raidDodgeMod);
+                    float const parry_chance = victim->GetUnitParryChance() < 10.0f ? victim->GetUnitParryChance() : (10.0f + (victim->GetUnitParryChance() - 10.0f) * 0.33f * raidDodgeMod);
+
+                    //LOG_ERROR("xx", "dodge_chance {} ", dodge_chance);//测试
+                    //LOG_ERROR("xx", "block_chance {} ", block_chance);//测试
+                    //LOG_ERROR("xx", "parry_chance {} ", parry_chance);//测试
+                    // Useful if want to specify crit & miss chances for melee, else it could be removed
+                    //LOG_DEBUG("entities.unit", "MELEE OUTCOME: miss {} crit {} dodge {} parry {} block {}", miss_chance, crit_chance, dodge_chance, parry_chance, block_chance);
+
+                    return RollMeleeOutcomeAgainst(victim, attType, int32(crit_chance * 100), int32(miss_chance * 100), int32(dodge_chance * 100), int32(parry_chance * 100), int32(block_chance * 100));
+
+
+                    break;
+                }
+            }
+        }
+
+    }
+
     // This is only wrapper
 
     // Miss chance based on melee
     //float miss_chance = MeleeMissChanceCalc(victim, attType);
-    float miss_chance = MeleeSpellMissChance(victim, attType, int32(GetWeaponSkillValue(attType, victim)) - int32(victim->GetMaxSkillValueForLevel(this)), 0);
+    float miss_chance = MeleeSpellMissChance(victim, attType, _skillDiff, 0);
 
     // Critical hit chance
     float crit_chance = GetUnitCriticalChance(attType, victim);
@@ -3209,8 +3718,29 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
         }
     }
 
+    //特别设置，在卡60的情况下，如果玩家等级是60级，碾压不生效(增加难度情况下，碾压生效)
+    bool nianyaflag = true;
+    /*
+    //取消碾压降低的设定，进行原始碾压！
+    if ((victim->IsPlayer() || (victim->IsPet() && victim->GetOwner())) && victim->GetLevel() == 60 && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    //if (IsPlayer() && GetLevel()==60 && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL)==60 )
+    {
+        //有50%几率不会发生碾压和暴击
+        uint8 randomN = urand(1, 100);
+        //LOG_ERROR("xx", "randomN {}", randomN);//测试
+        if (randomN < 50)
+        {
+            //LOG_ERROR("xx", "dxx ");//测试
+            nianyaflag = false;
+        }
+
+    }
+    */
+    //end-----
+
+
     // mobs can score crushing blows if they're 4 or more levels above victim
-    if (getLevelForTarget(victim) >= victim->getLevelForTarget(this) + 4 &&
+    if (nianyaflag && getLevelForTarget(victim) >= victim->getLevelForTarget(this) + 4 &&
             // can be from by creature (if can) or from controlled player that considered as creature
             !IsControlledByPlayer() &&
             !(IsCreature() && ToCreature()->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_CRUSHING_BLOWS)))
@@ -3237,7 +3767,7 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
     // Critical chance
     tmp = crit_chance;
 
-    if (tmp > 0 && roll < (sum += tmp))
+    if (nianyaflag && tmp > 0 && roll < (sum += tmp))
     {
         LOG_DEBUG("entities.unit", "RollMeleeOutcomeAgainst: CRIT <{}, {})", sum - tmp, sum);
         if (IsCreature() && (ToCreature()->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_CRIT)))
@@ -3315,6 +3845,10 @@ float Unit::CalculateLevelPenalty(SpellInfo const* spellProto) const
         return 1.0f;
 
     if (spellProto->SpellLevel <= 0 || spellProto->SpellLevel >= spellProto->MaxLevel)
+        return 1.0f;
+
+    //根据参数来判断是否对法伤做等级惩罚
+    if (!sWorld->getBoolConfig(CONFIG_BOOL_FS_LEVELPENALTY_ENABLE))
         return 1.0f;
 
     float LvlPenalty = 0.0f;
@@ -3648,6 +4182,77 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* victim, SpellInfo const* spellInfo
             victim->IsPlayer()
             ? RATE_MISS_CHANCE_MULTIPLIER_TARGET_PLAYER
             : RATE_MISS_CHANCE_MULTIPLIER_TARGET_CREATURE);
+    }
+
+    //特别设置，在卡60的情况下，如果玩家等级是60级，重新设置levelDiff
+    if ((IsPlayer() || (IsTotem() && GetOwner()) || (IsPet() && GetOwner())) && GetLevel() == 60 && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+    {
+        //LOG_ERROR("xx", "levelDiff: {} ", levelDiff);//测试
+
+        if (levelDiff > 3) {
+            levelDiff = 3 + (levelDiff - 3) * 0.2;//进一步提高法术命中  60打80，45%能命中
+            //levelDiff = 3 + (levelDiff-3) * 0.25;//(levelDiff-3) 的范围是 1 到 17,   --- 60打70，63%能命中 --- 60打80，36%能命中
+            //levelDiff = 3 + (levelDiff-3) * 0.3;// --- 60打70，60%能命中 --- 60打80，27%能命中
+            //levelDiff = 3 + (levelDiff-3) * 0.35;// --- 60打70，56%能命中 --- 60打80，17.5%能命中
+            //levelDiff = 3 + (levelDiff - 3) * 0.45;//---60打70，48%能命中 --- 60打80，-1%能命中
+            //levelDiff = 3 + (levelDiff - 3) * 0.65;//---60打70，33%能命中 --- 60打80，-38%能命中
+        }
+
+    }
+
+    //猎人宠物低吼不会miss
+    if (spellInfo->Id && IsPet() && IsHunterPet())
+    {
+        switch (spellInfo->Id)
+        {
+        case 2649:
+        case 14916:
+        case 14917:
+        case 14918:
+        case 14919:
+        case 14920:
+        case 14921:
+        case 27047:
+            levelDiff = 2;
+            break;
+        }
+    }
+    //术士宠物 嘲讽技能不会miss
+
+
+    if (spellInfo->Id && IsPet() && IsSummon())
+    {
+        //LOG_ERROR("xx", "IsSummon {}", spellInfo->Id);//测试
+        switch (spellInfo->Id)
+        {
+            //魅魔 安抚之吻
+        case 6360:
+        case 7813:
+        case 11784:
+        case 11785:
+        case 27275:
+            //虚空行者 折磨
+        case 3716:
+        case 7809:
+        case 7810:
+        case 7811:
+        case 11774:
+        case 11775:
+        case 27270:
+        case 47984:
+            //虚空行者 受难
+        case 17735:
+        case 17750:
+        case 17751:
+        case 17752:
+        case 27271:
+        case 33701:
+        case 47989:
+        case 47990:
+            levelDiff = 2;
+            break;
+        }
+
     }
 
     // Base hit chance from attacker and victim levels
@@ -5612,6 +6217,12 @@ void Unit::RemoveAurasWithMechanic(uint32 mechanic_mask, AuraRemoveMode removemo
         {
             if (aura->GetSpellInfo()->GetAllEffectsMechanicMask() & mechanic_mask)
             {
+                if (aura->GetSpellInfo()->Id == 26657 || aura->GetSpellInfo()->Id == 900101)//如果是副本坐骑，不下马
+                {
+                    ++iter;
+                    continue;
+                }
+
                 RemoveAura(iter, removemode);
                 continue;
             }
@@ -5682,6 +6293,47 @@ void Unit::RemoveAllAuras()
         AuraMap::iterator aurIter;
         for (aurIter = m_ownedAuras.begin(); aurIter != m_ownedAuras.end();)
             RemoveOwnedAura(aurIter);
+    }
+}
+
+
+void Unit::RemoveAllAurasVisibility()
+{
+    if (Player* player = ToPlayer())
+    {
+        if (!player->GetSession()->IsBot())
+        {
+            for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
+            {
+                if (permanentAuras.find(iter->second->GetBase()->GetSpellInfo()->Id) != permanentAuras.end())
+                {
+                    _UnapplyAura(iter, AURA_REMOVE_BY_DEFAULT);
+                    iter = m_appliedAuras.begin();
+                }
+                else
+                    ++iter;
+            }
+
+            for (AuraMap::iterator aurIter = m_ownedAuras.begin(); aurIter != m_ownedAuras.end();)
+            {
+                if (permanentAuras.find(aurIter->second->GetId()) != permanentAuras.end())
+                {
+                    RemoveOwnedAura(aurIter);
+                    aurIter = m_ownedAuras.begin();
+                }
+                else
+                    ++aurIter;
+            }
+
+        }
+    }
+}
+
+void Unit::RemoveAllMountStatus()
+{
+    if (Player* player = ToPlayer())
+    {
+        player->_RemoveAllItemModsForHLDM();
     }
 }
 
@@ -10698,8 +11350,8 @@ FactionTemplateEntry const* Unit::GetFactionTemplateEntry() const
                 LOG_ERROR("entities.unit", "Player {} has invalid faction (faction template id) #{}", player->GetName(), GetFaction());
             else if (Creature const* creature = ToCreature())
                 LOG_ERROR("entities.unit", "Creature (template id: {}) has invalid faction (faction template id) #{}", creature->GetCreatureTemplate()->Entry, GetFaction());
-            else
-                LOG_ERROR("entities.unit", "Unit (name={}, type={}) has invalid faction (faction template id) #{}", GetName(), uint32(GetTypeId()), GetFaction());
+            //else
+            //    LOG_ERROR("entities.unit", "Unit (name={}, type={}) has invalid faction (faction template id) #{}", GetName(), uint32(GetTypeId()), GetFaction());//有时候会让服务端卡死，也不崩就死了
 
             guid = GetGUID();
         }
@@ -10722,8 +11374,11 @@ ReputationRank Unit::GetReactionTo(Unit const* target, bool checkOriginalFaction
         return REP_FRIENDLY;
 
     // always friendly to charmer or owner
-    if (GetCharmerOrOwnerOrSelf() == target->GetCharmerOrOwnerOrSelf())
-        return REP_FRIENDLY;
+    if (target->GetCharmerOrOwnerOrSelf())//防崩测试
+    {
+        if (GetCharmerOrOwnerOrSelf() == target->GetCharmerOrOwnerOrSelf())
+            return REP_FRIENDLY;
+    }
 
     Player const* selfPlayerOwner = GetAffectingPlayer();
     Player const* targetPlayerOwner = target->GetAffectingPlayer();
@@ -11330,6 +11985,9 @@ Unit* Unit::GetOwner() const
 
 Unit* Unit::GetCharmer() const
 {
+    if (!this)//防崩测试
+        return nullptr;
+
     if (ObjectGuid charmerGUID = GetCharmerGUID())
         return ObjectAccessor::GetUnit(*this, charmerGUID);
 
@@ -11338,6 +11996,9 @@ Unit* Unit::GetCharmer() const
 
 Player* Unit::GetCharmerOrOwnerPlayerOrPlayerItself() const
 {
+    if (!this)//防崩测试
+        return nullptr;
+
     ObjectGuid guid = GetCharmerOrOwnerGUID();
     if (guid.IsPlayer())
         return ObjectAccessor::GetPlayer(*this, guid);
@@ -11348,7 +12009,7 @@ Player* Unit::GetCharmerOrOwnerPlayerOrPlayerItself() const
             return creator->ToPlayer();
     //end npcbot
 
-    return const_cast<Unit*>(this)->ToPlayer();
+    return IsPlayer() ? const_cast<Unit*>(this)->ToPlayer() : nullptr;
 }
 
 Player* Unit::GetAffectingPlayer() const
@@ -12414,7 +13075,334 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
     //end npcbot
     // Config : RATE_CREATURE_X_SPELLDAMAGE & Do Not Modify Pet/Guardian/Mind Controled Damage
     if (IsCreature() && (!ToCreature()->IsPet() || !ToCreature()->IsGuardian() || !ToCreature()->IsControlledByPlayer()))
-        DoneTotalMod *= ToCreature()->GetSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+    {
+        //获得配置项目wowpatch,大于2的时候，加强团本
+        uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+        if (wowpatch > 2)
+        {
+
+            float spellDamageRaidMod = 1.0f;
+
+            //如果是5人本，且是英雄副本
+            if (GetMap()->IsDungeon() && !GetMap()->IsRaid())
+            {
+                //如果是英雄模式
+                if (GetMap()->IsHeroic())
+                {
+                    switch (GetMap()->GetId())
+                    {
+                    case 269:	//开启黑暗之门
+                    case 540:	//地狱火堡垒：破碎大厅
+                    case 542:	//地狱火堡垒：鲜血熔炉
+                    case 543:	//地狱火堡垒：城墙
+                    case 545:	//盘牙湖泊：蒸汽地窟
+                    case 546:	//盘牙湖泊：幽暗沼泽
+                    case 547:	//盘牙湖泊：奴隶围栏
+                    case 552:	//风暴要塞：禁魔监狱
+                    case 553:	//风暴要塞：生态船
+                    case 554:	//风暴要塞：能源舰
+                    case 555:	//奥金顿：暗影迷宫
+                    case 556:	//奥金顿：塞泰克大厅
+                    case 557:	//奥金顿：法力墓穴
+                    case 558:	//奥金顿：奥金尼地穴
+                    case 560:	//逃离敦霍尔德
+                    case 574:	//乌特加德城堡
+                    case 575:	//乌特加德之巅
+                    case 576:	//魔枢
+                    case 578:	//魔环
+                    case 585:	//魔导师平台
+                    case 595:	//净化斯坦索姆
+                    case 599:	//岩石大厅
+                    case 600:	//达克萨隆要塞
+                    case 601:	//艾卓-尼鲁布
+                    case 602:	//闪电大厅
+                    case 604:	//古达克
+                    case 608:	//紫罗兰监狱
+                    case 619:	//安卡赫特：古代王国
+                    case 632:	//灵魂洪炉
+                    case 650:	//冠军的试炼
+                    case 658:	//萨隆深渊
+                    case 668:	//映像大厅
+                        spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                        //spellDamageRaidMod = spellDamageRaidMod * 1;
+                        spellDamageRaidMod = spellDamageRaidMod / spellDamageRaidMod;//原版伤害
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+            }
+
+            //判断是否在团本中，是则调用团本难度参数
+
+            if (GetMap()->IsRaid() || GetMap()->IsBattlegroundOrArena())
+            {
+                if (spellProto->Id)
+                {
+                    switch (spellProto->Id)
+                    {
+                        //特殊的boss技能，比如按百分比计算伤害的，就不再进行加成了否则就秒团了
+                    case 25599://拉贾克斯将军：雷霆碰撞
+                    case 27808://克尔苏加德：冰霜冲击
+                    case 29879://克尔苏加德：冰霜冲击 debuff
+                        break;
+                    default:
+                        spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                        break;
+                    }
+                }
+                else
+                {
+                    spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                }
+
+                ////如果是英雄模式
+                //if (GetMap()->IsHeroic())
+                //{
+                //    spellDamageRaidMod = spellDamageRaidMod * 2.0f;
+                //}
+
+                //根据不同的团本，进一步加强
+                switch (GetMap()->GetId())
+                {
+                case 309://ZUG
+                    spellDamageRaidMod = spellDamageRaidMod * 1.5;
+                    break;
+                case 409://MC
+                    spellDamageRaidMod = spellDamageRaidMod * 4.5;
+                    break;
+                case 509://安其拉废墟
+                    spellDamageRaidMod = spellDamageRaidMod * 3.75;
+                    break;
+                case 469://BWL
+                    spellDamageRaidMod = spellDamageRaidMod * 5.25;
+                    break;
+                case 531://安其拉神庙
+                    if (spellProto->Id)
+                    {
+                        switch (spellProto->Id)
+                        {
+                            //特殊的boss技能 本身有过高的伤害或AOE伤害影响过多人
+                        case 26029://克苏恩 黑暗闪耀（红光）
+                        case 26143://克苏恩 精神鞭笞（利爪触须）
+                            break;
+                        default:
+                            spellDamageRaidMod = spellDamageRaidMod * 6;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        spellDamageRaidMod = spellDamageRaidMod * 6;
+                    }
+                    break;
+
+                case 30://奥特兰克山谷
+                case 489://战歌峡谷
+                case 529://阿拉希盆地
+                    spellDamageRaidMod = spellDamageRaidMod * 3;
+                    break;
+                    //新世界
+                case 532://卡拉赞
+                case 544://玛瑟里顿的巢穴
+                case 565://格鲁尔的巢穴
+                    if (spellProto->Id)
+                    {
+                        switch (spellProto->Id)
+                        {
+                            //特殊的高伤害技能，不改会秒人
+                        case 33051://大火球
+                        case 53851://暗影爆裂
+                            break;
+                        default:
+                            spellDamageRaidMod = spellDamageRaidMod * 3;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        spellDamageRaidMod = spellDamageRaidMod * 3;
+                    }
+
+                    break;
+                case 550://风暴要塞
+                    spellDamageRaidMod = spellDamageRaidMod * 2.25;
+                    break;
+                case 548://盘牙湖泊：毒蛇神殿
+                    //特殊boss过高伤害处理
+                    if (GetEntry())
+                    {
+                        switch (GetEntry())
+                        {
+                        case 21216://不稳定的海度斯
+                        case 21932://不稳定的海度斯
+                            spellDamageRaidMod = spellDamageRaidMod * 1.5;
+                            break;
+                        default:
+                            spellDamageRaidMod = spellDamageRaidMod * 2.25;
+                            break;
+                        }
+                    }
+
+                    break;
+                case 568://祖阿曼
+                    spellDamageRaidMod = spellDamageRaidMod * 2.25;
+                    break;
+                case 534://海加尔山之战
+                case 564://黑暗神殿
+                case 580://太阳之井
+                    //特殊boss过高伤害处理
+                    if (GetEntry())
+                    {
+                        switch (GetEntry())
+                        {
+                        case 24882://布鲁塔卢斯
+                        case 25158://布鲁塔卢斯(英雄)
+                            if (spellProto->Id)
+                            {
+                                switch (spellProto->Id)
+                                {
+                                    //特殊的boss技能，比如按百分比计算伤害的，就不再进行加成了否则就秒团了
+                                case 45150://布鲁塔卢斯：流星猛击
+                                    spellDamageRaidMod = spellDamageRaidMod * 0.75;//原始伤害
+                                    break;
+                                default:
+                                    spellDamageRaidMod = spellDamageRaidMod * 0.75;//这个boss会叠层数，初始伤害不能太高
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                spellDamageRaidMod = spellDamageRaidMod * 2.0;
+                            }
+
+                            break;
+                        default:
+                            /*
+                            if (spellProto->Id)
+                            {
+                                switch (spellProto->Id)
+                                {
+                                    //特殊的小怪技能，比如按百分比计算伤害的，就不再进行加成了否则就秒团了
+                                //case 46557://斩杀射击，这个是百分比伤害，不用加代码也是正常的
+                                //    spellDamageRaidMod = spellDamageRaidMod * 0.5;//原始伤害
+                                //    break;
+                                default:
+                                    spellDamageRaidMod = spellDamageRaidMod * 0.5;//这个boss会叠层数，初始伤害不能太高
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                spellDamageRaidMod = spellDamageRaidMod * 1.33;
+                            }
+                            */
+                            spellDamageRaidMod = spellDamageRaidMod * 2.0;
+                            break;
+                        }
+                    }
+
+
+
+                    break;
+                case 603://奥杜尔
+                case 615://黑曜石圣殿
+                case 616://永恒之眼
+                case 624://阿尔卡冯的宝库
+                case 649://十字军的试炼
+                    //spellDamageRaidMod = spellDamageRaidMod * 0.67;
+                    spellDamageRaidMod = spellDamageRaidMod / ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);//原版伤害
+                    break;
+                case 249://黑龙，难度提高，因为掉落远古装备
+                    spellDamageRaidMod = spellDamageRaidMod * 1.0;
+                    //spellDamageRaidMod = spellDamageRaidMod / ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);//原版伤害
+                    break;
+                case 533://NAXX
+                    if (spellProto->Id)
+                    {
+                        switch (spellProto->Id)
+                        {
+                            //特殊的boss技能，比如按百分比计算伤害的，就不再进行加成了否则就秒团了
+                        case 25599://拉贾克斯将军：雷霆碰撞
+                        case 27808://克尔苏加德：冰霜冲击
+                        case 29879://克尔苏加德：冰霜冲击 debuff
+                            break;
+                        default:
+                            //spellDamageRaidMod = spellDamageRaidMod * 1.0;//难度提高，因为掉落远古装备
+                            spellDamageRaidMod = spellDamageRaidMod / ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);//原版伤害,P3阶段普通难度开放时
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        //spellDamageRaidMod = spellDamageRaidMod * 1.0;//难度提高，因为掉落远古装备
+                        spellDamageRaidMod = spellDamageRaidMod / ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);//原版伤害,P3阶段普通难度开放时
+                    }
+                    break;
+                case 631://冰冠堡垒，难度提高，因为掉落太古装备
+                case 724://红玉圣殿，难度提高，因为掉落太古装备
+                    //spellDamageRaidMod = spellDamageRaidMod * 1.0;
+                    spellDamageRaidMod = spellDamageRaidMod / ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);//原版伤害,P7阶段普通难度开放时
+                    break;
+                    break;
+                default:
+                    break;
+                }
+
+            }
+
+            //判断是否是野外boss
+            if (ToCreature()->GetCreatureTemplate()->Entry)
+            {
+                switch (ToCreature()->GetCreatureTemplate()->Entry)
+                {
+                case 12397:
+                    spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                    //spellDamageRaidMod = spellDamageRaidMod * 0.1;
+                    spellDamageRaidMod = spellDamageRaidMod * 3;
+                    break;
+                case 14890:
+                case 14888:
+                case 14887:
+                case 14889:
+                case 6109:
+                    if (spellProto->Id)
+                    {
+                        switch (spellProto->Id)
+                        {
+                            //特殊的boss技能，比如按百分比计算伤害的，就不再进行加成了否则就秒团了
+                            //case 24818://艾莫莉丝：毒性吐息
+                            //case 24871://艾莫莉丝：孢子云
+                        case 24910://艾莫莉丝：大地的堕落
+                            break;
+                        default:
+                            spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                            spellDamageRaidMod = spellDamageRaidMod * 3;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                        spellDamageRaidMod = spellDamageRaidMod * 3;
+                    }
+                    break;
+                case 17711://末日行者
+                case 18728://外域 末日领主卡扎克
+                    spellDamageRaidMod = ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+                    spellDamageRaidMod = spellDamageRaidMod * 3;
+                    break;
+
+                }
+            }
+
+
+            DoneTotalMod *= ToCreature()->GetRaidSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank) * spellDamageRaidMod;
+        }
+
+    }
+
 
     // Some spells don't benefit from pct done mods
     if (!spellProto->HasAttribute(SPELL_ATTR6_IGNORE_CASTER_DAMAGE_MODIFIERS))
@@ -12506,6 +13494,69 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
     // Done fixed damage bonus auras
     DoneAdvertisedBenefit += SpellBaseDamageBonusDone(spellProto->GetSchoolMask());
 
+    //硬核玩家智力转法伤加成
+    if (IsPlayer())
+    {
+        bool canusezuoqi = false;
+        //获得玩家当前是否在战场或竞技场中
+        if (this->IsInWorld() && this->isActiveObject())
+            if (((Player*)this)->GetSession()->GetPlayer()->GetMap() && ((Player*)this)->GetSession()->GetPlayer()->GetAreaId() && ((Player*)this)->GetSession()->GetPlayer()->GetAreaId())
+                canusezuoqi = !((Player*)this)->GetSession()->GetPlayer()->GetMap()->IsBattlegroundOrArena() && ((Player*)this)->GetSession()->GetPlayer()->GetAreaId() != 2177 && ((Player*)this)->GetSession()->GetPlayer()->GetAreaId() != 1741;
+
+        if ((((Player*)this)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && canusezuoqi)
+        {
+            //获取角色智力数值，在硬核模式当做法伤使用
+            //针对不同职业，给予职业加成系数
+            float intellectchangerate = 1.0f;//智力转法伤的额外职业加成系数
+            switch (((Player*)this)->GetSession()->GetPlayer()->GetClass())
+            {
+            case CLASS_PRIEST://牧师单刷不了，智力转化法伤提高系数
+                intellectchangerate = 1.0f;
+                break;
+            case CLASS_PALADIN:
+            case CLASS_SHAMAN:
+            case CLASS_DRUID:
+                intellectchangerate = 1.0f;
+                break;
+            case CLASS_MAGE:
+            case CLASS_ROGUE:
+            case CLASS_HUNTER:
+            case CLASS_WARLOCK:
+            case CLASS_WARRIOR:
+                intellectchangerate = 1.0f;
+                break;
+            default:
+                intellectchangerate = 1.0f;
+                break;
+            }
+
+            int32 player_intellect = uint32(((Player*)this)->GetSession()->GetPlayer()->GetStat(STAT_INTELLECT));
+            if (player_intellect > 0)
+            {
+                /*
+                if (((Player*)this)->GetSession()->GetPlayer()->GetLevel() < 45)//低于45级时，加成再提高50%
+                {
+                    DoneAdvertisedBenefit = DoneAdvertisedBenefit + uint32(sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * player_intellect * intellectchangerate * 1.5);
+                }
+                else if (((Player*)this)->GetSession()->GetPlayer()->GetLevel() > 44 && ((Player*)this)->GetSession()->GetPlayer()->GetLevel() < 60)//非满级时，加成再提高25%
+                {
+                    DoneAdvertisedBenefit = DoneAdvertisedBenefit + uint32(sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * player_intellect * intellectchangerate * 1.25);
+                }
+                else
+                {
+                    DoneAdvertisedBenefit = DoneAdvertisedBenefit + uint32(sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * player_intellect * intellectchangerate);
+                }
+                */
+
+                //统一加成系数
+                DoneAdvertisedBenefit = DoneAdvertisedBenefit + uint32(sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * player_intellect * intellectchangerate);
+
+            }
+
+        }
+    }
+    //硬核玩家智力转法伤加成 end-----------
+
     // Check for table values
     float coeff = spellProto->Effects[effIndex].BonusMultiplier;
     SpellBonusEntry const* bonus = sSpellMgr->GetSpellBonusData(spellProto->Id);
@@ -12543,6 +13594,51 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
         if (Player* modOwner = GetSpellModOwner())
         {
             coeff *= 100.0f;
+
+            ////调试位置
+//LOG_ERROR("xx", "coeff{} ", coeff);//测试
+//LOG_ERROR("xx", "1Spellid {} ", spellProto->Id);//测试
+//LOG_ERROR("xx", "factorMod {} ", factorMod);//测试
+
+//根据不同技能，设定不同的coeff
+            if (spellProto->Id)
+            {
+                Unit* targetUnit = modOwner->GetVictim() ? modOwner->GetVictim() : modOwner->GetSelectedUnit();
+
+                //根据具体的技能来调整coeff的数值
+                switch (spellProto->Id)
+                {
+                    //鬼魂镰刀 吸取生命
+                case 16414://原来是1
+                    //如果目标是Player减弱效果
+                    //if (targetUnit && targetUnit->IsPlayer())
+                    //{
+                    coeff = coeff / 6;
+                    //}
+                    break;
+                    //哈卡莱之斧 吸取生命
+                case 24585://原来是100
+                    coeff = coeff / 4;
+                    break;
+                    //复仇者 吸取生命
+                case 34107://原来是100
+                    coeff = coeff / 4;
+                    break;
+                    //骨火 吸取生命
+                case 18815://触发了18817
+                case 18817://原来是100
+                    coeff = coeff / 6;
+                    break;
+                    //诅咒之拳 吸取生命
+                case 18084://原来是1
+                    coeff = coeff / 6;
+                    break;
+
+
+                }
+            }
+
+
             modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_BONUS_MULTIPLIER, coeff);
             coeff /= 100.0f;
         }
@@ -12554,6 +13650,504 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
     // apply spellmod to Done damage (flat and pct)
     if (Player* modOwner = GetSpellModOwner())
         modOwner->ApplySpellMod(spellProto->Id, damagetype == DOT ? SPELLMOD_DOT : SPELLMOD_DAMAGE, tmpDamage);
+
+    //判断如果是尖刺水晶或野猪之皮，且对面是玩家，就减少伤害
+
+    if (IsPlayer() && spellProto)
+    {
+        if (victim->IsPlayer() && victim->IsAlive())
+        {
+            if (spellProto->Id == 15279)
+            {
+                if (tmpDamage > 100.0f)
+                {
+                    tmpDamage = 100.0f + (tmpDamage - 100.0f) * 0.15;
+                }
+            }
+            if (spellProto->Id == 16610)
+            {
+                if (tmpDamage > 100.0f)
+                {
+                    tmpDamage = 100.0f + (tmpDamage - 100.0f) * 0.15;
+                }
+            }
+        }
+    }
+
+
+
+    //20241016取消VIP会员卡和PVE战袍的增伤减伤，20250313改为5%伤害增加
+    if (tmpDamage > 0)
+    {
+        /*
+        //VIP11-20级卡，PVE增伤代码(这里不能加了，否则和VIP卡V10形成叠加太高了)
+        if (victim->ToCreature())
+        {
+            if (IsPlayer() && victim->IsAlive() && !ToPlayer()->GetSession()->IsBot())
+            {
+                if (GetMap()->GetPlayersCountExceptGMs() < 6)//如果当前地图上玩家数量小于6个（单刷和带少数几个人）
+                {
+                    float _vipperlevelrate = sWorld->getRate(CONFIG_FLOAT_VIPCARD_PERLEVEL_DAMAGE);
+                    //判断身上是否有VIP11-20级会员卡，有的话，进行伤害加成
+                    if (((Player*)this)->getVIP20())
+                    {
+                        tmpDamage += tmpDamage * float(_vipperlevelrate * 10);
+                    }
+                    else
+                    {
+                        if (((Player*)this)->getVIP19())
+                        {
+                            tmpDamage += tmpDamage * float(_vipperlevelrate * 9);
+                        }
+                        else
+                        {
+                            if (((Player*)this)->getVIP18())
+                            {
+                                tmpDamage += tmpDamage * float(_vipperlevelrate * 8);
+                            }
+                            else
+                            {
+                                if (((Player*)this)->getVIP17())
+                                {
+                                    tmpDamage += tmpDamage * float(_vipperlevelrate * 7);
+                                }
+                                else
+                                {
+                                    if (((Player*)this)->getVIP16())
+                                    {
+                                        tmpDamage += tmpDamage * float(_vipperlevelrate * 6);
+                                    }
+                                    else
+                                    {
+                                        if (((Player*)this)->getVIP15())
+                                        {
+                                            tmpDamage += tmpDamage * float(_vipperlevelrate * 5);
+                                        }
+                                        else
+                                        {
+                                            if (((Player*)this)->getVIP14())
+                                            {
+                                                tmpDamage += tmpDamage * float(_vipperlevelrate * 4);
+                                            }
+                                            else
+                                            {
+                                                if (((Player*)this)->getVIP13())
+                                                {
+                                                    tmpDamage += tmpDamage * float(_vipperlevelrate * 3);
+                                                }
+                                                else
+                                                {
+                                                    if (((Player*)this)->getVIP12())
+                                                    {
+                                                        tmpDamage += tmpDamage * float(_vipperlevelrate * 2);
+                                                    }
+                                                    else
+                                                    {
+
+                                                        if (((Player*)this)->getVIP11())
+                                                        {
+                                                            tmpDamage += tmpDamage * float(_vipperlevelrate * 1);
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //end ----------------
+        */
+
+        //PVE战袍近战/技能增伤代码
+        if (victim->ToCreature())
+        {
+            if (IsPlayer() && victim->IsAlive() && !ToPlayer()->GetSession()->IsBot())
+            {
+                //如果玩家装备了PVE战袍
+                Item* pvezhanpao = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                if (pvezhanpao)
+                {
+                    if (pvezhanpao->GetEntry())
+                    {
+                        float _pveperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_DAMAGE);
+                        switch (pvezhanpao->GetEntry())
+                        {
+                        case 70931:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 1);
+                            break;
+                        case 70932:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 2);
+                            break;
+                        case 70933:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 3);
+                            break;
+                        case 70934:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 4);
+                            break;
+                        case 70935:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 5);
+                            break;
+                        case 70936:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 6);
+                            break;
+                        case 70937:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 7);
+                            break;
+                        case 70938:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 8);
+                            break;
+                        case 70939:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 9);
+                            break;
+                        case 70940:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 11);
+                            break;
+                        case 70941:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 11);
+                            break;
+                        case 70942:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 12);
+                            break;
+                        case 70943:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 13);
+                            break;
+                        case 70944:
+                            tmpDamage += tmpDamage * float(_pveperlevelrate * 14);
+                            break;
+                        }
+
+                    }
+
+                }
+
+            }
+
+            //宠物享受主人战袍加成
+            if (IsPet() && (((Pet*)this)->getPetType() == HUNTER_PET || ((Pet*)this)->getPetType() == SUMMON_PET) && victim->IsAlive())
+            {
+                if (Unit* owner = GetOwner())
+                {
+                    if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                    {
+                        //如果玩家装备了PVE战袍
+                        Item* pvezhanpao = ((Player*)owner)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                        if (pvezhanpao)
+                        {
+                            if (pvezhanpao->GetEntry())
+                            {
+                                float _pveperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_DAMAGE);
+                                switch (pvezhanpao->GetEntry())
+                                {
+                                case 70931:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 1);
+                                    break;
+                                case 70932:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 2);
+                                    break;
+                                case 70933:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 3);
+                                    break;
+                                case 70934:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 4);
+                                    break;
+                                case 70935:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 5);
+                                    break;
+                                case 70936:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 6);
+                                    break;
+                                case 70937:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 7);
+                                    break;
+                                case 70938:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 8);
+                                    break;
+                                case 70939:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 9);
+                                    break;
+                                case 70940:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 11);
+                                    break;
+                                case 70941:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 11);
+                                    break;
+                                case 70942:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 12);
+                                    break;
+                                case 70943:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 13);
+                                    break;
+                                case 70944:
+                                    tmpDamage += tmpDamage * float(_pveperlevelrate * 14);
+                                    break;
+                                }
+
+                            }
+
+                        }
+                    }
+                }
+
+
+
+            }//pet end
+
+        }//PVE战袍近战技能增伤代码END
+
+
+        //20240924 为了统一团本难度，移除PVE减伤
+        //VIP11-20级卡，PVE减伤代码
+        /*
+        if (victim->IsPlayer())
+        {
+            if (ToCreature() && victim->IsAlive() && !victim->ToPlayer()->GetSession()->IsBot())
+            {
+                if (uint32 groupnum = GetMap()->GetPlayersCountExceptGMs())//如果当前地图上玩家数量小于6个（单刷和带少数几个人）
+                {
+
+                    //判断身上是否有VIP11-20级会员卡，有的话，进行伤害减免(这个减免是在VIP10的减免之前生效的)
+                    if (((Player*)victim)->getVIP20())
+                    {
+                        if (groupnum < 6)//能带4个人时生效
+                        {
+                            //LOG_ERROR("xx", "tmpDamage {} ", tmpDamage);//测试
+                            tmpDamage -= tmpDamage * 0.3f;
+                            //LOG_ERROR("xx", "tmpDamage {} ", tmpDamage);//测试
+                        }
+
+                    }
+                    else
+                    {
+                        if (((Player*)victim)->getVIP19())
+                        {
+                            if (groupnum < 6)//能带4个人时生效
+                                tmpDamage -= tmpDamage * 0.27f;
+                        }
+                        else
+                        {
+                            if (((Player*)victim)->getVIP18())
+                            {
+                                if (groupnum < 5)//能带3个人时生效
+                                    tmpDamage -= tmpDamage * 0.24f;
+                            }
+                            else
+                            {
+                                if (((Player*)victim)->getVIP17())
+                                {
+                                    if (groupnum < 4)//能带2个人时生效
+                                        tmpDamage -= tmpDamage * 0.21f;
+                                }
+                                else
+                                {
+                                    if (((Player*)victim)->getVIP16())
+                                    {
+                                        if (groupnum < 3)//能带1个人时生效
+                                            tmpDamage -= tmpDamage * 0.18f;
+                                    }
+                                    else
+                                    {
+                                        if (((Player*)victim)->getVIP15())
+                                        {
+                                            if (groupnum < 2)//只能单刷生效
+                                                tmpDamage -= tmpDamage * 0.15f;
+                                        }
+                                        else
+                                        {
+                                            if (((Player*)victim)->getVIP14())
+                                            {
+                                                if (groupnum < 2)//只能单刷生效
+                                                    tmpDamage -= tmpDamage * 0.12f;
+                                            }
+                                            else
+                                            {
+                                                if (((Player*)victim)->getVIP13())
+                                                {
+                                                    if (groupnum < 2)//只能单刷生效
+                                                        tmpDamage -= tmpDamage * 0.09f;
+                                                }
+                                                else
+                                                {
+                                                    if (((Player*)victim)->getVIP12())
+                                                    {
+                                                        if (groupnum < 2)//只能单刷生效
+                                                            tmpDamage -= tmpDamage * 0.06f;
+                                                    }
+                                                    else
+                                                    {
+
+                                                        if (((Player*)victim)->getVIP11())
+                                                        {
+                                                            if (groupnum < 2)//只能单刷生效
+                                                                tmpDamage -= tmpDamage * 0.03f;
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //end ---------------
+        */
+        //20240924 为了统一团本难度，移除PVE减伤 end ----------
+
+
+        //20240924 为了统一团本难度，移除PVE减伤
+        //PVE战袍近战技能减伤代码
+        if (victim->IsPlayer())
+        {
+            if (ToCreature() && victim->IsAlive() && !victim->ToPlayer()->GetSession()->IsBot())
+            {
+                //如果玩家装备了PVE战袍
+                Item* pvezhanpao = ((Player*)victim)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                if (pvezhanpao)
+                {
+                    if (pvezhanpao->GetEntry())
+                    {
+                        float _pveundamageperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_UNDAMAGE);
+                        switch (pvezhanpao->GetEntry())
+                        {
+                        case 70931:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 1);
+                            break;
+                        case 70932:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 2);
+                            break;
+                        case 70933:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 3);
+                            break;
+                        case 70934:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 4);
+                            break;
+                        case 70935:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 5);
+                            break;
+                        case 70936:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 6);
+                            break;
+                        case 70937:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 7);
+                            break;
+                        case 70938:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 8);
+                            break;
+                        case 70939:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 9);
+                            break;
+                        case 70940:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 10);
+                            break;
+                        case 70941:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 11);
+                            break;
+                        case 70942:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 12);
+                            break;
+                        case 70943:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 13);
+                            break;
+                        case 70944:
+                            tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 14);
+                            break;
+                        }
+                    }
+
+                }
+
+            }
+
+        }//PVE战袍近战技能减伤代码END
+
+        //PVE战袍近战技能减伤代码
+        if (victim->IsPet() && (((Pet*)victim)->getPetType() == HUNTER_PET || ((Pet*)victim)->getPetType() == SUMMON_PET))
+        {
+            if (ToCreature() && victim->IsAlive())
+            {
+                if (Unit* owner = victim->ToCreature()->GetOwner())
+                {
+                    if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                    {
+                        //如果玩家装备了PVE战袍
+                        Item* pvezhanpao = ((Player*)owner)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                        if (pvezhanpao)
+                        {
+                            if (pvezhanpao->GetEntry())
+                            {
+                                float _pveundamageperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_UNDAMAGE);
+                                switch (pvezhanpao->GetEntry())
+                                {
+                                case 70931:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 1);
+                                    break;
+                                case 70932:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 2);
+                                    break;
+                                case 70933:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 3);
+                                    break;
+                                case 70934:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 4);
+                                    break;
+                                case 70935:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 5);
+                                    break;
+                                case 70936:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 6);
+                                    break;
+                                case 70937:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 7);
+                                    break;
+                                case 70938:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 8);
+                                    break;
+                                case 70939:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 9);
+                                    break;
+                                case 70940:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 10);
+                                    break;
+                                case 70941:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 11);
+                                    break;
+                                case 70942:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 12);
+                                    break;
+                                case 70943:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 13);
+                                    break;
+                                case 70944:
+                                    tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 14);
+                                    break;
+                                }
+
+                            }
+
+                        }
+                    }
+                }
+
+
+            }
+
+        }//pet - PVE战袍近战技能减伤代码END
+        //20240924 为了统一团本难度，移除PVE减伤 end ----
+
+
+    }
+
+    //20241016取消VIP会员卡和PVE战袍的增伤减伤 end ------
 
     return uint32(std::max(tmpDamage, 0.0f));
 }
@@ -13290,6 +14884,54 @@ uint32 Unit::SpellHealingBonusDone(Unit* victim, SpellInfo const* spellProto, ui
 
     // Done fixed damage bonus auras
     DoneAdvertisedBenefit += SpellBaseHealingBonusDone(spellProto->GetSchoolMask());
+
+    //硬核法伤加成
+    Player const* pPlayer = ToPlayer();
+    bool canusezuoqi = false;
+    if (pPlayer)
+    {
+        //获得玩家当前是否在战场或竞技场中
+        if (pPlayer->IsInWorld() && pPlayer->isActiveObject())
+            if (pPlayer->GetMap() && pPlayer->GetAreaId() && pPlayer->GetAreaId())
+                canusezuoqi = !pPlayer->GetMap()->IsBattlegroundOrArena() && pPlayer->GetAreaId() != 2177 && pPlayer->GetAreaId() != 1741;
+    }
+
+    if (IsPlayer())
+    {
+        if (pPlayer->IsInWorld() && (pPlayer->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && canusezuoqi)
+        {
+
+            //治疗加成提升到200%，就是原来1点法伤和治疗=1点治疗，现在是1点法伤和治疗=2点治疗，也就是实际的1点治疗现在增加为2点治疗
+            DoneAdvertisedBenefit = DoneAdvertisedBenefit * 1.0;//335不加太多治疗加成
+
+            //获取角色智力数值，在硬核模式当做法伤使用
+            int32 player_intellect = uint32(((Player*)this)->GetSession()->GetPlayer()->GetStat(STAT_INTELLECT));
+            if (player_intellect > 0)
+            {
+                /*
+                if (((Player*)this)->GetSession()->GetPlayer()->GetLevel() < 45)//低于45级时，加成再提高50%
+                {
+                    DoneAdvertisedBenefit = DoneAdvertisedBenefit + sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * float(2 * player_intellect * 2.0);
+                }
+                else if (((Player*)this)->GetSession()->GetPlayer()->GetLevel() > 44 && ((Player*)this)->GetSession()->GetPlayer()->GetLevel() < 60)//非满级时，加成再提高25%
+                {
+                    DoneAdvertisedBenefit = DoneAdvertisedBenefit + sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * float(2 * player_intellect * 1.5);
+                }
+                else
+                {
+                    DoneAdvertisedBenefit = DoneAdvertisedBenefit + sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * float(2 * player_intellect * 1.25);
+                }
+                */
+
+                //DoneAdvertisedBenefit = DoneAdvertisedBenefit + sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * float(2 * player_intellect * 1.25);
+                DoneAdvertisedBenefit = DoneAdvertisedBenefit + uint32(sWorld->getRate(CONFIG_FLOAT_YH_RATE_INTELLECT) * player_intellect);
+
+            }
+        }
+    }
+    //硬核法伤加成end-----
+
+
     float coeff = spellProto->Effects[effIndex].BonusMultiplier;
 
     // Check for table values
@@ -14069,6 +15711,521 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     if (spellProto)
         if (Player* modOwner = GetSpellModOwner())
             modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_DAMAGE, tmpDamage);
+
+    //if (GetGUID().GetCounter() == 5098 && tmpDamage > 0)
+//    LOG_ERROR("xx", "xxxxxtmpDamage {}  ", tmpDamage );//测试,平砍到这里了，但平砍没有技能的信息
+
+
+//20241016移除VIP卡和PVE战袍的增伤减伤，20250313增加PVE增伤
+
+//PVE战袍代码 使用部分物理攻击的技能到这里：顺劈，旋风，嗜血没到这里
+    if (tmpDamage > 0)
+    {
+        //if (GetGUID().GetCounter() == 5098)
+        //    LOG_ERROR("xx", "xxxxxtmpDamage {} spellProto->Id {}", tmpDamage, spellProto->Id);//测试
+
+        if (spellProto && spellProto->SpellIconID == 561)
+        {
+            //因为这些技能在另一个函数SpellDamageBonusDone里进行过PVE战袍加成，所以这里不再进行PVE战袍加成
+            //LOG_ERROR("xx", "xxxxx1 {} spellProto->Id {}", tmpDamage, spellProto->Id);//测试
+        }
+        else if (spellProto && spellProto->SpellIconID == 42)
+        {
+            //LOG_ERROR("xx", "xxxxx2 {} spellProto->Id {}", tmpDamage, spellProto->Id);//测试
+        }
+        else if (spellProto && spellProto->SchoolMask == SPELL_SCHOOL_MASK_HOLY)//SchoolMask：1物理,2神圣,4火,8自然,16冰,32暗影,64奥术
+        {
+            //LOG_ERROR("xx", "xxxxx3 {} spellProto->Id {} spellProto->SchoolMask {}", tmpDamage, spellProto->Id, spellProto->SchoolMask);//测试
+        }
+        else if (spellProto && spellProto->Id == 4090)
+        {
+            //LOG_ERROR("xx", "xxxxx4 {} spellProto->Id {}", tmpDamage, spellProto->Id);//测试
+        }
+        else if (spellProto && spellProto->Id == 18280)
+        {
+            //LOG_ERROR("xx", "xxxxx5 {} spellProto->Id {}", tmpDamage, spellProto->Id);//测试
+        }
+        else
+        {
+            //if(GetGUID().GetCounter()== 5098)
+            //LOG_ERROR("xx", "tmpDamage {} ", tmpDamage);//测试
+
+            /*
+            //VIP11-20级卡，PVE近战增伤代码(这里不能加了，否则和VIP卡V10形成叠加太高了)
+            if (victim->ToCreature())
+            {
+                if (IsPlayer() && victim->IsAlive() && !ToPlayer()->GetSession()->IsBot())
+                {
+                    if (GetMap()->GetPlayersCountExceptGMs() < 6)//如果当前地图上玩家数量小于6个（单刷和带少数几个人）
+                    {
+                        float _vipperlevelrate = sWorld->getRate(CONFIG_FLOAT_VIPCARD_PERLEVEL_DAMAGE);
+                        //判断身上是否有VIP11-20级会员卡，有的话，进行伤害加成
+                        if (((Player*)this)->getVIP20())
+                        {
+                            tmpDamage += tmpDamage * float(_vipperlevelrate * 10);
+                        }
+                        else
+                        {
+                            if (((Player*)this)->getVIP19())
+                            {
+                                tmpDamage += tmpDamage * float(_vipperlevelrate * 9);
+                            }
+                            else
+                            {
+                                if (((Player*)this)->getVIP18())
+                                {
+                                    tmpDamage += tmpDamage * float(_vipperlevelrate * 8);
+                                }
+                                else
+                                {
+                                    if (((Player*)this)->getVIP17())
+                                    {
+                                        tmpDamage += tmpDamage * float(_vipperlevelrate * 7);
+                                    }
+                                    else
+                                    {
+                                        if (((Player*)this)->getVIP16())
+                                        {
+                                            tmpDamage += tmpDamage * float(_vipperlevelrate * 6);
+                                        }
+                                        else
+                                        {
+                                            if (((Player*)this)->getVIP15())
+                                            {
+                                                tmpDamage += tmpDamage * float(_vipperlevelrate * 5);
+                                            }
+                                            else
+                                            {
+                                                if (((Player*)this)->getVIP14())
+                                                {
+                                                    tmpDamage += tmpDamage * float(_vipperlevelrate * 4);
+                                                }
+                                                else
+                                                {
+                                                    if (((Player*)this)->getVIP13())
+                                                    {
+                                                        tmpDamage += tmpDamage * float(_vipperlevelrate * 3);
+                                                    }
+                                                    else
+                                                    {
+                                                        if (((Player*)this)->getVIP12())
+                                                        {
+                                                            tmpDamage += tmpDamage * float(_vipperlevelrate * 2);
+                                                        }
+                                                        else
+                                                        {
+
+                                                            if (((Player*)this)->getVIP11())
+                                                            {
+                                                                tmpDamage += tmpDamage * float(_vipperlevelrate * 1);
+                                                            }
+
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            //end ----------------
+            */
+
+            //PVE战袍近战增伤代码
+            if (victim->ToCreature())
+            {
+                if (IsPlayer() && victim->IsAlive() && !ToPlayer()->GetSession()->IsBot())
+                {
+                    //如果玩家装备了PVE战袍
+                    Item* pvezhanpao = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+
+                    //if (GetGUID().GetCounter() == 5098)
+                    //    LOG_ERROR("xx", "tmpDamagex {} ", tmpDamage);//测试
+
+                    if (pvezhanpao)
+                    {
+                        //LOG_ERROR("xx", "pvezhanpao ");//测试
+                        if (pvezhanpao->GetEntry())
+                        {
+                            float _pveperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_DAMAGE);
+                            switch (pvezhanpao->GetEntry())
+                            {
+                            case 70931:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 1);
+                                break;
+                            case 70932:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 2);
+                                break;
+                            case 70933:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 3);
+                                break;
+                            case 70934:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 4);
+                                break;
+                            case 70935:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 5);
+                                break;
+                            case 70936:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 6);
+                                break;
+                            case 70937:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 7);
+                                break;
+                            case 70938:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 8);
+                                break;
+                            case 70939:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 9);
+                                break;
+                            case 70940:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 10);
+                                break;
+                            case 70941:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 11);
+                                break;
+                            case 70942:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 12);
+                                break;
+                            case 70943:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 13);
+                                break;
+                            case 70944:
+                                tmpDamage += tmpDamage * float(_pveperlevelrate * 14);
+                                break;
+                            }
+                        }
+
+                    }
+
+                }
+
+                //宠物享受主人战袍加成
+                if (IsPet() && (((Pet*)this)->getPetType() == HUNTER_PET || ((Pet*)this)->getPetType() == SUMMON_PET) && victim->IsAlive())
+                {
+                    if (Unit* owner = GetOwner())
+                    {
+                        if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                        {
+                            //如果玩家装备了PVE战袍
+                            Item* pvezhanpao = ((Player*)owner)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                            if (pvezhanpao)
+                            {
+                                if (pvezhanpao->GetEntry())
+                                {
+                                    float _pveperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_DAMAGE);
+                                    switch (pvezhanpao->GetEntry())
+                                    {
+                                    case 70931:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 1);
+                                        break;
+                                    case 70932:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 2);
+                                        break;
+                                    case 70933:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 3);
+                                        break;
+                                    case 70934:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 4);
+                                        break;
+                                    case 70935:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 5);
+                                        break;
+                                    case 70936:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 6);
+                                        break;
+                                    case 70937:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 7);
+                                        break;
+                                    case 70938:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 8);
+                                        break;
+                                    case 70939:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 9);
+                                        break;
+                                    case 70940:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 10);
+                                        break;
+                                    case 70941:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 11);
+                                        break;
+                                    case 70942:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 12);
+                                        break;
+                                    case 70943:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 13);
+                                        break;
+                                    case 70944:
+                                        tmpDamage += tmpDamage * float(_pveperlevelrate * 14);
+                                        break;
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+
+
+                }//pet end
+
+            }//PVE战袍技能增伤代码END
+
+
+            //20240924 为了统一团本难度，移除PVE减伤
+           //VIP11-20级卡，PVE近战减伤代码
+            /*
+            if (victim->IsPlayer())
+            {
+                if (ToCreature() && victim->IsAlive() && !victim->ToPlayer()->GetSession()->IsBot())
+                {
+                    if (uint32 groupnum = GetMap()->GetPlayersCountExceptGMs())//如果当前地图上玩家数量小于6个（单刷和带少数几个人）
+                    {
+                        //LOG_ERROR("xx", "tmpDamagexxx {} ", tmpDamage);//测试
+
+                        //判断身上是否有VIP11-20级会员卡，有的话，进行伤害减免(这个减免是在VIP10的减免之前生效的)
+                        if (((Player*)victim)->getVIP20())
+                        {
+                            if (groupnum < 6)//能带4个人时生效
+                            {
+                                //LOG_ERROR("xx", "tmpDamage {} ", tmpDamage);//测试
+                                tmpDamage -= tmpDamage * 0.3f;
+                                //LOG_ERROR("xx", "tmpDamage {} ", tmpDamage);//测试
+                            }
+
+                        }
+                        else
+                        {
+                            if (((Player*)victim)->getVIP19())
+                            {
+                                if (groupnum < 6)//能带4个人时生效
+                                    tmpDamage -= tmpDamage * 0.27f;
+                            }
+                            else
+                            {
+                                if (((Player*)victim)->getVIP18())
+                                {
+                                    if (groupnum < 5)//能带3个人时生效
+                                        tmpDamage -= tmpDamage * 0.24f;
+                                }
+                                else
+                                {
+                                    if (((Player*)victim)->getVIP17())
+                                    {
+                                        if (groupnum < 4)//能带2个人时生效
+                                            tmpDamage -= tmpDamage * 0.21f;
+                                    }
+                                    else
+                                    {
+                                        if (((Player*)victim)->getVIP16())
+                                        {
+                                            if (groupnum < 3)//能带1个人时生效
+                                                tmpDamage -= tmpDamage * 0.18f;
+                                        }
+                                        else
+                                        {
+                                            if (((Player*)victim)->getVIP15())
+                                            {
+                                                if (groupnum < 2)//只能单刷生效
+                                                    tmpDamage -= tmpDamage * 0.15f;
+                                            }
+                                            else
+                                            {
+                                                if (((Player*)victim)->getVIP14())
+                                                {
+                                                    if (groupnum < 2)//只能单刷生效
+                                                        tmpDamage -= tmpDamage * 0.12f;
+                                                }
+                                                else
+                                                {
+                                                    if (((Player*)victim)->getVIP13())
+                                                    {
+                                                        if (groupnum < 2)//只能单刷生效
+                                                            tmpDamage -= tmpDamage * 0.09f;
+                                                    }
+                                                    else
+                                                    {
+                                                        if (((Player*)victim)->getVIP12())
+                                                        {
+                                                            if (groupnum < 2)//只能单刷生效
+                                                                tmpDamage -= tmpDamage * 0.06f;
+                                                        }
+                                                        else
+                                                        {
+
+                                                            if (((Player*)victim)->getVIP11())
+                                                            {
+                                                                if (groupnum < 2)//只能单刷生效
+                                                                    tmpDamage -= tmpDamage * 0.03f;
+                                                            }
+
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            //end ---------------
+            //20240924 为了统一团本难度，移除PVE减伤 end ------
+            */
+
+
+            //20240924 为了统一团本难度，移除PVE减伤
+            //PVE战袍近战减伤代码
+            if (victim->IsPlayer())
+            {
+                if (ToCreature() && victim->IsAlive() && !victim->ToPlayer()->GetSession()->IsBot())
+                {
+                    //如果玩家装备了PVE战袍
+                    Item* pvezhanpao = ((Player*)victim)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                    if (pvezhanpao)
+                    {
+                        if (pvezhanpao->GetEntry())
+                        {
+                            float _pveundamageperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_UNDAMAGE);
+                            switch (pvezhanpao->GetEntry())
+                            {
+                            case 70931:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 1);
+                                break;
+                            case 70932:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 2);
+                                break;
+                            case 70933:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 3);
+                                break;
+                            case 70934:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 4);
+                                break;
+                            case 70935:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 5);
+                                break;
+                            case 70936:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 6);
+                                break;
+                            case 70937:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 7);
+                                break;
+                            case 70938:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 8);
+                                break;
+                            case 70939:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 9);
+                                break;
+                            case 70940:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 10);
+                                break;
+                            case 70941:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 11);
+                                break;
+                            case 70942:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 12);
+                                break;
+                            case 70943:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 13);
+                                break;
+                            case 70944:
+                                tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 14);
+                                break;
+                            }
+                        }
+
+                    }
+
+                }
+
+            }//PVE战袍近战减伤代码END
+
+            //PVE战袍近战减伤代码
+            if (victim->IsPet() && (((Pet*)victim)->getPetType() == HUNTER_PET || ((Pet*)victim)->getPetType() == SUMMON_PET))
+            {
+                if (ToCreature() && victim->IsAlive())
+                {
+                    if (Unit* owner = victim->GetOwner())
+                    {
+                        if (owner->IsPlayer() && !((Player*)owner)->GetSession()->IsBot())
+                        {
+                            //如果玩家装备了PVE战袍
+                            Item* pvezhanpao = ((Player*)owner)->GetItemByPos(INVENTORY_SLOT_BAG_0, 18);
+                            if (pvezhanpao)
+                            {
+                                if (pvezhanpao->GetEntry())
+                                {
+                                    float _pveundamageperlevelrate = sWorld->getRate(CONFIG_FLOAT_PVE_PERLEVEL_UNDAMAGE);
+                                    switch (pvezhanpao->GetEntry())
+                                    {
+                                    case 70931:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 1);
+                                        break;
+                                    case 70932:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 2);
+                                        break;
+                                    case 70933:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 3);
+                                        break;
+                                    case 70934:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 4);
+                                        break;
+                                    case 70935:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 5);
+                                        break;
+                                    case 70936:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 6);
+                                        break;
+                                    case 70937:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 7);
+                                        break;
+                                    case 70938:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 8);
+                                        break;
+                                    case 70939:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 9);
+                                        break;
+                                    case 70940:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 10);
+                                        break;
+                                    case 70941:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 11);
+                                        break;
+                                    case 70942:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 12);
+                                        break;
+                                    case 70943:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 13);
+                                        break;
+                                    case 70944:
+                                        tmpDamage -= tmpDamage * float(_pveundamageperlevelrate * 14);
+                                        break;
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+
+                }
+
+            }//pet - PVE战袍近战减伤代码END
+            //20240924 为了统一团本难度，移除PVE减伤 end ----------
+
+        }
+
+
+
+    }
+    //20241016移除VIP卡和PVE战袍的增伤减伤 end -------
+
 
     // bonus result can be negative
     return uint32(std::max(tmpDamage, 0.0f));
@@ -14987,6 +17144,86 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
     // additional checks - only PvP case
     if (playerAffectingAttacker && playerAffectingTarget)
     {
+        //pvp保护
+        if (!playerAffectingAttacker->GetMap()->IsBattlegroundOrArena() && playerAffectingAttacker->GetAreaId() != 976 && playerAffectingAttacker->GetAreaId() != 2177 && playerAffectingAttacker->GetAreaId() != 3217)//加基森和荆棘谷的大竞技场有PVP抢箱子，所以没有PVP保护
+        {
+            //PVP保护方式1：某个等级以下完全禁止PVP
+            //45级以下为保护期，禁止杀戮
+            //if (playerAffectingAttacker->GetLevel() < 45 || playerAffectingTarget->GetLevel() < 45)
+            //	return false;
+
+            //PVP保护方式2：一方为专家模式，禁止PVP
+            if (playerAffectingAttacker->GetLevel() < 61 || playerAffectingTarget->GetLevel() < 61)
+            {
+                /*
+                //任何一方为硬核模式或专家模式，禁止PVP（硬核模式转生就是为了PVP的，这个不可采用）
+                if ((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)
+                    || (((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
+                    || (((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)
+                    || (((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
+                    */
+
+
+                    //任何一方为专家模式，禁止PVP
+                if ((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
+                    || (((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
+                {
+                    return false;
+                }
+
+
+
+                if ((((Player*)playerAffectingTarget)->GetSession()->IsBot() || ((Player*)playerAffectingAttacker)->GetSession()->IsBot())
+                    && (playerAffectingAttacker->GetAreaId() == 976 || playerAffectingAttacker->GetAreaId() == 35 || playerAffectingAttacker->GetAreaId() == 2255
+                        || playerAffectingAttacker->GetAreaId() == 1577))
+                {
+                    //如果任何一方是机器人，并且是在禁止机器人攻击的中立地区，禁止PVP
+                    return false;
+                }
+
+                //如果任何一方是机器人，并且机器人是等级大于55，禁止PVP（因为高等级机器人的装备等级会很高）
+                if (((((Player*)playerAffectingTarget)->GetSession()->IsBot() && ((Player*)playerAffectingTarget)->GetLevel() > 55) || (((Player*)playerAffectingAttacker)->GetSession()->IsBot()) && ((Player*)playerAffectingAttacker)->GetLevel() > 55))
+                {
+                    return false;
+                }
+
+                //其中一方为专家模式，另一方非专家模式，禁止PVP(任何一方是机器人的话，不禁止)
+            //if ( ((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && !(((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
+            //    || ((((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && !(((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)) )
+                if (!((Player*)playerAffectingTarget)->GetSession()->IsBot() && !((Player*)playerAffectingAttacker)->GetSession()->IsBot() && (((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && !(((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
+                    || ((((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && !(((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))))
+
+                {
+                    return false;
+                }
+                //其中一方为硬核模式，另一方非硬核模式，禁止PVP
+                //if (((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && !(((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL))
+                //    || ((((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && !(((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)))
+                if (!((Player*)playerAffectingTarget)->GetSession()->IsBot() && !((Player*)playerAffectingAttacker)->GetSession()->IsBot() && (((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && !(((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL))
+                    || ((((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && !(((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL))))
+                {
+                    return false;
+                }
+
+            }
+
+            //PVP保护方式3：等级相差超过5级，禁止PVP
+            if (float(playerAffectingAttacker->GetLevel()) - float(playerAffectingTarget->GetLevel()) > float(sWorld->getIntConfig(CONFIG_UINT32_PVP_FORBID_LEVEL_DIFF)) || float(playerAffectingTarget->GetLevel()) - float(playerAffectingAttacker->GetLevel()) > float(sWorld->getIntConfig(CONFIG_UINT32_PVP_FORBID_LEVEL_DIFF)))
+            {
+                return false;
+            }
+
+            //PVP保护方式4：等级低于10级，禁止PVP
+            if (playerAffectingAttacker->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_PVP_FORBID_LEVEL_MIX) || playerAffectingTarget->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_PVP_FORBID_LEVEL_MIX))
+            {
+                return false;
+            }
+
+
+        }
+        //pvp保护end----
+
+
         if (!IsPvP() && bySpell && bySpell->IsAffectingArea() && !bySpell->HasAttribute(SPELL_ATTR5_IGNORE_AREA_EFFECT_PVP_CHECK))
             return false;
 
@@ -18967,8 +21204,17 @@ void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackTyp
         killer = nullptr;
 
     // find player: owner of controlled `this` or `this` itself maybe
-    Player* player = killer ? killer->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
-    Creature* creature = victim->ToCreature();
+    Player* player = killer ? killer->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;//杀人者是玩家
+    Creature* creature = victim->ToCreature();//被杀者是NPC
+
+    Player* pPlayerTap = killer ? killer->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr; //给下面杀人越货使用
+
+    //如果killer传送走了，这个Killer就是nullptr，再使用ToCreature()就会崩溃
+    Creature* pCreatureTap = killer ? killer->ToCreature() : nullptr;//杀人者是NPC
+
+
+    Player* pPlayerVictim = victim->ToPlayer();//被杀者是玩家
+
 
     //npcbot - loot recipient of bot's vehicle is owner
     if (!player && killer && killer->IsVehicle() && killer->GetCharmerGUID().IsCreature() && killer->GetCreator() && killer->GetCreator()->IsPlayer())
@@ -19079,6 +21325,230 @@ void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackTyp
 
         player->RewardPlayerAndGroupAtKill(victim, false);
     }
+
+    //增加类似传奇的PK掉落物品机制 杀人越货
+//如果是被玩家杀死，且不在战场或副本中，从身上随机抽取一件装备掉落，给击杀者，但是这样有漏洞，会造成变相装备交易
+
+    if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && (!pPlayerVictim->GetSession()->IsBot() && !pPlayerTap->GetSession()->IsBot()) && (!pPlayerVictim->GetMap()->IsBattlegroundOrArena() && !pPlayerVictim->GetMap()->IsDungeon() && pPlayerVictim->GetAreaId() != 2177 && pPlayerVictim->GetAreaId() != 1741))//2177大竞技场1741竞技场看台
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "killer %u %s", pPlayerTap->GetGUIDLow(), pPlayerTap->GetName());//测试
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "killed %u %s", pPlayerVictim->GetGUIDLow(),pPlayerVictim->GetName());//测试
+        if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))//硬核模式被玩家杀死
+        {
+            //判断身上是否有护身符（免死金牌）
+            uint32 hsfcard = pPlayerVictim->GetItemCount(70528, false);
+            //判断身上是否有免罪金牌
+            uint32 mzcard = pPlayerVictim->GetItemCount(70529, false) + pPlayerVictim->GetItemCount(70530, false) + pPlayerVictim->GetItemCount(70531, false) + pPlayerVictim->GetItemCount(70532, false);
+            if (!hsfcard && !mzcard)//%s 被 %s 杀死了，最高等级 %u 
+            {
+                ChatHandler(nullptr).SendWorldText(21705, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str(), pPlayerVictim->GetLevel());
+            }
+        }
+        if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))//专家模式被玩家杀死
+        {
+
+            //判断身上是否有护身符（免死金牌）
+            uint32 hsfcard = pPlayerVictim->GetItemCount(70528, false);
+            if (!hsfcard)//%s 被 %s 杀死了，最高等级 %u
+                ChatHandler(nullptr).SendWorldText(21704, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str(), pPlayerVictim->GetLevel());
+        }
+
+        //10%几率掉一件装备
+        uint8 randomN = urand(1, 100);
+        //如果参数是false，永远不会爆玩家装备
+        if (!sWorld->getBoolConfig(CONFIG_BOOL_PVPDROPITEM_ENABLE))
+        {
+            randomN = 100;
+        }
+
+        if (randomN < 10)
+        {
+            //从死亡角色身上抽一件装备
+            //定义一个容器用来装物品数据
+            std::vector<Item*> m_itemlist;
+
+            //将数据存入容器 身上的装备
+            for (uint8 i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+                if (Item* pItem = pPlayerVictim->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+                    m_itemlist.push_back(pItem);
+
+            if (!m_itemlist.empty())
+            {
+                //取一个随机值 第一个位置0起 否则找不到指针很严重...
+                uint8 n = urand(0, m_itemlist.size() - 1);
+
+                //如果身上装备小于3件，就不继续了，防止假PVP实际买卖装备
+                if (m_itemlist.size() > 3)
+                {
+                    //获取到随机的装备并保证其存在
+                    if (Item* kItem = m_itemlist[n])
+                    {
+                        ItemTemplate const* pProto = kItem->GetTemplate();
+                        if (pProto->RequiredLevel != 0 && pProto->Flags != 32)//任务奖励装备不会PVP掉落,flags=32的（无法摧毁的装备）不会PVP掉率
+                        {
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Flags %u", pProto->Flags);//测试
+                            //直接将装备转移 只有击杀者获得
+                            //随机附魔和附魔效果：考虑不想让小号故意死给大号获利，或交易装备获利，取消所有附魔和随机附魔效果
+                            pPlayerVictim->MoveItemFromInventory(INVENTORY_SLOT_BAG_0, kItem->GetSlot(), true);
+                            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+                            kItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayerTap->GetGUID());
+
+
+                            //去掉装备的附魔和随机附魔
+                            kItem->SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID, 0);//重置物品词缀
+                            for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
+                                kItem->SetEnchantment(EnchantmentSlot(enchant_slot), 0, 0, 0);
+                            //end
+
+
+
+                            ItemPosCountVec dest;
+                            uint8 Msg = pPlayerTap->CanStoreItem(NULL_BAG, NULL_SLOT, dest, kItem, false);
+                            if (Msg == EQUIP_ERR_OK)
+                            {
+                                pPlayerTap->MoveItemToInventory(dest, kItem, true, true);
+                            }
+                            pPlayerVictim->SaveInventoryAndGoldToDB(trans);
+
+                            if (Msg != EQUIP_ERR_OK)
+                            {
+                                kItem->DeleteFromInventoryDB(trans);
+                                kItem->SaveToDB(trans);
+
+                                std::string subject = pPlayerTap->GetSession()->GetAcoreString(21710);
+                                std::string content = pPlayerTap->GetSession()->GetAcoreString(21711);
+                                MailDraft(subject, content).AddItem(kItem).SendMailTo(trans, MailReceiver(pPlayerTap), MailSender(pPlayerVictim, MAIL_STATIONERY_GM), MAIL_CHECK_MASK_COPIED);
+
+                            }
+
+
+                            //pPlayerVictim->SaveInventoryAndGoldToDB();//这个放在MoveItemToInventory前面的话，会导致抢过来的装备无法保存到character_inventory表
+                            //可以理解为：游戏服务器内存中的数据让他按规则去运行，数据保存放到最后，否则数据库提前保存一部分，会导致未知的异常
+                            CharacterDatabase.CommitTransaction(trans);
+
+                            std::string Name = pProto->Name1;
+                            std::string Description = pProto->Description;
+
+                            //int loc_idx = 1;
+                            //ItemLocale const* il = sObjectMgr->GetItemLocale(pProto->ItemId);
+                            //if (il)
+                            //{
+                            //    if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
+                            //        Name = il->Name[loc_idx];
+                            //    if (il->Description.size() > size_t(loc_idx) && !il->Description[loc_idx].empty())
+                            //        Description = il->Description[loc_idx];
+                            //}
+
+                            int loc_idx = pPlayerTap->GetSession()->GetSessionDbLocaleIndex();
+                            if (loc_idx >= 0)
+                            {
+                                if (ItemLocale const* il = sObjectMgr->GetItemLocale(pProto->ItemId))
+                                {
+                                    ObjectMgr::GetLocaleString(il->Name, loc_idx, Name);
+                                    //ObjectMgr::GetLocaleString(il->Description, loc_idx, Description);
+                                }
+                            }
+
+                            ChatHandler(nullptr).SendWorldText(21708, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str(), pPlayerVictim->GetName().c_str(), Name.c_str());
+                        }
+                        else
+                        {
+                            ChatHandler(nullptr).SendWorldText(21709, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str());
+                        }
+                    }
+                }
+                else
+                {
+                    ChatHandler(nullptr).SendWorldText(21709, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str());
+                }
+
+            }
+            else
+            {
+                ChatHandler(nullptr).SendWorldText(21709, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str());
+            }
+            m_itemlist.clear();
+        }
+        else
+        {
+            ChatHandler(nullptr).SendWorldText(21709, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str());
+        }
+
+
+
+
+    }
+    //如果是被怪物杀死，且玩家是专家模式或硬核模式，且不是在战场中，全服播报（剔除机器人被杀）
+    if (pPlayerVictim && pCreatureTap && !pPlayerVictim->GetSession()->IsBot() && ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) || (pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)) && !pPlayerVictim->GetMap()->IsBattlegroundOrArena())
+    {
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "killer %u %s", pCreatureTap->GetEntry(), pCreatureTap->GetNameForLocaleIdx(1));//测试
+        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "killed %u %s", pPlayerVictim->GetGUIDLow(), pPlayerVictim->GetName());//测试
+
+        //硬核模式的通告只有掉到1级才做
+        if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+        {
+            //判断身上是否有护身符（免死金牌）
+            uint32 hsfcard = pPlayerVictim->GetItemCount(70528, false);
+            //判断身上是否有免罪金牌
+            uint32 mzcard = pPlayerVictim->GetItemCount(70529, false) + pPlayerVictim->GetItemCount(70530, false) + pPlayerVictim->GetItemCount(70531, false) + pPlayerVictim->GetItemCount(70532, false);
+            if (!hsfcard && !mzcard)//%s 被 %s 杀死了，最高等级 %u 
+            {
+                ChatHandler(nullptr).SendWorldText(21705, pPlayerVictim->GetName().c_str(), pCreatureTap->GetNameForLocaleIdx(pPlayerVictim->GetSession()->GetSessionDbLocaleIndex()), pPlayerVictim->GetLevel());
+            }
+        }
+
+        if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
+        {
+            //判断身上是否有护身符（免死金牌）
+            uint32 hsfcard = pPlayerVictim->GetItemCount(70528, false);
+            if (!hsfcard)//%s 被 %s 杀死了，最高等级 %u
+                ChatHandler(nullptr).SendWorldText(21704, pPlayerVictim->GetName().c_str(), pCreatureTap->GetNameForLocaleIdx(pPlayerVictim->GetSession()->GetSessionDbLocaleIndex()), pPlayerVictim->GetLevel());
+        }
+
+    }
+
+    //如果是机器人杀人或被杀，且玩家是专家模式或硬核模式，且不是在战场中，全服播报（作废，机器人被杀太频繁，播报无意义）
+    //if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && ((pPlayerVictim->GetSession()->IsBot() && !pPlayerTap->GetSession()->IsBot()) || (!pPlayerVictim->GetSession()->IsBot() && pPlayerTap->GetSession()->IsBot())) && !pPlayerVictim->GetMap()->IsBattlegroundOrArena())
+
+    //如果是机器人杀人，且玩家是专家模式或硬核模式，且不是在战场中，全服播报
+    if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && (!pPlayerVictim->GetSession()->IsBot() && pPlayerTap->GetSession()->IsBot()) && !pPlayerVictim->GetMap()->IsBattlegroundOrArena())
+    {
+        if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))//硬核模式被玩家杀死
+        {
+            //判断身上是否有护身符（免死金牌）
+            uint32 hsfcard = pPlayerVictim->GetItemCount(70528, false);
+            //判断身上是否有免罪金牌
+            uint32 mzcard = pPlayerVictim->GetItemCount(70529, false) + pPlayerVictim->GetItemCount(70530, false) + pPlayerVictim->GetItemCount(70531, false) + pPlayerVictim->GetItemCount(70532, false);
+            if (!hsfcard && !mzcard)//%s 被 %s 杀死了，最高等级 %u 
+            {
+                ChatHandler(nullptr).SendWorldText(21705, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str(), pPlayerVictim->GetLevel());
+            }
+        }
+        if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))//专家模式被玩家杀死
+        {
+            //判断身上是否有护身符（免死金牌）
+            uint32 hsfcard = pPlayerVictim->GetItemCount(70528, false);
+            if (!hsfcard)//%s 被 %s 杀死了，最高等级 %u
+                ChatHandler(nullptr).SendWorldText(21704, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str(), pPlayerVictim->GetLevel());
+        }
+
+        //pvp通报
+        //LOG_ERROR("xx", "pPlayerVictim->GetName() {}", pPlayerVictim->GetName());//测试
+        //LOG_ERROR("xx", "pPlayerTap->GetName() {}", pPlayerTap->GetName());//测试
+        ChatHandler(nullptr).SendWorldText(21709, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str());
+
+    }
+
+    //竞技场乱斗播报
+    if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && (!pPlayerVictim->GetSession()->IsBot() && !pPlayerTap->GetSession()->IsBot()) && (pPlayerVictim->GetAreaId() == 2177 || pPlayerVictim->GetAreaId() == 1741))//2177大竞技场1741竞技场看台
+    {
+        //pvp通报
+        ChatHandler(nullptr).SendWorldText(21709, pPlayerVictim->GetName().c_str(), pPlayerTap->GetName().c_str());
+    }
+
+
+    //杀人越货end------------
+
 
     //npcbot: spawn wandering bot kill reward
     if (creature && creature->IsNPCBot())
