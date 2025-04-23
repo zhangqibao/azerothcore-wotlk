@@ -4313,31 +4313,54 @@ SpellCastResult Spell::prepare(SpellCastTargets const* targets, AuraEffect const
                         }
                         else
                         {
-                            if (((Player*)m_caster)->IsMounted())
+                            //判断队伍里的角色是否是机器人，如果全是机器人就允许飞
+                            bool _haverealplayerinteam = false;
+                            if (((Player*)m_caster)->GetGroup())
                             {
-                                ((Player*)m_caster)->Dismount();
-                                ((Player*)m_caster)->RemoveAura(42777);
-                                SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
-                                finish(false);
-                                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
-                            }
-                            else
-                            {
-                                if (m_caster->GetAreaId() != 2177 && m_caster->GetAreaId() != 1741 && !((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())//竞技场内不释放这些buff
+                                if (Group* group = ((Player*)m_caster)->GetGroup())
                                 {
-                                    //释放水上行走
-                                    m_caster->CastSpell(m_caster, 11319, true);
-                                    //pPlayerCaster->CastSpell(pPlayerCaster, 12438, true);
-                                    //释放月神之光-无敌（10秒）
-                                    m_caster->CastSpell(m_caster, 6724, true);
-                                    //释放自由行动（30秒）
-                                    m_caster->CastSpell(m_caster, 6615, true);
-                                }
+                                    for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                                    {
+                                        Player* _member = itr->GetSource();
+                                        if (_member == ((Player*)m_caster))
+                                            continue;
+                                        if (!_member->GetSession()->IsBot())
+                                        {
+                                            _haverealplayerinteam = true;
+                                        }
 
-                                ((Player*)m_caster)->AddAura(42777, ((Player*)m_caster));//幽灵虎
-                                SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
-                                finish(false);
-                                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                                    }
+                                }
+                            }
+
+                            if (_haverealplayerinteam)
+                            {
+                                if (((Player*)m_caster)->IsMounted())
+                                {
+                                    ((Player*)m_caster)->Dismount();
+                                    ((Player*)m_caster)->RemoveAura(42777);
+                                    SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                                    finish(false);
+                                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                                }
+                                else
+                                {
+                                    if (m_caster->GetAreaId() != 2177 && m_caster->GetAreaId() != 1741 && !((Player*)m_caster)->GetMap()->IsBattlegroundOrArena())//竞技场内不释放这些buff
+                                    {
+                                        //释放水上行走
+                                        m_caster->CastSpell(m_caster, 11319, true);
+                                        //pPlayerCaster->CastSpell(pPlayerCaster, 12438, true);
+                                        //释放月神之光-无敌（10秒）
+                                        m_caster->CastSpell(m_caster, 6724, true);
+                                        //释放自由行动（30秒）
+                                        m_caster->CastSpell(m_caster, 6615, true);
+                                    }
+
+                                    ((Player*)m_caster)->AddAura(42777, ((Player*)m_caster));//幽灵虎
+                                    SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                                    finish(false);
+                                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                                }
                             }
 
                         }

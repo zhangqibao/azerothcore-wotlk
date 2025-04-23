@@ -63,4 +63,20 @@
     return height * getCircleAreaByRadius(radius);
 }
 
+namespace Geometry
+{
+
+    //from vmangos
+
+    inline float GetDistance3D(float ownX, float ownY, float ownZ, float targetX, float targetY, float targetZ)
+    {
+        float dx = ownX - targetX;
+        float dy = ownY - targetY;
+        float dz = ownZ - targetZ;
+        float dist = sqrt((dx * dx) + (dy * dy) + (dz * dz));
+        return (dist > 0 ? dist : 0);
+    }
+
+}
+
 #endif // _ACORE_GEOMETRY_H

@@ -348,7 +348,17 @@ public:
 
     [[nodiscard]] bool hasQuest(uint32 quest_id) const override { return GetTemplate()->StartQuest == quest_id; }
     [[nodiscard]] bool hasInvolvedQuest(uint32 /*quest_id*/) const override { return false; }
-    [[nodiscard]] bool IsPotion() const { return GetTemplate()->IsPotion(); }
+    //[[nodiscard]] bool IsPotion() const { return GetTemplate()->IsPotion(); }
+    [[nodiscard]] bool IsPotion() const { //防崩测试
+        if (GetTemplate())
+        {
+            return GetTemplate()->IsPotion();
+        }
+        else
+            return false;
+
+    }
+
     [[nodiscard]] bool IsWeaponVellum() const { return GetTemplate()->IsWeaponVellum(); }
     [[nodiscard]] bool IsArmorVellum() const { return GetTemplate()->IsArmorVellum(); }
     [[nodiscard]] bool IsConjuredConsumable() const { return GetTemplate()->IsConjuredConsumable(); }

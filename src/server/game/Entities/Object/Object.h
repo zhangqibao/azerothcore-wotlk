@@ -110,7 +110,8 @@ public:
     virtual void RemoveFromWorld();
 
     [[nodiscard]] static ObjectGuid GetGUID(Object const* o) { return o ? o->GetGUID() : ObjectGuid::Empty; }
-    [[nodiscard]] ObjectGuid GetGUID() const { return GetGuidValue(OBJECT_FIELD_GUID); }
+    //[[nodiscard]] ObjectGuid GetGUID() const { return GetGuidValue(OBJECT_FIELD_GUID); }
+    [[nodiscard]] ObjectGuid GetGUID() const { return this ? GetGuidValue(OBJECT_FIELD_GUID) : ObjectGuid::Empty; }//防崩测试
     [[nodiscard]] PackedGuid const& GetPackGUID() const { return m_PackGUID; }
     [[nodiscard]] uint32 GetEntry() const { return GetUInt32Value(OBJECT_FIELD_ENTRY); }
     void SetEntry(uint32 entry) { SetUInt32Value(OBJECT_FIELD_ENTRY, entry); }

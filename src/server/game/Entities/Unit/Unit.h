@@ -884,7 +884,8 @@ public:
     [[nodiscard]] uint32 GetAttackTime(WeaponAttackType att) const
     {
         float f_BaseAttackTime = GetFloatValue(static_cast<uint16>(UNIT_FIELD_BASEATTACKTIME) + att) / m_modAttackSpeedPct[att];
-        return (uint32)f_BaseAttackTime;
+        //return (uint32)f_BaseAttackTime;
+        return (uint32)f_BaseAttackTime ? (uint32)f_BaseAttackTime : 1;//防止当出现bug导致攻速为0时崩溃
     }
 
     void SetAttackTime(WeaponAttackType att, uint32 val) { SetFloatValue(static_cast<uint16>(UNIT_FIELD_BASEATTACKTIME) + att, val * m_modAttackSpeedPct[att]); }
@@ -983,6 +984,7 @@ public:
     void SetLastExtraAttackSpell(uint32 spellId) { _lastExtraAttackSpell = spellId; }
     [[nodiscard]] uint32 GetLastExtraAttackSpell() const { return _lastExtraAttackSpell; }
     void AddExtraAttacks(uint32 count);
+    uint32 GetExtraAttacks() const { return m_extraAttacks; }
 
     // Combot points system
     [[nodiscard]] uint8 GetComboPoints(Unit const* who = nullptr) const { return (who && m_comboTarget != who) ? 0 : m_comboPoints; }

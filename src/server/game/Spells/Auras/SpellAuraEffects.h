@@ -46,7 +46,7 @@ private:
 public:
     Unit* GetCaster() const { return GetBase()->GetCaster(); }
     ObjectGuid GetCasterGUID() const { return GetBase()->GetCasterGUID(); }
-    Aura* GetBase() const { return m_base; }
+    Aura* GetBase() const { return m_base ? m_base : nullptr; }
     void GetTargetList(std::list<Unit*>& targetList) const;
     void GetApplicationList(std::list<AuraApplication*>& applicationList) const;
     SpellModifier* GetSpellModifier() const { return m_spellmod; }
