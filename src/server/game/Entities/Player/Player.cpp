@@ -11129,8 +11129,8 @@ void Player::_ApplyAllItemMods()
         }
     }
 
-    //判断是否拥有赫拉迪姆魔盒
-//uint32 hldmbox = GetItemCount(91666, true);
+    //判断是否拥有赫拉迪姆魔盒(这里不能用getHLDM()，因为调用时还没有初始化)
+    uint32 hldmbox = GetItemCount(91666, true);
 //if (hldmbox)
 //获得玩家当前是否在战场或竞技场中
     bool canusezuoqi = true;
@@ -11139,7 +11139,7 @@ void Player::_ApplyAllItemMods()
         if (GetMap() && GetAreaId() && GetAreaId())
             canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
 
-    if (getHLDM() && canusezuoqi)
+    if (hldmbox && canusezuoqi)
     {
 
 

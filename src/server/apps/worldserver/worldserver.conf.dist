@@ -1,4 +1,4 @@
-################################################
+﻿################################################
 # AzerothCore World Server configuration file #
 ################################################
 [worldserver]
@@ -179,7 +179,7 @@ Database.Reconnect.Attempts = 20
 #        Example:     "@prefix@\home\youruser\azerothcore\data"
 #        Default:     "."
 
-DataDir = "."
+DataDir = "./Data"
 
 #
 #    LogsDir
@@ -189,7 +189,7 @@ DataDir = "."
 #        Example:     "/home/youruser/azerothcore/logs"
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ""
+LogsDir = "Logs"
 
 #
 #    TempDir
@@ -1117,6 +1117,64 @@ MaxWhoListReturns = 49
 
 PreventAFKLogout = 0
 
+#从多少级开始不能获得经验，卡等级用这个，最高最大等级
+EarnXPMaxPlayerLevel = 60
+
+#技能价格比率
+Rate.SpellLearnCost = 1.0
+
+#大财主和随身助理学技能价格比率
+Rate.SpellLearnCostSpecialNPC = 1.0
+
+#幻化卡和声望卡增加多少点属性
+TransmodCardAddStat = 5
+FactionCardAddStat = 5
+
+#相差多少级及以上禁止PVP
+PvpForbidLevelDiff = 9
+
+#多少级及以下禁止PVP
+PvpForbidLevelMix = 5
+
+#增加是否PVP掉落装备的参数
+PVPDropItemEnable = false
+
+#是否降低团本命中暴击闪避招架格挡
+RaidDifficultEnable = true
+
+#随机附魔是否启动
+RandomFM = 0
+
+#是否对法伤做等级惩罚，默认true=惩罚
+fashang.levelpenalty.enable = false
+
+#是否允许转生后再开模式
+RebornToStartChallengeEnable = true
+
+#是否专家模式死亡后回到普通模式（取消专家模式），false：永久死亡；true：可以继续玩普通模式
+ProfessorDeadChangeToNormalEnable = true
+
+#一个硬核转生石相当于60基础属性的多少
+Rate.RebornGetStatusRate = 0.1
+#宠物获得的转生石加成是主人的多少倍
+Rate.RebornGetStatusRateForPet = 0.7
+
+#PVE战袍每一级增加多少伤害（默认0.05）
+Rate.PVEPerLevelDamage = 0.05
+
+#PVE战袍每一级减少多少伤害（默认0.03或0）
+Rate.PVEPerLevelUNDamage = 0.00
+
+#是否开放技艺模式
+Challenge.Artmode.enable = true
+
+#是否允许战场使用氪金道具
+ItemCanUseInBGEnable = true
+
+#是否允许竞技场内使用氪金道具
+ItemCanUseInArenaEnable = false
+
+
 #
 ###################################################################################################
 
@@ -1481,7 +1539,7 @@ DeletedCharacterTicketTrace = 0
 #        Description: Allow players to use commands.
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
-
+#是否允许用户使用命令，默认为1
 AllowPlayerCommands = 1
 
 #
@@ -1531,7 +1589,7 @@ GM.LoginState = 2
 #        Default:     2 - (Last save state)
 #                     0 - (Invisible)
 #                     1 - (Visible)
-
+#GM是否可见，默认为2：按上次的设置
 GM.Visible = 2
 
 #
@@ -1550,7 +1608,8 @@ GM.Chat = 2
 #                     0 - (Disable)
 #                     1 - (Enable)
 
-GM.WhisperingTo = 2
+#GM默认是否接收密语私聊
+GM.WhisperingTo = 0
 
 #
 #    GM.InGMList.Level
@@ -1711,7 +1770,7 @@ InstantLogout = 1
 #    PlayerSaveInterval
 #        Description: Time (in milliseconds) for player save interval.
 #        Default:     900000 - (15 min)
-
+#保存玩家数据间隔时间（单位毫秒）默认是900000 15分钟
 PlayerSaveInterval = 900000
 
 #
@@ -1727,7 +1786,7 @@ PlayerSave.Stats.MinLevel = 0
 #        Description: Save player stats only on logout.
 #        Default:     1 - (Enabled, Only save on logout)
 #                     0 - (Disabled, Save on every player save)
-
+#启用保存玩家数据仅在玩家退出游戏时，默认：1(仅在玩家退出游戏时)，0(使用时间循环保存数据)
 PlayerSave.Stats.SaveOnlyOnLogout = 1
 
 #
@@ -1769,8 +1828,8 @@ PersistentCharacterCleanFlags = 0
 #        Default:     0 - (Completely remove character from the database)
 #                     1 - (Unlink the character from account and free up the name, Appears as
 #                         deleted ingame)
-
-CharDelete.Method = 0
+#删除角色：0是物理删除，1是逻辑删除
+CharDelete.Method = 1
 
 #
 #    CharDelete.MinLevel
@@ -1974,8 +2033,8 @@ SkipCinematics = 0
 #        Description: Amount of money (in Copper) that a character has after creation.
 #        Default:     0
 #                     100 - (1 Silver)
-
-StartPlayerMoney = 0
+#出生金币
+StartPlayerMoney = 6
 
 #
 #    StartHeroicPlayerMoney
@@ -2011,7 +2070,7 @@ EnablePlayerSettings = 0
 #        Important:   Levels beyond 100 are not recommended at all.
 #        Range:       1-255
 #        Default:     80
-
+#玩家最高等级（这里卡等级有问题，不用这个参数）
 MaxPlayerLevel = 80
 
 #
@@ -2115,7 +2174,9 @@ Rate.Loyalty           = 1
 #                     1.5 - (Rate.Rest.MaxBonus)
 
 Rate.Rest.InGame                 = 1
-Rate.Rest.Offline.InTavernOrCity = 1
+#在旅馆下线时
+Rate.Rest.Offline.InTavernOrCity = 2
+#在野外下线时
 Rate.Rest.Offline.InWilderness   = 1
 Rate.Rest.MaxBonus               = 1.5
 
@@ -2156,7 +2217,7 @@ LevelReq.Trade = 1
 #        Description: Resetting talents doesn't cost anything.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#重置天赋是否收费，默认为0为收费
 NoResetTalentsCost = 0
 
 #
@@ -2228,7 +2289,7 @@ Rate.Skill.Discovery = 1
 #                     1 - (SkillGain.Defense)
 #                     1 - (SkillGain.Gathering)
 #                     1 - (SkillGain.Weapon)
-
+#专业技能增长点数
 SkillGain.Crafting  = 1
 SkillGain.Defense   = 1
 SkillGain.Gathering = 1
@@ -2301,7 +2362,7 @@ Stats.Limits.Crit  = 95.0
 #    Rate.Reputation.Gain
 #        Description: Reputation gain rate.
 #        Default:     1
-
+#声望增长倍率，默认1
 Rate.Reputation.Gain = 1
 
 #
@@ -2338,6 +2399,11 @@ Rate.Reputation.RecruitAFriendBonus = 0.1
 
 MaxGroupXPDistance = 74
 
+#阶段，默认0为香草，1为TBC，2为WLK，3为加难香草，4为加难TBC
+
+WowPatch = 0
+
+
 #
 #    Rate.XP.Kill
 #    Rate.XP.Quest
@@ -2349,12 +2415,41 @@ MaxGroupXPDistance = 74
 #                     1 - (Rate.XP.Quest.DF) - Dungeon Finder/LFG quests only.
 #                     1 - (Rate.XP.Explore)
 #                     1 - (Rate.XP.Pet)
-
+#杀怪经验倍数
 Rate.XP.Kill      = 1
+
+#任务经验倍数
 Rate.XP.Quest     = 1
 Rate.XP.Quest.DF  = 1
+
+#探索地图经验倍数
 Rate.XP.Explore   = 1
 Rate.XP.Pet       = 1
+
+#在服务器经验设置的基础上，额外乘以经验倍率
+#低等级号经验倍率
+Rate.XP.Reward.Multiply = 1.5
+#定义最高多少级算低等级号
+Rate.XP.Reward.Maxlevel = 35
+#不同阵营经验倍率
+Rate.XP.Reward.CampLM = 1
+Rate.XP.Reward.CampBL = 1
+
+#硬核模式经验倍率
+Rate.YHXPRate = 1
+
+#TN职业经验倍率
+Rate.XP.Reward.CLASS_WARRIOR = 1
+Rate.XP.Reward.CLASS_PALADIN = 1
+Rate.XP.Reward.CLASS_SHAMAN = 1
+Rate.XP.Reward.CLASS_PRIEST = 1
+Rate.XP.Reward.CLASS_DRUID = 1
+Rate.XP.Reward.CLASS_HUNTER = 1
+Rate.XP.Reward.CLASS_MAGE = 1
+Rate.XP.Reward.CLASS_WARLOCK = 1
+Rate.XP.Reward.CLASS_ROGUE = 1
+Rate.XP.Reward.CLASS_DEATH_KNIGHT = 1
+
 
 #
 #    Rate.XP.BattlegroundKill...
@@ -2678,6 +2773,7 @@ DBC.EnforceItemAttributes = 1
 #                     1 - (Rate.Drop.Item.Referenced)
 #                     1 - (Rate.Drop.Money)
 
+#装备掉率Uncommon是绿装，Rare是蓝装，Epic是紫装
 Rate.Drop.Item.Poor             = 1
 Rate.Drop.Item.Normal           = 1
 Rate.Drop.Item.Uncommon         = 1
@@ -2686,6 +2782,8 @@ Rate.Drop.Item.Epic             = 1
 Rate.Drop.Item.Legendary        = 1
 Rate.Drop.Item.Artifact         = 1
 Rate.Drop.Item.Referenced       = 1
+
+#金币掉率
 Rate.Drop.Money                 = 1
 
 #    Rate.Drop.Item.ReferencedAmount
@@ -2879,17 +2977,21 @@ WorldBossLevelDiff = 3
 #                     300  - (5 Minutes, Corpse.Decay.ELITE)
 #                     300  - (5 Minutes, Corpse.Decay.RAREELITE)
 #                     3600 - (1 Hour, Corpse.Decay.WORLDBOSS)
+# 	默认改成: 300, 900, 600, 1200, 3600
 
-Corpse.Decay.NORMAL    = 60
-Corpse.Decay.RARE      = 300
-Corpse.Decay.ELITE     = 300
-Corpse.Decay.RAREELITE = 300
+Corpse.Decay.NORMAL    = 300
+Corpse.Decay.RARE      = 900
+Corpse.Decay.ELITE     = 600
+Corpse.Decay.RAREELITE = 1200
 Corpse.Decay.WORLDBOSS = 3600
 
 #
 #    Rate.Corpse.Decay.Looted
 #        Description: Multiplier for Corpse.Decay.* to configure how long creature corpses stay
 #                     after they have been looted.
+# 	这里和vmangos不同，vmangos如果是0.0，默认是刷新时间的1/3，这里改成0就无效了
+#	 0.1的时候 ：9分钟拾取的尸体消失，10分钟未拾取的尸体消失
+#	 0.5的时候 ：5分钟拾取的尸体消失，10分钟未拾取的尸体消失
 #         Default:    0.5
 
 Rate.Corpse.Decay.Looted = 0.5
@@ -2907,7 +3009,7 @@ Rate.Corpse.Decay.Looted = 0.5
 #                     1 - (Rate.Creature.Elite.RAREELITE.Damage)
 #                     1 - (Rate.Creature.Elite.WORLDBOSS.Damage)
 #
-
+#怪的物理伤害倍数（难度）
 Rate.Creature.Normal.Damage          = 1
 Rate.Creature.Elite.Elite.Damage     = 1
 Rate.Creature.Elite.RARE.Damage      = 1
@@ -2926,7 +3028,7 @@ Rate.Creature.Elite.WORLDBOSS.Damage = 1
 #                     1 - (Rate.Creature.Elite.RARE.SpellDamage)
 #                     1 - (Rate.Creature.Elite.RAREELITE.SpellDamage)
 #                     1 - (Rate.Creature.Elite.WORLDBOSS.SpellDamage)
-
+#怪的法术伤害倍数（难度）
 Rate.Creature.Normal.SpellDamage          = 1
 Rate.Creature.Elite.Elite.SpellDamage     = 1
 Rate.Creature.Elite.RARE.SpellDamage      = 1
@@ -2945,12 +3047,33 @@ Rate.Creature.Elite.WORLDBOSS.SpellDamage = 1
 #                     1 - (Rate.Creature.Elite.RARE.HP)
 #                     1 - (Rate.Creature.Elite.RAREELITE.HP)
 #                     1 - (Rate.Creature.Elite.WORLDBOSS.HP)
-
+#怪的血量倍数（难度）
 Rate.Creature.Normal.HP          = 1
 Rate.Creature.Elite.Elite.HP     = 1
 Rate.Creature.Elite.RARE.HP      = 1
 Rate.Creature.Elite.RAREELITE.HP = 1
 Rate.Creature.Elite.WORLDBOSS.HP = 1
+
+#团本怪的伤害倍数（难度）
+Rate.Creature.Raid.Normal.Damage = 3
+Rate.Creature.Raid.Elite.Elite.Damage = 3
+Rate.Creature.Raid.Elite.RAREELITE.Damage = 3
+Rate.Creature.Raid.Elite.BOSS.Damage = 3
+Rate.Creature.Raid.Elite.RARE.Damage = 3
+
+Rate.Creature.Raid.Normal.SpellDamage = 2
+Rate.Creature.Raid.Elite.Elite.SpellDamage = 2
+Rate.Creature.Raid.Elite.RAREELITE.SpellDamage = 2
+Rate.Creature.Raid.Elite.BOSS.SpellDamage = 2
+Rate.Creature.Raid.Elite.RARE.SpellDamage = 2
+
+#团本怪的血量倍数（难度）
+Rate.Creature.Raid.Normal.HP = 3
+Rate.Creature.Raid.Elite.Elite.HP = 3
+Rate.Creature.Raid.Elite.RAREELITE.HP = 3
+Rate.Creature.Raid.Elite.BOSS.HP = 3
+Rate.Creature.Raid.Elite.RARE.HP = 3
+
 
 #
 #    ListenRange.Say
@@ -3150,7 +3273,7 @@ Instance.IgnoreRaid = 0
 #        Description: Hour of the day when the global instance reset occurs.
 #        Range:       0-23
 #        Default:     4 - (04:00 AM)
-
+#副本更新的时间，默认是4，就是北京时间12点
 Instance.ResetTimeHour = 4
 
 #
@@ -3193,6 +3316,7 @@ AccountInstancesPerHour = 5
 #
 #   Instance.SharedNormalHeroicId
 #        Description:  Forces ICC and RS Normal and Heroic to share lockouts.  ToC is uneffected and Normal and Heroic will be separate.
+#	默认为：1 = 强制ICC和RS普通和英雄共享CD。ToC不受影响，普通和英雄将被分开。
 #        Default:  1 - Enable
 #                  0 - Disable
 #
@@ -3456,7 +3580,7 @@ Wintergrasp.PlayerMin = 0
 #     Wintergrasp.PlayerMinLvl
 #         Description: Required character level for the Wintergrasp battle.
 #         Default:     77
-
+#冬拥湖战场要求玩家的最小等级
 Wintergrasp.PlayerMinLvl = 77
 
 #
@@ -3911,8 +4035,8 @@ MaxAllowedMMRDrop = 500
 #    MailDeliveryDelay
 #        Description: Time (in seconds) mail delivery is delayed when sending items.
 #        Default:     3600 - (1 hour)
-
-MailDeliveryDelay = 3600
+#邮件多少秒收到
+MailDeliveryDelay = 10
 
 #
 #     LevelReq.Mail
@@ -3999,8 +4123,10 @@ ChatFakeMessagePreventing = 1
 #                     If any files are missing, messages with links from clients using those
 #                     locales will likely be blocked by the server.
 #
-
-ChatStrictLinkChecking.Severity = 0
+#0：只验证链接数据和颜色是否有效，而不检查文本
+#1：另外验证链接文本是否与提供的数据匹配
+#-1：不进行链接文字和颜色的校验
+ChatStrictLinkChecking.Severity = -1
 
 #
 #    ChatStrictLinkChecking.Kick
@@ -4150,8 +4276,8 @@ PreserveCustomChannelDuration = 14
 #        Description: Allow creating characters of both factions on the same account.
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
-
-AllowTwoSide.Accounts = 1
+#是否允许创建不同阵营的角色
+AllowTwoSide.Accounts = 0
 
 #
 #    AllowTwoSide.Interaction.Calendar
@@ -4166,7 +4292,7 @@ AllowTwoSide.Interaction.Calendar = 0
 #        Description: Allow say chat between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#是否允许不同阵营间的聊天 频道聊天 组队 交易
 AllowTwoSide.Interaction.Chat = 0
 
 #
@@ -4174,7 +4300,7 @@ AllowTwoSide.Interaction.Chat = 0
 #        Description: Allow emote messages between factions (e.g. "/e looks into the sky")
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许表情聊天
 AllowTwoSide.Interaction.Emote = 0
 
 #
@@ -4182,7 +4308,7 @@ AllowTwoSide.Interaction.Emote = 0
 #        Description: Allow channel chat between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许频道聊天
 AllowTwoSide.Interaction.Channel = 0
 
 #
@@ -4190,7 +4316,7 @@ AllowTwoSide.Interaction.Channel = 0
 #        Description: Allow group joining between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许组队
 AllowTwoSide.Interaction.Group = 0
 
 #
@@ -4198,7 +4324,7 @@ AllowTwoSide.Interaction.Group = 0
 #        Description: Allow guild joining between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许加入同一个公会
 AllowTwoSide.Interaction.Guild = 0
 
 #
@@ -4206,7 +4332,7 @@ AllowTwoSide.Interaction.Guild = 0
 #        Description: Allow joining arena teams between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许加入同一个竞技场团队
 AllowTwoSide.Interaction.Arena = 0
 
 #
@@ -4214,7 +4340,7 @@ AllowTwoSide.Interaction.Arena = 0
 #        Description: Allow auctions between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否拍卖行互通
 AllowTwoSide.Interaction.Auction = 0
 
 #
@@ -4222,7 +4348,7 @@ AllowTwoSide.Interaction.Auction = 0
 #        Description: Allow sending mails between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许发送邮件
 AllowTwoSide.Interaction.Mail = 0
 
 #
@@ -4230,7 +4356,7 @@ AllowTwoSide.Interaction.Mail = 0
 #        Description: Show characters from both factions in the /who list.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否显示在线列表
 AllowTwoSide.WhoList = 0
 
 #
@@ -4238,7 +4364,7 @@ AllowTwoSide.WhoList = 0
 #        Description: Allow adding friends from other faction the friends list.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许加好友
 AllowTwoSide.AddFriend = 0
 
 #
@@ -4246,7 +4372,7 @@ AllowTwoSide.AddFriend = 0
 #        Description: Allow trading between factions.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
+#不同阵营是否允许交易
 AllowTwoSide.Trade = 0
 
 #
@@ -4363,10 +4489,43 @@ LevelReq.Auction = 1
 #        Default:     1 - (Rate.Auction.Time)
 #                     1 - (Rate.Auction.Deposit)
 #                     1 - (Rate.Auction.Cut)
-
+#拍卖时间倍率，默认1
 Rate.Auction.Time    = 1
+#拍卖押金，默认1
 Rate.Auction.Deposit = 1
+#拍卖上限，默认1
 Rate.Auction.Cut     = 1
+
+
+###################################################################################################
+# AUCTION HOUSE BOT
+#
+#    AHBot.Enable
+#        Enable AH bot.
+#        Default: 0 - off
+#                 1 - on
+#
+#    AHBot.ah.id
+#        The ID of the auction house from AuctionHouse.dbc into which to put items.
+#        Default: 7 - Blackwater Auction House
+#
+#    AHBot.ah.fid
+#        The faction template ID of the virtual auctioneer.
+#        Default: 120 - Booty Bay
+#
+#    AHBot.itemcount
+#        How many items to put into the auction house.
+#        Default: 50
+#
+###################################################################################################################
+AHBot.Enable = 1
+AHBot.ah.id = 7
+AHBot.ah.fid = 120
+AHBot.itemcount = 578
+AHBot.bot.guid = 2
+AHBot.bot.account = 1
+
+###################################################################################################################
 
 #
 ###################################################################################################
@@ -5274,3 +5433,94 @@ NpcBot.Premade.Enable = 0
 # GAME SETTINGS END                                                                               #
 #                                                                                                 #
 ###################################################################################################
+
+##################################################################################
+#                                                                                #
+# Logging Stuff 																 #
+#                                                                                #
+##################################################################################
+
+#
+#  Appender config values: Given an appender "name"
+#    Appender.name
+#        Description: Defines 'where to log'.
+#        Format:      Type,LogLevel,Flags,optional1,optional2,optional3
+#
+#                     Type
+#                         0 - (None)
+#                         1 - (Console)
+#                         2 - (File)
+#                         3 - (DB)
+#
+#                     LogLevel
+#                         0 - (Disabled)
+#                         1 - (Fatal)
+#                         2 - (Error)
+#                         3 - (Warning)
+#                         4 - (Info)
+#                         5 - (Debug)
+#                         6 - (Trace)
+#
+#                     Flags:
+#                         0 - None
+#                         1 - Prefix Timestamp to the text
+#                         2 - Prefix Log Level to the text
+#                         4 - Prefix Log Filter type to the text
+#                         8 - Append timestamp to the log file name. Format: YYYY-MM-DD_HH-MM-SS
+#                             (Only used with Type = 2)
+#                        16 - Make a backup of existing file before overwrite
+#                             (Only used with Mode = w)
+#
+#                     Colors (read as optional1 if Type = Console)
+#                         Format: "fatal error warn info debug trace"
+#                         0 - BLACK
+#                         1 - RED
+#                         2 - GREEN
+#                         3 - BROWN
+#                         4 - BLUE
+#                         5 - MAGENTA
+#                         6 - CYAN
+#                         7 - GREY
+#                         8 - YELLOW
+#                         9 - LRED
+#                        10 - LGREEN
+#                        11 - LBLUE
+#                        12 - LMAGENTA
+#                        13 - LCYAN
+#                        14 - WHITE
+#                         Example: "1 9 3 6 5 8"
+#
+#                     File: Name of the file (read as optional1 if Type = File)
+#                         Allows to use one "%s" to create dynamic files
+#
+#                     Mode: Mode to open the file (read as optional2 if Type = File)
+#                          a - (Append)
+#                          w - (Overwrite)
+#
+#                     MaxFileSize: Maximum file size of the log file before creating a new log file
+#                     (read as optional3 if Type = File)
+#                         Size is measured in bytes expressed in a 64-bit unsigned integer.
+#                         Maximum value is 4294967295 (4 GB). Leave blank for no limit.
+#                         NOTE: Does not work with dynamic filenames.
+#                         Example:  536870912 (512 MB)
+
+Appender.Playerbots=2,5,0,Playerbots.log,w
+Logger.playerbots=5,Console Playerbots
+#正式运行时不显示debug信息，只显示错误，提高性能
+#Appender.Playerbots=2,2,0,Playerbots.log,w
+#Logger.playerbots=2,Console Playerbots
+
+Appender.ElunaLog=2,5,0,eluna.log,w
+Logger.eluna=5,ElunaLog Console
+#正式运行时不显示debug信息，只显示错误，提高性能
+#Appender.ElunaLog=2,2,0,eluna.log,w
+#Logger.eluna=2,ElunaLog Console
+
+#######################################
+#mod需要增加的配置项
+ProgressionSystem.Bracket_70_2_3 = 0
+
+
+#智力的多少转化为法伤
+YH.RATE.INTELLECT = 0.35
+
