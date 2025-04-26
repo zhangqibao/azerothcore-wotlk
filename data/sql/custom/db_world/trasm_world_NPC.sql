@@ -1,6 +1,6 @@
 SET
 @Entry = 190010,
-@Name = "Warpweaver";
+@Name = "幻术师";
 DELETE FROM `creature_template` WHERE `entry` = @Entry;
 
 INSERT INTO `creature_template` (`entry`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `AIName`, `MovementType`, `HoverHeight`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
@@ -15,15 +15,20 @@ INSERT INTO `creature_template_locale` (`entry`, `locale`, `Name`, `Title`) VALU
 (@Entry, 'koKR', @Name, "변형기"),
 (@Entry, 'frFR', @Name, "Transmogrificateur"),
 (@Entry, 'deDE', @Name, "Transmogrifier"),
-(@Entry, 'zhCN', @Name, "变形者"),
+(@Entry, 'zhCN', @Name, "幻化大师"),
 (@Entry, 'zhTW', @Name, "幻化大師"),
 (@Entry, 'esES', @Name, "Transfigurador"),
 (@Entry, 'esMX', @Name, "Transfigurador"),
 (@Entry, 'ruRU', @Name, "Трансмогрификатор");
 
+-- Spawn points
+DELETE FROM `creature` WHERE `id1`=@Entry;
+INSERT INTO `creature` VALUES ('1000101', @Entry, '0', '0', '1', '0', '0', '1', '1', '0', '-8547.2', '1998.62', '100.721', '1.86924', '120', '0', '0', '1', '0', '0', '0', '0', '0', '', null, '0', null);
+-- 藏宝海湾幻化师
+INSERT INTO `creature` VALUES ('1000097', '190010', '0', '0', '0', '0', '0', '1', '1', '0', '-14420', '689.872', '21.8438', '5.8787', '300', '0', '0', '12600', '0', '0', '0', '0', '0', '', null, '0', null);
 SET
 @Entry = 190011,
-@Name = "Ethereal Warpweaver";
+@Name = "幻形者";
 DELETE FROM `creature_template` WHERE `entry` = @Entry;
 
 INSERT INTO `creature_template` (`entry`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `AIName`, `MovementType`, `HoverHeight`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
@@ -38,7 +43,7 @@ INSERT INTO `creature_template_locale` (`entry`, `locale`, `Name`, `Title`) VALU
 (@Entry, 'koKR', @Name, "변형기"),
 (@Entry, 'frFR', @Name, "Transmogrificateur"),
 (@Entry, 'deDE', @Name, "Transmogrifier"),
-(@Entry, 'zhCN', @Name, "变形者"),
+(@Entry, 'zhCN', @Name, "幻化大师"),
 (@Entry, 'zhTW', @Name, "幻化大師"),
 (@Entry, 'esES', @Name, "Transfigurador"),
 (@Entry, 'esMX', @Name, "Transfigurador"),
