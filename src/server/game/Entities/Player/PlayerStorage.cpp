@@ -2859,95 +2859,98 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 
             _ApplyItemMods(pItem, slot, true);
 
-
-            //每次更换装备时，都判断当前更换的装备是否是橙装戒指，如果是，就需要把所有装备更新一遍，否则装备的技能无法得到戒指加成提升
-            if (isCZRingItem(pItem->GetEntry()))
+            if (!GetSession()->IsBot())
             {
-                for (int i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+                //每次更换装备时，都判断当前更换的装备是否是橙装戒指，如果是，就需要把所有装备更新一遍，否则装备的技能无法得到戒指加成提升
+                if (isCZRingItem(pItem->GetEntry()))
                 {
-                    _ApplyItemMods(GetItemByPos(INVENTORY_SLOT_BAG_0, i), i, false);
-                    _ApplyItemMods(GetItemByPos(INVENTORY_SLOT_BAG_0, i), i, true);
+                    for (int i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+                    {
+                        _ApplyItemMods(GetItemByPos(INVENTORY_SLOT_BAG_0, i), i, false);
+                        _ApplyItemMods(GetItemByPos(INVENTORY_SLOT_BAG_0, i), i, true);
+                    }
+                    UpdateAllStats();
                 }
-                UpdateAllStats();
+
+
+                //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果------
+                //判断是否拥有赫拉迪姆魔盒
+                //uint32 hldmbox = GetItemCount(91666, true);
+                //if (hldmbox)
+                //获得玩家当前是否在战场或竞技场中
+                bool canusezuoqi = false;
+                if (IsInWorld() && isActiveObject())
+                    if (GetMap() && GetAreaId() && GetAreaId())
+                        canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+
+                if (getHLDM() && canusezuoqi)
+                {
+
+                    Item* pmhItem1 = GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
+
+
+                    Item* pmhItem2 = GetItemByPos(INVENTORY_SLOT_BAG_0, 40);
+
+
+                    Item* pmhItem3 = GetItemByPos(INVENTORY_SLOT_BAG_0, 41);
+
+
+                    if (pmhItem1)
+                    {
+                        ItemTemplate const* pmhProto1 = pmhItem1->GetTemplate();
+                        if (pmhProto1 && pmhProto1->Class == 2 || pmhProto1->Class == 4)//判断物品是否是装备类
+                        {
+                            if (pmhProto1 && pmhProto1->ItemSet)
+                            {
+                                //游戏里看不到套装效果变化，但实际是变化过了的
+                                RemoveItemsSetItem(this, pmhProto1);
+                                AddItemsSetItem(this, pmhItem1);
+                            }
+                            _ApplyItemModsByHLDM(pmhItem1, 39, false);
+                            _ApplyItemModsByHLDM(pmhItem1, 39, true);
+                        }
+                        UpdateAllStats();
+                    }
+                    if (pmhItem2)
+                    {
+                        ItemTemplate const* pmhProto2 = pmhItem2->GetTemplate();
+                        if (pmhProto2 && pmhProto2->Class == 2 || pmhProto2->Class == 4)//判断物品是否是装备类
+                        {
+                            if (pmhProto2 && pmhProto2->ItemSet)
+                            {
+                                //游戏里看不到套装效果变化，但实际是变化过了的
+                                RemoveItemsSetItem(this, pmhProto2);
+                                AddItemsSetItem(this, pmhItem2);
+                            }
+                            _ApplyItemModsByHLDM(pmhItem2, 40, false);
+                            _ApplyItemModsByHLDM(pmhItem2, 40, true);
+                        }
+                        UpdateAllStats();
+
+                    }
+                    if (pmhItem3)
+                    {
+                        ItemTemplate const* pmhProto3 = pmhItem3->GetTemplate();
+                        if (pmhProto3 && pmhProto3->Class == 2 || pmhProto3->Class == 4)//判断物品是否是装备类
+                        {
+                            if (pmhProto3 && pmhProto3->ItemSet)
+                            {
+                                //游戏里看不到套装效果变化，但实际是变化过了的
+                                RemoveItemsSetItem(this, pmhProto3);
+                                AddItemsSetItem(this, pmhItem3);
+                            }
+                            _ApplyItemModsByHLDM(pmhItem3, 41, false);
+                            _ApplyItemModsByHLDM(pmhItem3, 41, true);
+                        }
+                        UpdateAllStats();
+                    }
+                }
+
+                //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果---end---
+
             }
 
-
-
-            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果------
-            //判断是否拥有赫拉迪姆魔盒
-            //uint32 hldmbox = GetItemCount(91666, true);
-            //if (hldmbox)
-            //获得玩家当前是否在战场或竞技场中
-            bool canusezuoqi = false;
-            if (IsInWorld() && isActiveObject())
-                if (GetMap() && GetAreaId() && GetAreaId())
-                    canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
-
-            if (getHLDM() && canusezuoqi)
-            {
-
-                Item* pmhItem1 = GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
-
-
-                Item* pmhItem2 = GetItemByPos(INVENTORY_SLOT_BAG_0, 40);
-
-
-                Item* pmhItem3 = GetItemByPos(INVENTORY_SLOT_BAG_0, 41);
-
-
-                if (pmhItem1)
-                {
-                    ItemTemplate const* pmhProto1 = pmhItem1->GetTemplate();
-                    if (pmhProto1 && pmhProto1->Class == 2 || pmhProto1->Class == 4)//判断物品是否是装备类
-                    {
-                        if (pmhProto1 && pmhProto1->ItemSet)
-                        {
-                            //游戏里看不到套装效果变化，但实际是变化过了的
-                            RemoveItemsSetItem(this, pmhProto1);
-                            AddItemsSetItem(this, pmhItem1);
-                        }
-                        _ApplyItemModsByHLDM(pmhItem1, 39, false);
-                        _ApplyItemModsByHLDM(pmhItem1, 39, true);
-                    }
-                    UpdateAllStats();
-                }
-                if (pmhItem2)
-                {
-                    ItemTemplate const* pmhProto2 = pmhItem2->GetTemplate();
-                    if (pmhProto2 && pmhProto2->Class == 2 || pmhProto2->Class == 4)//判断物品是否是装备类
-                    {
-                        if (pmhProto2 && pmhProto2->ItemSet)
-                        {
-                            //游戏里看不到套装效果变化，但实际是变化过了的
-                            RemoveItemsSetItem(this, pmhProto2);
-                            AddItemsSetItem(this, pmhItem2);
-                        }
-                        _ApplyItemModsByHLDM(pmhItem2, 40, false);
-                        _ApplyItemModsByHLDM(pmhItem2, 40, true);
-                    }
-                    UpdateAllStats();
-
-                }
-                if (pmhItem3)
-                {
-                    ItemTemplate const* pmhProto3 = pmhItem3->GetTemplate();
-                    if (pmhProto3 && pmhProto3->Class == 2 || pmhProto3->Class == 4)//判断物品是否是装备类
-                    {
-                        if (pmhProto3 && pmhProto3->ItemSet)
-                        {
-                            //游戏里看不到套装效果变化，但实际是变化过了的
-                            RemoveItemsSetItem(this, pmhProto3);
-                            AddItemsSetItem(this, pmhItem3);
-                        }
-                        _ApplyItemModsByHLDM(pmhItem3, 41, false);
-                        _ApplyItemModsByHLDM(pmhItem3, 41, true);
-                    }
-                    UpdateAllStats();
-                }
-            }
-
-            //修复魔盒bug，以免利用魔盒换装后保持魔盒装备的效果---end---
-
+            
 
             if (pProto && IsInCombat() && (pProto->Class == ITEM_CLASS_WEAPON || pProto->InventoryType == INVTYPE_RELIC) && m_weaponChangeTimer == 0)
             {
@@ -3392,6 +3395,7 @@ void Player::DestroyItemCount(uint32 itemEntry, uint32 count, bool update, bool 
 
     //LOG_ERROR("xx", "DestroyItemCount1 ");//测试，玩家删除物品，没打印到这里
     //添加删除日志
+    if(!GetSession()->IsBot())
     LOG_INFO("loot", "Destroy player:{}[{}] destroy Item{}x{}", GetName(), GetGUID().GetCounter(), itemEntry, count);
 
     uint32 remcount = 0;
@@ -3676,6 +3680,7 @@ void Player::DestroyItemCount(Item* pItem, uint32& count, bool update)
 
     //LOG_ERROR("xx", "DestroyItemCount2 ");//测试，玩家删除物品，没打印到这里
     //添加删除日志
+    if (!GetSession()->IsBot())
     LOG_INFO("loot", "Destroy player:{}[{}] destroy Item{}x{}", GetName(), GetGUID().GetCounter(), pItem->GetEntry(), count);
 
     if (pItem->GetCount() <= count)
@@ -3832,11 +3837,15 @@ void Player::SwapItem(uint16 src, uint16 dst)
         return;
     }
 
-    //获得玩家当前是否在战场或竞技场中
     bool canusezuoqi = false;
-    if (IsInWorld() && isActiveObject())
-        if (GetMap() && GetAreaId() && GetAreaId())
-            canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+    if (!GetSession()->IsBot())
+    {
+        //获得玩家当前是否在战场或竞技场中
+        if (IsInWorld() && isActiveObject())
+            if (GetMap() && GetAreaId() && GetAreaId())
+                canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
+    }
+
 
     // SRC checks
 
@@ -3922,8 +3931,8 @@ void Player::SwapItem(uint16 src, uint16 dst)
             }
 
             //判断是否拥有赫拉迪姆魔盒
-//uint32 hldmbox = GetItemCount(91666, true);
-//if (hldmbox)
+            //uint32 hldmbox = GetItemCount(91666, true);
+            //if (hldmbox)
             if (getHLDM() && canusezuoqi)
             {
                 //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
@@ -6116,6 +6125,31 @@ bool Player::isBeingLoaded() const
     return GetSession()->PlayerLoading();
 }
 
+uint8 Player::calVIPLevel() const
+{
+    if (GetItemCount(70920, true) > 0) return 20;
+    if (GetItemCount(70919, true) > 0) return 19;
+    if (GetItemCount(70918, true) > 0) return 18;
+    if (GetItemCount(70917, true) > 0) return 17;
+    if (GetItemCount(70916, true) > 0) return 16;
+    if (GetItemCount(70915, true) > 0) return 15;
+    if (GetItemCount(70914, true) > 0) return 14;
+    if (GetItemCount(70913, true) > 0) return 13;
+    if (GetItemCount(70912, true) > 0) return 12;
+    if (GetItemCount(70911, true) > 0) return 11;
+    if (GetItemCount(70910, true) > 0) return 10;
+    if (GetItemCount(70909, true) > 0) return 9;
+    if (GetItemCount(70908, true) > 0) return 8;
+    if (GetItemCount(70907, true) > 0) return 7;
+    if (GetItemCount(70906, true) > 0) return 6;
+    if (GetItemCount(70905, true) > 0) return 5;
+    if (GetItemCount(70904, true) > 0) return 4;
+    if (GetItemCount(70903, true) > 0) return 3;
+    if (GetItemCount(70902, true) > 0) return 2;
+    if (GetItemCount(70901, true) > 0) return 1;
+    return 0; // 无VIP卡
+}
+
 bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder const& holder)
 {
     ////                                                     0     1        2     3     4        5      6    7      8     9    10    11         12         13           14         15         16
@@ -6736,71 +6770,9 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     //LOG_ERROR("xx", "_zsstoneall {}  ", _zsstoneall);//测试
 
 
-
-    //载入VIP卡标识
-    setVIP1(false);
-    setVIP2(false);
-    setVIP3(false);
-    setVIP4(false);
-    setVIP5(false);
-    setVIP6(false);
-    setVIP7(false);
-    setVIP8(false);
-    setVIP9(false);
-    setVIP10(false);
-    setVIP11(false);
-    setVIP12(false);
-    setVIP13(false);
-    setVIP14(false);
-    setVIP15(false);
-    setVIP16(false);
-    setVIP17(false);
-    setVIP18(false);
-    setVIP19(false);
-    setVIP20(false);
-
-    if (GetItemCount(70901, true) > 0)
-        setVIP1(true);
-    if (GetItemCount(70902, true) > 0)
-        setVIP2(true);
-    if (GetItemCount(70903, true) > 0)
-        setVIP3(true);
-    if (GetItemCount(70904, true) > 0)
-        setVIP4(true);
-    if (GetItemCount(70905, true) > 0)
-        setVIP5(true);
-    if (GetItemCount(70906, true) > 0)
-        setVIP6(true);
-    if (GetItemCount(70907, true) > 0)
-        setVIP7(true);
-    if (GetItemCount(70908, true) > 0)
-        setVIP8(true);
-    if (GetItemCount(70909, true) > 0)
-        setVIP9(true);
-    if (GetItemCount(70910, true) > 0)
-        setVIP10(true);
-    if (GetItemCount(70911, true) > 0)
-        setVIP11(true);
-    if (GetItemCount(70912, true) > 0)
-        setVIP12(true);
-    if (GetItemCount(70913, true) > 0)
-        setVIP13(true);
-    if (GetItemCount(70914, true) > 0)
-        setVIP14(true);
-
-    if (GetItemCount(70915, true) > 0)
-        setVIP15(true);
-    if (GetItemCount(70916, true) > 0)
-        setVIP16(true);
-    if (GetItemCount(70917, true) > 0)
-        setVIP17(true);
-    if (GetItemCount(70918, true) > 0)
-        setVIP18(true);
-    if (GetItemCount(70919, true) > 0)
-        setVIP19(true);
-    if (GetItemCount(70920, true) > 0)
-        setVIP20(true);
-    //end----------------
+    //设置VIP等级
+    uint8 _viplevel = calVIPLevel();
+    setVIPLevel(_viplevel);
 
     // after spell, bonus talents, and quest load
     InitTalentForLevel();
@@ -6881,16 +6853,17 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
     //如果角色是硬核模式
     //if (extraflags & PLAYER_EXTRA_YH_MODEL || (GetSession()->IsBot() && GetLevel() == 60))//现在允许非硬核模式生效
-    if ((GetSession()->IsBot() && GetLevel() == 60))
-    {
+    //{
         //判断身上是否有转生石
         uint16 zsstone = getZHUANSHENGNUM();
         //LOG_ERROR("xx", "xxxzsstone {}  ", zsstone);//测试,有时候不是0，变成237
         //如果是机器人，随机转生石的数量
+        /*
         if (zsstone == 0 && GetSession()->IsBot() && GetLevel() == sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
         {
             zsstone = urand(5, 10);//前期0-5，后期5-10
         }
+        */
 
         if (zsstone > 0)
         {
@@ -6945,7 +6918,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
 
         }
-    }
+    //}
 
 
     //判断角色是否拥有变身卡，每个变身卡道具增加除耐力外10点属性
@@ -7015,34 +6988,33 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
     //判断身上是否有会员卡，有的话，触发会员卡对应的技能，只会触发最高级别的卡
     //死亡状态下上线，也可以触发效果admin
-
-    if (getVIP20())
+    switch (_viplevel)
     {
-        CastSpell(this, 85820, true);//攻速20%
-        CastSpell(this, 85830, true);//施法速度20%
-        CastSpell(this, 85478, true);//+100%
-        //CastSpell(this, 85870, true);//攻速30%
-        //CastSpell(this, 85850, true);//施法速度30%
-        //CastSpell(this, 85478, true);//+100%
-        //CastSpell(this, 85484, true);//-30%
-        //CastSpell(this, 85840, true);//+200%
-        //CastSpell(this, 85494, true);//-60%
-        CastSpell(this, 17427, true);
-        //CastSpell(this, 900011, true);//翅膀
-        //CastSpell(this, 17625, true);//DK剑效果
-        //CastSpell(this, 85890, true);//耐力50%
+        case 20:
+        {
+            CastSpell(this, 85820, true);//攻速20%
+            CastSpell(this, 85830, true);//施法速度20%
+            CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85870, true);//攻速30%
+            //CastSpell(this, 85850, true);//施法速度30%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85840, true);//+200%
+            //CastSpell(this, 85494, true);//-60%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900011, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85890, true);//耐力50%
 
-        //增加隐藏天赋技能
-        //CastSpell(this, 20266, true);//神圣之力 提高15%力量值
-        //CastSpell(this, 50111, true);//啜血 生命大于75%时 提高10%伤害（DK有效）
-        //CastSpell(this, 53503, true);//圣光出鞘
-        //CastSpell(this, 29144, true);//活力 耐力和力量总值提高，精准提高
-        //CastSpell(this, 16494, true);//穿刺 技能暴击伤害加成提高20%
-
-    }
-    else
-    {
-        if (getVIP19())
+            //增加隐藏天赋技能
+            //CastSpell(this, 20266, true);//神圣之力 提高15%力量值
+            //CastSpell(this, 50111, true);//啜血 生命大于75%时 提高10%伤害（DK有效）
+            //CastSpell(this, 53503, true);//圣光出鞘
+            //CastSpell(this, 29144, true);//活力 耐力和力量总值提高，精准提高
+            //CastSpell(this, 16494, true);//穿刺 技能暴击伤害加成提高20%
+            break;
+        }
+        case 19:
         {
             CastSpell(this, 85819, true);//攻速19%
             CastSpell(this, 85829, true);//施法速度19%
@@ -7057,296 +7029,261 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 900010, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
             //CastSpell(this, 85889, true);//耐力45%
+            break;
         }
-        else
+        case 18:
         {
-            if (getVIP18())
-            {
-                CastSpell(this, 85818, true);//攻速18%
-                CastSpell(this, 85828, true);//施法速度18%
-                CastSpell(this, 85477, true);//+90%
-                //CastSpell(this, 85866, true);//攻速26%
-                //CastSpell(this, 85846, true);//施法速度26%
-                //CastSpell(this, 85478, true);//+100%
-                //CastSpell(this, 85484, true);//-30%
-                //CastSpell(this, 85838, true);//+180%
-                //CastSpell(this, 85492, true);//-54%
-                CastSpell(this, 17427, true);
-                //CastSpell(this, 900009, true);//翅膀
-                //CastSpell(this, 17625, true);//DK剑效果
-                //CastSpell(this, 85888, true);//耐力40%
-            }
-            else
-            {
-                if (getVIP17())
-                {
-                    CastSpell(this, 85817, true);//攻速17%
-                    CastSpell(this, 85827, true);//施法速度17%
-                    CastSpell(this, 85556, true);//+85%
-                    //CastSpell(this, 85864, true);//攻速24%
-                    //CastSpell(this, 85844, true);//施法速度24%
-                    //CastSpell(this, 85478, true);//+100%
-                    //CastSpell(this, 85484, true);//-30%
-                    //CastSpell(this, 85837, true);//+170%
-                    //CastSpell(this, 85491, true);//-51%
-                    CastSpell(this, 17427, true);
-                    //CastSpell(this, 900008, true);//翅膀
-                    //CastSpell(this, 17625, true);//DK剑效果
-                    //CastSpell(this, 85887, true);//耐力35%
-                }
-                else
-                {
-                    if (getVIP16())
-                    {
-                        CastSpell(this, 85816, true);//攻速16%
-                        CastSpell(this, 85826, true);//施法速度16%
-                        CastSpell(this, 85476, true);//+80%
-                        //CastSpell(this, 85862, true);//攻速22%
-                        //CastSpell(this, 85842, true);//施法速度22%
-                        //CastSpell(this, 85478, true);//+100%
-                        //CastSpell(this, 85484, true);//-30%
-                        //CastSpell(this, 85836, true);//+160%
-                        //CastSpell(this, 85490, true);//-48%
-                        CastSpell(this, 17427, true);
-                        //CastSpell(this, 900007, true);//翅膀
-                        //CastSpell(this, 17625, true);//DK剑效果
-                        //CastSpell(this, 85886, true);//耐力30%
-                    }
-                    else
-                    {
-                        if (getVIP15())
-                        {
-                            CastSpell(this, 85815, true);//攻速15%
-                            CastSpell(this, 85825, true);//施法速度15%
-                            CastSpell(this, 85555, true);//+75%
-                            //CastSpell(this, 85820, true);//攻速20%
-                            //CastSpell(this, 85830, true);//施法速度20%
-                            //CastSpell(this, 85478, true);//+100%
-                            //CastSpell(this, 85484, true);//-30%
-                            //CastSpell(this, 85835, true);//+150%
-                            //CastSpell(this, 85489, true);//-45%
-                            CastSpell(this, 17427, true);
-                            //CastSpell(this, 900006, true);//翅膀
-                            //CastSpell(this, 17625, true);//DK剑效果
-                            //CastSpell(this, 85885, true);//耐力25%
-                        }
-                        else
-                        {
-                            if (getVIP14())
-                            {
-                                CastSpell(this, 85814, true);//攻速14%
-                                CastSpell(this, 85824, true);//施法速度14%
-                                CastSpell(this, 85475, true);//+70%
-                                //CastSpell(this, 85818, true);//攻速18%
-                                //CastSpell(this, 85828, true);//施法速度18%
-                                //CastSpell(this, 85478, true);//+100%
-                                //CastSpell(this, 85484, true);//-30%
-                                //CastSpell(this, 85834, true);//+140%
-                                //CastSpell(this, 85488, true);//-42%
-                                CastSpell(this, 17427, true);
-                                //CastSpell(this, 900005, true);//翅膀
-                                //CastSpell(this, 17625, true);//DK剑效果
-                                //CastSpell(this, 85884, true);//耐力20%
-                            }
-                            else
-                            {
-                                if (getVIP13())
-                                {
-                                    CastSpell(this, 85813, true);//攻速13%
-                                    CastSpell(this, 85823, true);//施法速度13%
-                                    CastSpell(this, 85554, true);//+65%
-                                    //CastSpell(this, 85816, true);//攻速16%
-                                    //CastSpell(this, 85826, true);//施法速度16%
-                                    //CastSpell(this, 85478, true);//+100%
-                                    //CastSpell(this, 85484, true);//-30%
-                                    //CastSpell(this, 85833, true);//+130%
-                                    //CastSpell(this, 85487, true);//-39%
-                                    CastSpell(this, 17427, true);
-                                    //CastSpell(this, 900004, true);//翅膀
-                                    //CastSpell(this, 17625, true);//DK剑效果
-                                    //CastSpell(this, 85883, true);//耐力15%
-                                }
-                                else
-                                {
-                                    if (getVIP12())
-                                    {
-                                        CastSpell(this, 85812, true);//攻速12%
-                                        CastSpell(this, 85822, true);//施法速度12%
-                                        CastSpell(this, 85474, true);//+60%
-                                        //CastSpell(this, 85814, true);//攻速14%
-                                        //CastSpell(this, 85824, true);//施法速度14%
-                                        //CastSpell(this, 85478, true);//+100%
-                                        //CastSpell(this, 85484, true);//-30%
-                                        //CastSpell(this, 85832, true);//+120%
-                                        //CastSpell(this, 85486, true);//-36%
-                                        CastSpell(this, 17427, true);
-                                        //CastSpell(this, 900003, true);//翅膀
-                                        //CastSpell(this, 17625, true);//DK剑效果
-                                        //CastSpell(this, 85882, true);//耐力10%
-                                    }
-                                    else
-                                    {
-
-                                        if (getVIP11())
-                                        {
-                                            CastSpell(this, 85811, true);//攻速11%
-                                            CastSpell(this, 85821, true);//施法速度11%
-                                            CastSpell(this, 85553, true);//+55%
-                                            //CastSpell(this, 85812, true);//攻速12%
-                                            //CastSpell(this, 85822, true);//施法速度12%
-                                            //CastSpell(this, 85478, true);//+100%
-                                            //CastSpell(this, 85484, true);//-30%
-                                            //CastSpell(this, 85831, true);//+110%
-                                            //CastSpell(this, 85485, true);//-33%
-                                            CastSpell(this, 17427, true);
-                                            //CastSpell(this, 900002, true);//翅膀
-                                            //CastSpell(this, 27571, true);
-                                            //CastSpell(this, 17625, true);//DK剑效果
-                                            //CastSpell(this, 85881, true);//耐力5%
-                                        }
-                                        else
-                                        {
-                                            if (getVIP10())
-                                            {
-                                                CastSpell(this, 85420, true);//攻速10%
-                                                CastSpell(this, 85430, true);//施法速度10%
-                                                CastSpell(this, 85473, true);//+50%
-                                                //CastSpell(this, 85478, true);//+100%
-                                                //CastSpell(this, 85484, true);//-30%
-                                                CastSpell(this, 17427, true);
-                                                //CastSpell(this, 900001, true);//翅膀
-                                                //CastSpell(this, 27571, true);
-                                                //CastSpell(this, 17625, true);//DK剑效果
-                                            }
-                                            else
-                                            {
-                                                if (getVIP9())
-                                                {
-                                                    CastSpell(this, 85419, true);//攻速9%
-                                                    CastSpell(this, 85429, true);//施法速度9%
-                                                    CastSpell(this, 85552, true);//+45%
-                                                    //CastSpell(this, 85477, true);//+90%
-                                                    //CastSpell(this, 85483, true);//-27%
-                                                    CastSpell(this, 17427, true);
-                                                    //CastSpell(this, 27571, true);
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP8())
-                                                    {
-                                                        CastSpell(this, 85418, true);//攻速8%
-                                                        CastSpell(this, 85428, true);//施法速度8%
-                                                        CastSpell(this, 85472, true);//+40%
-                                                        //CastSpell(this, 85476, true);//+80%
-                                                        //CastSpell(this, 85482, true);//-24%
-                                                        CastSpell(this, 17427, true);
-                                                        //CastSpell(this, 27571, true);
-                                                        CastSpell(this, 17625, true);//DK剑效果
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP7())
-                                                        {
-                                                            CastSpell(this, 85417, true);//攻速7%
-                                                            CastSpell(this, 85427, true);//施法速度7%
-                                                            CastSpell(this, 85551, true);//+35%
-                                                            //CastSpell(this, 85475, true);//+70%
-                                                            //CastSpell(this, 85481, true);//-21%
-                                                            CastSpell(this, 17427, true);
-                                                            //CastSpell(this, 27571, true);
-                                                            CastSpell(this, 17625, true);//DK剑效果
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP6())
-                                                            {
-                                                                CastSpell(this, 85416, true);//攻速6%
-                                                                CastSpell(this, 85426, true);//施法速度6%
-                                                                CastSpell(this, 85471, true);//+30%
-                                                                //CastSpell(this, 85474, true);//+60%
-                                                                //CastSpell(this, 85458, true);//-18%
-                                                                CastSpell(this, 17427, true);
-                                                                //CastSpell(this, 27571, true);
-                                                                CastSpell(this, 17625, true);//DK剑效果
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP5())
-                                                                {
-                                                                    CastSpell(this, 85415, true);//攻速5%
-                                                                    CastSpell(this, 85425, true);//施法速度5%
-                                                                    CastSpell(this, 85550, true);//+25%
-                                                                    //CastSpell(this, 85473, true);//+50%
-                                                                    //CastSpell(this, 85455, true);//-15%
-                                                                    CastSpell(this, 17427, true);
-                                                                    //CastSpell(this, 27571, true);
-                                                                    CastSpell(this, 17625, true);//DK剑效果
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP4())
-                                                                    {
-                                                                        CastSpell(this, 85414, true);//攻速4%
-                                                                        CastSpell(this, 85424, true);//施法速度4%
-                                                                        CastSpell(this, 85470, true);//+20%
-                                                                        //CastSpell(this, 85472, true);//+40%
-                                                                        //CastSpell(this, 85452, true);//-12%
-                                                                        CastSpell(this, 17427, true);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP3())
-                                                                        {
-                                                                            CastSpell(this, 85413, true);//攻速3%
-                                                                            CastSpell(this, 85423, true);//施法速度3%
-                                                                            CastSpell(this, 85465, true);//+15%
-                                                                            //CastSpell(this, 85471, true);//+30%
-                                                                            //CastSpell(this, 85449, true);//-9%
-                                                                            CastSpell(this, 17427, true);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP2())
-                                                                            {
-                                                                                CastSpell(this, 85412, true);//攻速2%
-                                                                                CastSpell(this, 85422, true);//施法速度2%
-                                                                                CastSpell(this, 85440, true);//+5%
-                                                                                //CastSpell(this, 85470, true);//+20%
-                                                                                //CastSpell(this, 85446, true);//-6%
-                                                                                CastSpell(this, 17427, true);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP1())
-                                                                                {
-                                                                                    CastSpell(this, 85411, true);//攻速1%
-                                                                                    CastSpell(this, 85421, true);//施法速度1%
-                                                                                    CastSpell(this, 85435, true);//+5%
-                                                                                    //CastSpell(this, 85440, true);//+10%
-                                                                                    //CastSpell(this, 85443, true);//-3%
-                                                                                    CastSpell(this, 17427, true);
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            CastSpell(this, 85818, true);//攻速18%
+            CastSpell(this, 85828, true);//施法速度18%
+            CastSpell(this, 85477, true);//+90%
+            //CastSpell(this, 85866, true);//攻速26%
+            //CastSpell(this, 85846, true);//施法速度26%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85838, true);//+180%
+            //CastSpell(this, 85492, true);//-54%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900009, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85888, true);//耐力40%
+            break;
         }
+        case 17:
+        {
+            CastSpell(this, 85817, true);//攻速17%
+            CastSpell(this, 85827, true);//施法速度17%
+            CastSpell(this, 85556, true);//+85%
+            //CastSpell(this, 85864, true);//攻速24%
+            //CastSpell(this, 85844, true);//施法速度24%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85837, true);//+170%
+            //CastSpell(this, 85491, true);//-51%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900008, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85887, true);//耐力35%
+            break;
+        }
+        case 16:
+        {
+            CastSpell(this, 85816, true);//攻速16%
+            CastSpell(this, 85826, true);//施法速度16%
+            CastSpell(this, 85476, true);//+80%
+            //CastSpell(this, 85862, true);//攻速22%
+            //CastSpell(this, 85842, true);//施法速度22%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85836, true);//+160%
+            //CastSpell(this, 85490, true);//-48%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900007, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85886, true);//耐力30%
+            break;
+        }
+        case 15:
+        {
+            CastSpell(this, 85815, true);//攻速15%
+            CastSpell(this, 85825, true);//施法速度15%
+            CastSpell(this, 85555, true);//+75%
+            //CastSpell(this, 85820, true);//攻速20%
+            //CastSpell(this, 85830, true);//施法速度20%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85835, true);//+150%
+            //CastSpell(this, 85489, true);//-45%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900006, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85885, true);//耐力25%
+            break;
+        }
+        case 14:
+        {
+            CastSpell(this, 85814, true);//攻速14%
+            CastSpell(this, 85824, true);//施法速度14%
+            CastSpell(this, 85475, true);//+70%
+            //CastSpell(this, 85818, true);//攻速18%
+            //CastSpell(this, 85828, true);//施法速度18%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85834, true);//+140%
+            //CastSpell(this, 85488, true);//-42%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900005, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85884, true);//耐力20%
+            break;
+        }
+        case 13:
+        {
+            CastSpell(this, 85813, true);//攻速13%
+            CastSpell(this, 85823, true);//施法速度13%
+            CastSpell(this, 85554, true);//+65%
+            //CastSpell(this, 85816, true);//攻速16%
+            //CastSpell(this, 85826, true);//施法速度16%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85833, true);//+130%
+            //CastSpell(this, 85487, true);//-39%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900004, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85883, true);//耐力15%
+            break;
+        }
+        case 12:
+        {
+            CastSpell(this, 85812, true);//攻速12%
+            CastSpell(this, 85822, true);//施法速度12%
+            CastSpell(this, 85474, true);//+60%
+            //CastSpell(this, 85814, true);//攻速14%
+            //CastSpell(this, 85824, true);//施法速度14%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85832, true);//+120%
+            //CastSpell(this, 85486, true);//-36%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900003, true);//翅膀
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85882, true);//耐力10%
+            break;
+        }
+        case 11:
+        {
+            CastSpell(this, 85811, true);//攻速11%
+            CastSpell(this, 85821, true);//施法速度11%
+            CastSpell(this, 85553, true);//+55%
+            //CastSpell(this, 85812, true);//攻速12%
+            //CastSpell(this, 85822, true);//施法速度12%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            //CastSpell(this, 85831, true);//+110%
+            //CastSpell(this, 85485, true);//-33%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900002, true);//翅膀
+            //CastSpell(this, 27571, true);
+            //CastSpell(this, 17625, true);//DK剑效果
+            //CastSpell(this, 85881, true);//耐力5%
+            break;
+        }
+        case 10:
+        {
+            CastSpell(this, 85420, true);//攻速10%
+            CastSpell(this, 85430, true);//施法速度10%
+            CastSpell(this, 85473, true);//+50%
+            //CastSpell(this, 85478, true);//+100%
+            //CastSpell(this, 85484, true);//-30%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 900001, true);//翅膀
+            //CastSpell(this, 27571, true);
+            //CastSpell(this, 17625, true);//DK剑效果
+            break;
+        }
+        case 9:
+        {
+            CastSpell(this, 85419, true);//攻速9%
+            CastSpell(this, 85429, true);//施法速度9%
+            CastSpell(this, 85552, true);//+45%
+            //CastSpell(this, 85477, true);//+90%
+            //CastSpell(this, 85483, true);//-27%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 27571, true);
+            break;
+        }
+        case 8:
+        {
+            CastSpell(this, 85418, true);//攻速8%
+            CastSpell(this, 85428, true);//施法速度8%
+            CastSpell(this, 85472, true);//+40%
+            //CastSpell(this, 85476, true);//+80%
+            //CastSpell(this, 85482, true);//-24%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 27571, true);
+            CastSpell(this, 17625, true);//DK剑效果
+            break;
+        }
+        case 7:
+        {
+            CastSpell(this, 85417, true);//攻速7%
+            CastSpell(this, 85427, true);//施法速度7%
+            CastSpell(this, 85551, true);//+35%
+            //CastSpell(this, 85475, true);//+70%
+            //CastSpell(this, 85481, true);//-21%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 27571, true);
+            CastSpell(this, 17625, true);//DK剑效果
+            break;
+        }
+        case 6:
+        {
+            CastSpell(this, 85416, true);//攻速6%
+            CastSpell(this, 85426, true);//施法速度6%
+            CastSpell(this, 85471, true);//+30%
+            //CastSpell(this, 85474, true);//+60%
+            //CastSpell(this, 85458, true);//-18%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 27571, true);
+            CastSpell(this, 17625, true);//DK剑效果
+            break;
+        }
+        case 5:
+        {
+            CastSpell(this, 85415, true);//攻速5%
+            CastSpell(this, 85425, true);//施法速度5%
+            CastSpell(this, 85550, true);//+25%
+            //CastSpell(this, 85473, true);//+50%
+            //CastSpell(this, 85455, true);//-15%
+            CastSpell(this, 17427, true);
+            //CastSpell(this, 27571, true);
+            CastSpell(this, 17625, true);//DK剑效果
+            break;
+        }
+        case 4:
+        {
+            CastSpell(this, 85414, true);//攻速4%
+            CastSpell(this, 85424, true);//施法速度4%
+            CastSpell(this, 85470, true);//+20%
+            //CastSpell(this, 85472, true);//+40%
+            //CastSpell(this, 85452, true);//-12%
+            CastSpell(this, 17427, true);
+            break;
+        }
+        case 3:
+        {
+            CastSpell(this, 85413, true);//攻速3%
+            CastSpell(this, 85423, true);//施法速度3%
+            CastSpell(this, 85465, true);//+15%
+            //CastSpell(this, 85471, true);//+30%
+            //CastSpell(this, 85449, true);//-9%
+            CastSpell(this, 17427, true);
+            break;
+        }
+        case 2:
+        {
+            CastSpell(this, 85412, true);//攻速2%
+            CastSpell(this, 85422, true);//施法速度2%
+            CastSpell(this, 85440, true);//+5%
+            //CastSpell(this, 85470, true);//+20%
+            //CastSpell(this, 85446, true);//-6%
+            CastSpell(this, 17427, true);
+            break;
+        }
+        case 1:
+        {
+            CastSpell(this, 85411, true);//攻速1%
+            CastSpell(this, 85421, true);//施法速度1%
+            CastSpell(this, 85435, true);//+5%
+            //CastSpell(this, 85440, true);//+10%
+            //CastSpell(this, 85443, true);//-3%
+            CastSpell(this, 17427, true);
+            break;
+        }
+        default:
+            break;
+
     }
-
-
 
     UpdateAllStats();
 
@@ -8864,6 +8801,8 @@ bool Player::CheckInstanceCount(uint32 instanceId, bool bb) const
 
     if (_instanceResetTimes.find(instanceId) != _instanceResetTimes.end() == false)//当前爆本的话
     {
+        if(GetSession()->IsBot())
+            return false;
 
         //判断角色背包中是否有爆本卷轴
         if (GetItemCount(70618, false) > 0)

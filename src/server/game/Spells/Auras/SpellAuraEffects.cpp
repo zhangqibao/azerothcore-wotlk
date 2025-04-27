@@ -7020,11 +7020,16 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
     // ignore negative values (can be result apply spellmods to aura damage
     int32 damage = std::max(m_amount, 0);
 
-    //对DK剑的回血技能做特殊处理
+    //所有情况下的回血封顶
+    if (damage > 1000.0f)
+    {
+        damage = 1000.0f;
+    }
 
+    //对DK剑的回血技能做特殊处理
+    /*
     if (caster)
     {
-
         if (caster->IsPlayer() && GetSpellInfo()->Id == 17625)
         {
             //LOG_ERROR("xx", "damage {} ", damage);//测试
@@ -7151,6 +7156,7 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
 
         }
     }
+    */
     //dk剑处理 end------------
 
     if (GetAuraType() == SPELL_AURA_OBS_MOD_HEALTH)

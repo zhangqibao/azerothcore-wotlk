@@ -66,6 +66,17 @@
 #include "botmgr.h"
 //end npcbot
 
+//魔盒要过滤掉的技能id
+static const std::unordered_set<uint32> EXCLUDED_SPELL_IDS = {
+    7712, 7714, 7715, 7716, 7717, 7718, 7719,
+    16614, 55736, 50401, 54181, 50475, 50903,
+    50463, 51460
+};
+//魔盒要过滤掉的技能icon
+static const std::unordered_set<uint32> EXCLUDED_ICON_IDS = {
+    15, 679, 681, 688, 2709, 118
+};
+
 extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 
 SpellDestination::SpellDestination()
@@ -3156,12 +3167,27 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         }
     }
 
-    //如果玩家带有赫拉迪姆魔盒，且第一个栏位放了武器，这里每次攻击都尝试调用该武器的触发特效
+//如果玩家带有赫拉迪姆魔盒，且第一个栏位放了武器，这里每次攻击都尝试调用该武器的触发特效
 //判断是否拥有赫拉迪姆魔盒
 
 bool triggerWeaponProcsPlus = true;//默认让所有技能都可以触发魔盒特效
-if (triggerWeaponProcsPlus && m_caster->IsPlayer() && !m_caster->ToPlayer()->GetSession()->IsBot())
+if (triggerWeaponProcsPlus && m_caster->IsPlayer())
 {
+    if (m_spellInfo)
+    {
+        if (EXCLUDED_ICON_IDS.count(m_spellInfo->SpellIconID) ||
+            EXCLUDED_SPELL_IDS.count(m_spellInfo->Id)) {
+            triggerWeaponProcsPlus = false;
+        }
+    }
+
+    //机器人不触发魔盒
+    if (m_caster->ToPlayer()->GetSession()->IsBot())
+    {
+        triggerWeaponProcsPlus = false;
+    }
+
+    /*
     if (m_spellInfo && m_spellInfo->SpellIconID == 15)//如果是拦截技能，不触发
         triggerWeaponProcsPlus = false;
     //魔盒第一格放的武器如果带火舌图腾类似的必出特效，会造成循环调用的死循环，报错ERROR: Spell 16344 too deep in cast chain for cast. Cast not allowed for prevent overflow stack crash.
@@ -3190,18 +3216,6 @@ if (triggerWeaponProcsPlus && m_caster->IsPlayer() && !m_caster->ToPlayer()->Get
         triggerWeaponProcsPlus = false;
     if (m_spellInfo && m_spellInfo->Id == 13897)//如果是附魔：灼热器 技能，不触发
         triggerWeaponProcsPlus = false;
-    /*
-    //不再禁止，改为直接改技能，增加3秒CD，避免自己调用自己死循环，同时避免魔盒乐趣减少
-    if (m_spellInfo && (m_spellInfo->Id == 18817 || m_spellInfo->Id == 16414 || m_spellInfo->Id == 24585
-        || m_spellInfo->Id == 18084 || m_spellInfo->Id == 21170 || m_spellInfo->Id == 26693
-        || m_spellInfo->Id == 34107 || m_spellInfo->Id == 34696 || m_spellInfo->Id == 71838
-        ))//如果是吸血技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->Id == 18818)//如果是骨火的群攻技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && (m_spellInfo->Id == 16559 || m_spellInfo->Id == 16560))//如果是烈焰之怒技能，不触发
-        triggerWeaponProcsPlus = false;
-   */
 
     if (m_spellInfo && (m_spellInfo->Id == 50401))//如果是冰锋符文，不触发
         triggerWeaponProcsPlus = false;
@@ -3242,99 +3256,62 @@ if (triggerWeaponProcsPlus && m_caster->IsPlayer() && !m_caster->ToPlayer()->Get
     //ImplicitTargetA 22,18   15,16 的是AOE目标
     //EffectAura_1 == SPELL_AURA_DAMAGE_SHIELD 15 的是被动伤害技能
     //EffectRadiusIndex_1 这个代表AOE的半径范围 AOE技能的的共同点是这个值大于0
-
     //LOG_ERROR("xx", "xxxx22 ");//测试
-
-
-    /*
-    //不再禁止，改为直接改技能，增加3秒CD，避免自己调用自己死循环，同时避免魔盒乐趣减少
-
-    //魔盒的设计初心是提高游戏乐趣，并不是为了A怪方便，如果A怪导致了服务器出问题，只能禁掉AOE或反弹伤害的魔盒触发
-    if (m_spellInfo->Effects[0].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD || m_spellInfo->Effects[1].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD || m_spellInfo->Effects[2].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD
-         || m_spellInfo->Effects[0].HasRadius() || m_spellInfo->Effects[1].HasRadius() || m_spellInfo->Effects[2].HasRadius()
-        )
-    {
-        //LOG_ERROR("xx", "xxxx ");//测试
-        triggerWeaponProcsPlus = false;
-    }
     */
-
-    //for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-    //{
-    //    //如果该技能是反弹伤害类型的，不触发魔盒第一格
-    //    if (m_spellInfo->Effects[i].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD)
-    //    {
-    //        triggerWeaponProcsPlus = false;
-    //    }
-    //    //如果该技能是AOE类型的，不触发魔盒第一格
-    //    if (m_spellInfo->Effects[i].HasRadius())
-    //    {
-    //        triggerWeaponProcsPlus = false;
-    //    }
-    //}
-
 
 }
 
-if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
+
+if (triggerWeaponProcsPlus)
 {
-    if (m_spellInfo && triggerWeaponProcsPlus)
+
+    if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
     {
-        //LOG_ERROR("xx", "hldmstart {}", m_spellInfo->Id);//测试，调试看是什么技能触发了bug
-
-        //uint32 hldmbox = ((Player*)m_caster)->GetItemCount(91666, true);
-        //if (hldmbox)
-        if (((Player*)m_caster)->getHLDM())
+        if (m_spellInfo)
         {
-            //如果有魔盒，看银行中第一个位置的装备slot:39
-            Item* hldmitem = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
-            if (hldmitem && (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR))
-            {
-                /*
-                if(m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex==1)//瞬发技能，就调用只能被动触发的函数
-                    ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
-                else//非瞬发技能，调用主动使用可变被动触发的函数
-                    ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem);
-                */
+            //LOG_ERROR("xx", "hldmstart {}", m_spellInfo->Id);//测试，调试看是什么技能触发了bug
 
-                //只有超过200的伤害或治疗，才会触发,这里的伤害或治疗,如果风暴护手这种物品触发，是PVE战袍,VIP卡加成之前的，无法伤加成
-                //火舌图腾则是PVE战袍,VIP卡加成之前的，有法伤加成
-                //如果是奥爆是加成之后的，神圣新星伤害是加成后的，治疗是加成前的（法伤加成后的效果）
-                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_damage %f", m_damage);//测试
-                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_healing %f", m_healing);//测试
-                //if (m_damage > 75.0f || m_healing > 75.0f)//上面屏蔽了萨满图腾和火舌武器等的特效，漏洞已经解决，这里就没必要控制伤害了,烈焰之怒伤害最高是170，不是必出，就不限制了
-                //{
-                /*
-                    //只有法术伤害才能调用主动使用可变被动触发的函数
+            //uint32 hldmbox = ((Player*)m_caster)->GetItemCount(91666, true);
+            //if (hldmbox)
+            if (((Player*)m_caster)->getHLDM())
+            {
+                //如果有魔盒，看银行中第一个位置的装备slot:39
+                Item* hldmitem = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
+                if (hldmitem && (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR))
+                {
+                    /*
+                    if(m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex==1)//瞬发技能，就调用只能被动触发的函数
+                        ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                    else//非瞬发技能，调用主动使用可变被动触发的函数
+                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem);
+                    */
+
+                    //只有超过200的伤害或治疗，才会触发,这里的伤害或治疗,如果风暴护手这种物品触发，是PVE战袍,VIP卡加成之前的，无法伤加成
+                    //火舌图腾则是PVE战袍,VIP卡加成之前的，有法伤加成
+                    //如果是奥爆是加成之后的，神圣新星伤害是加成后的，治疗是加成前的（法伤加成后的效果）
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_damage %f", m_damage);//测试
+                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_healing %f", m_healing);//测试
+                    //if (m_damage > 75.0f || m_healing > 75.0f)//上面屏蔽了萨满图腾和火舌武器等的特效，漏洞已经解决，这里就没必要控制伤害了,烈焰之怒伤害最高是170，不是必出，就不限制了
+                    //{
+                    /*
+                        //只有法术伤害才能调用主动使用可变被动触发的函数
+                        if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
+                        {
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx %f", m_damage);//测试
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "x2xx %f", m_healing);//测试
+                            if (m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex == 1)//瞬发技能
+                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem,true);
+                            else
+                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, false);
+                        }
+                        else
+                        {
+                            ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                        }
+                    */
+                    //后期法系收益比物理高，这里改为物理伤害也可以触发
                     if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
                     {
-                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx %f", m_damage);//测试
-                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "x2xx %f", m_healing);//测试
-                        if (m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex == 1)//瞬发技能
-                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem,true);
-                        else
-                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, false);
-                    }
-                    else
-                    {
-                        ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
-                    }
-                */
-                //后期法系收益比物理高，这里改为物理伤害也可以触发
-                if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
-                {
-                    if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
-                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
-                    else
-                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
-                }
-                else
-                {
-                    //LOG_ERROR("xx", "melee1 {}", m_spellInfo->Id);//测试
-                    if (roll_chance_f(20.0f))
-                    {
-                        //LOG_ERROR("xx", "melee2 {}", m_spellInfo->Id);//测试
-
                         if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
                             ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
                         else
@@ -3342,16 +3319,30 @@ if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && 
                     }
                     else
                     {
-                        ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
-                    }
-                }
-                //}
+                        //LOG_ERROR("xx", "melee1 {}", m_spellInfo->Id);//测试
+                        if (roll_chance_f(20.0f))
+                        {
+                            //LOG_ERROR("xx", "melee2 {}", m_spellInfo->Id);//测试
 
+                            if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
+                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
+                            else
+                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
+                        }
+                        else
+                        {
+                            ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                        }
+                    }
+                    //}
+
+                }
             }
         }
-    }
 
+    }
 }
+
 
 //看玩家是否装备了远古能量徽记
 if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
@@ -8425,8 +8416,18 @@ SpellCastResult Spell::CheckItems()
     else
     {
         uint32 itemid = m_CastItem->GetEntry();
-        if (!player->HasItemCount(itemid, 1, true))//是因为这里没有写银行，只检查包里是否有物品，所以过不去，改成包含检查银行
-            return SPELL_FAILED_ITEM_NOT_READY;
+
+        if (!player->GetSession()->IsBot())
+        {
+            if (!player->HasItemCount(itemid, 1, true))//是因为这里没有写银行，只检查包里是否有物品，所以过不去，改成包含检查银行
+                return SPELL_FAILED_ITEM_NOT_READY;
+        }
+        else
+        {
+            if (!player->HasItemCount(itemid, 1))
+                return SPELL_FAILED_ITEM_NOT_READY;
+        }
+
 
         ItemTemplate const* proto = m_CastItem->GetTemplate();
         if (!proto)

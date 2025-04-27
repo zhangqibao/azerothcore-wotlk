@@ -2111,233 +2111,25 @@ void Player::RegenerateHealth()
 
     //获得玩家当前是否在战场或竞技场中
     bool canusezuoqi = false;
-    if (IsInWorld() && isActiveObject())
-        if (GetMap() && GetAreaId() && GetAreaId())
-            canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
 
-    if (IsPlayer() && !GetSession()->IsBot() && canusezuoqi)
+    if (!GetSession()->IsBot())
     {
-        /*
-        //判断身上是否有会员卡，有的话，触发会员卡对应的回血，只会触发最高级别的卡
-        if (GetItemCount(70911, true) > 0)
-        {
-            addvalue += (float)(maxValue * 0.044f) * 0.4f;
-        }
-        else
-        {
-            if (GetItemCount(70910, true) > 0)
-            {
-                addvalue += (float)(maxValue * 0.04f) * 0.4f;
-            }
-            else
-            {
-                if (GetItemCount(70909, true) > 0)
-                {
-                    addvalue += (float)(maxValue * 0.036f) * 0.4f;
-                }
-                else
-                {
-                    if (GetItemCount(70908, true) > 0)
-                    {
-                        addvalue += (float)(maxValue * 0.032f) * 0.4f;
-                    }
-                    else
-                    {
-                        if (GetItemCount(70907, true) > 0)
-                        {
-                            addvalue += (float)(maxValue * 0.028f) * 0.4f;
-                        }
-                        else
-                        {
-                            if (GetItemCount(70906, true) > 0)
-                            {
-                                addvalue += (float)(maxValue * 0.024f) * 0.4f;
-                            }
-                            else
-                            {
-                                if (GetItemCount(70905, true) > 0)
-                                {
-                                    addvalue += (float)(maxValue * 0.02f) * 0.4f;
-                                }
-                                else
-                                {
-                                    if (GetItemCount(70904, true) > 0)
-                                    {
-                                        addvalue += (float)(maxValue * 0.016f) * 0.4f;
-                                    }
-                                    else
-                                    {
-                                        if (GetItemCount(70903, true) > 0)
-                                        {
-                                            addvalue += (float)(maxValue * 0.012f) * 0.4f;
-                                        }
-                                        else
-                                        {
-                                            if (GetItemCount(70902, true) > 0)
-                                            {
-                                                addvalue += (float)(maxValue * 0.008f) * 0.4f;
-                                            }
-                                            else
-                                            {
-                                                if (GetItemCount(70901, true) > 0)
-                                                {
-                                                    addvalue += (float)(maxValue * 0.004f) * 0.4f;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        if (IsInWorld() && isActiveObject())
+            if (GetMap() && GetAreaId() && GetAreaId())
+                canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
 
-        //end
-        */
-
-
-        //判断身上是否有会员卡，有的话，触发会员卡对应的回血，只会触发最高级别的卡
-        if (getVIP20())
+        if (IsPlayer() && canusezuoqi)
         {
-            addvalue += (float)(maxValue * 0.040f) * 0.4f;
-        }
-        else
-        {
-            if (getVIP19())
-            {
-                addvalue += (float)(maxValue * 0.038f) * 0.4f;
-            }
-            else
-            {
-                if (getVIP18())
-                {
-                    addvalue += (float)(maxValue * 0.036f) * 0.4f;
-                }
-                else
-                {
-                    if (getVIP17())
-                    {
-                        addvalue += (float)(maxValue * 0.034f) * 0.4f;
-                    }
-                    else
-                    {
-                        if (getVIP16())
-                        {
-                            addvalue += (float)(maxValue * 0.032f) * 0.4f;
-                        }
-                        else
-                        {
-                            if (getVIP15())
-                            {
-                                addvalue += (float)(maxValue * 0.030f) * 0.4f;
-                            }
-                            else
-                            {
-                                if (getVIP14())
-                                {
-                                    addvalue += (float)(maxValue * 0.028f) * 0.4f;
-                                }
-                                else
-                                {
-                                    if (getVIP13())
-                                    {
-                                        addvalue += (float)(maxValue * 0.026f) * 0.4f;
-                                    }
-                                    else
-                                    {
-                                        if (getVIP12())
-                                        {
-                                            addvalue += (float)(maxValue * 0.024f) * 0.4f;
-                                        }
-                                        else
-                                        {
-                                            if (getVIP11())
-                                            {
-                                                addvalue += (float)(maxValue * 0.022f) * 0.4f;
-                                            }
-                                            else
-                                            {
-                                                if (getVIP10())
-                                                {
-                                                    addvalue += (float)(maxValue * 0.02f) * 0.4f;
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP9())
-                                                    {
-                                                        addvalue += (float)(maxValue * 0.018f) * 0.4f;
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP8())
-                                                        {
-                                                            addvalue += (float)(maxValue * 0.016f) * 0.4f;
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP7())
-                                                            {
-                                                                addvalue += (float)(maxValue * 0.014f) * 0.4f;
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP6())
-                                                                {
-                                                                    addvalue += (float)(maxValue * 0.012f) * 0.4f;
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP5())
-                                                                    {
-                                                                        addvalue += (float)(maxValue * 0.01f) * 0.4f;
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP4())
-                                                                        {
-                                                                            addvalue += (float)(maxValue * 0.008f) * 0.4f;
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP3())
-                                                                            {
-                                                                                addvalue += (float)(maxValue * 0.006f) * 0.4f;
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP2())
-                                                                                {
-                                                                                    addvalue += (float)(maxValue * 0.004f) * 0.4f;
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    if (getVIP1())
-                                                                                    {
-                                                                                        addvalue += (float)(maxValue * 0.002f) * 0.4f;
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        //end
+            //根据会员等级给加成
+            static const float VIP_BONUS[21] = {
+                0.0f, 0.002f, 0.004f, 0.006f, 0.008f, 0.01f, 0.012f, 0.014f, 0.016f, 0.018f, 0.02f, 0.022f, 0.024f, 0.026f, 0.028f, 0.03f, 0.032f, 0.034f, 0.036f, 0.038f, 0.04f // 按VIP等级预定义数值
+            };
 
+            uint8 vipLevel = getVIPLevel();
+            addvalue += (float)(maxValue * VIP_BONUS[vipLevel]) * 0.4f;
+            //end
+
+        }
     }
 
 
@@ -3007,22 +2799,11 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
     //TN职业双倍合剂增加额外经验
     if (this->GetClass())
     {
-        uint8 playerrace;
-        //if (this->GetRace() == 2 || this->GetRace() == 5 || this->GetRace() == 6 || this->GetRace() == 8)
-        //   playerrace = 1;//部落
-        //else
-        //    playerrace = 0;//联盟
-
-        if (Player::TeamIdForRace(this->GetRace()) == TEAM_ALLIANCE)
-            playerrace = 0;//联盟
-        else if (Player::TeamIdForRace(this->GetRace()) == TEAM_HORDE)
-            playerrace = 1;//部落
-
-        if (playerrace == 1)
+        if (Player::TeamIdForRace(this->GetRace()) == TEAM_HORDE)
         {
             xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CAMPBL);
         }
-        if (playerrace == 0)
+        if (Player::TeamIdForRace(this->GetRace()) == TEAM_ALLIANCE)
         {
             xp = xp * sWorld->getRate(CONFIG_FLOAT_RATE_XP_REWARD_CAMPLM);
         }
@@ -3101,146 +2882,13 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
 
     //end-------
 
-    //VIP卡增加经验倍率
+    //根据会员等级给加成
+    static const float VIP_BONUS[21] = {
+        0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+    };
 
-    if (getVIP20())
-    {
-        xp = uint32(xp * 2.0f);
-    }
-    else
-    {
-        if (getVIP19())
-        {
-            xp = uint32(xp * 1.95f);
-        }
-        else
-        {
-            if (getVIP18())
-            {
-                xp = uint32(xp * 1.9f);
-            }
-            else
-            {
-                if (getVIP17())
-                {
-                    xp = uint32(xp * 1.85f);
-                }
-                else
-                {
-                    if (getVIP16())
-                    {
-                        xp = uint32(xp * 1.8f);
-                    }
-                    else
-                    {
-                        if (getVIP15())
-                        {
-                            xp = uint32(xp * 1.75f);
-                        }
-                        else
-                        {
-                            if (getVIP14())
-                            {
-                                xp = uint32(xp * 1.7f);
-                            }
-                            else
-                            {
-                                if (getVIP13())
-                                {
-                                    xp = uint32(xp * 1.65f);
-                                }
-                                else
-                                {
-                                    if (getVIP12())
-                                    {
-                                        xp = uint32(xp * 1.6f);
-                                    }
-                                    else
-                                    {
-
-                                        if (getVIP11())
-                                        {
-                                            xp = uint32(xp * 1.55f);
-                                        }
-                                        else
-                                        {
-                                            if (getVIP10())
-                                            {
-                                                xp = uint32(xp * 1.5f);
-                                            }
-                                            else
-                                            {
-                                                if (getVIP9())
-                                                {
-                                                    xp = uint32(xp * 1.45f);
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP8())
-                                                    {
-                                                        xp = uint32(xp * 1.4f);
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP7())
-                                                        {
-                                                            xp = uint32(xp * 1.35f);
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP6())
-                                                            {
-                                                                xp = uint32(xp * 1.3f);
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP5())
-                                                                {
-                                                                    xp = uint32(xp * 1.25f);
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP4())
-                                                                    {
-                                                                        xp = uint32(xp * 1.2f);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP3())
-                                                                        {
-                                                                            xp = uint32(xp * 1.15f);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP2())
-                                                                            {
-                                                                                xp = uint32(xp * 1.1f);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP1())
-                                                                                {
-                                                                                    xp = uint32(xp * 1.05f);
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    uint8 vipLevel = getVIPLevel();
+    xp = uint32(xp * VIP_BONUS[vipLevel]);
     //end -------------
 
 
@@ -3423,147 +3071,12 @@ void Player::InitTalentForLevel()
         zstalentpoint = zstalentpoint + _ygzsstone;//几次转生就多给几点天赋
     }
 
+
     /*
     //根据V卡等级增加天赋，1级1点天赋
-
-    if (getVIP20())
-    {
-        zstalentpoint = zstalentpoint + 20;
-    }
-    else
-    {
-        if (getVIP19())
-        {
-            zstalentpoint = zstalentpoint + 19;
-        }
-        else
-        {
-            if (getVIP18())
-            {
-                zstalentpoint = zstalentpoint + 18;
-            }
-            else
-            {
-                if (getVIP17())
-                {
-                    zstalentpoint = zstalentpoint + 17;
-                }
-                else
-                {
-                    if (getVIP16())
-                    {
-                        zstalentpoint = zstalentpoint + 16;
-                    }
-                    else
-                    {
-                        if (getVIP15())
-                        {
-                            zstalentpoint = zstalentpoint + 15;
-                        }
-                        else
-                        {
-                            if (getVIP14())
-                            {
-                                zstalentpoint = zstalentpoint + 14;
-                            }
-                            else
-                            {
-                                if (getVIP13())
-                                {
-                                    zstalentpoint = zstalentpoint + 13;
-                                }
-                                else
-                                {
-                                    if (getVIP12())
-                                    {
-                                        zstalentpoint = zstalentpoint + 12;
-                                    }
-                                    else
-                                    {
-
-                                        if (getVIP11())
-                                        {
-                                            zstalentpoint = zstalentpoint + 11;
-                                        }
-                                        else
-                                        {
-                                            if (getVIP10())
-                                            {
-                                                zstalentpoint = zstalentpoint + 10;
-                                            }
-                                            else
-                                            {
-                                                if (getVIP9())
-                                                {
-                                                    zstalentpoint = zstalentpoint + 9;
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP8())
-                                                    {
-                                                        zstalentpoint = zstalentpoint + 8;
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP7())
-                                                        {
-                                                            zstalentpoint = zstalentpoint + 7;
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP6())
-                                                            {
-                                                                zstalentpoint = zstalentpoint + 6;
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP5())
-                                                                {
-                                                                    zstalentpoint = zstalentpoint + 5;
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP4())
-                                                                    {
-                                                                        zstalentpoint = zstalentpoint + 4;
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP3())
-                                                                        {
-                                                                            zstalentpoint = zstalentpoint + 3;
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP2())
-                                                                            {
-                                                                                zstalentpoint = zstalentpoint + 2;
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP1())
-                                                                                {
-                                                                                    zstalentpoint = zstalentpoint + 1;
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    uint8 vipLevel = getVIPLevel();
+    zstalentpoint = zstalentpoint + vipLevel;
+    //end
     */
 
     //end -----------
@@ -4777,145 +4290,10 @@ bool Player::resetTalents(bool noResetCost)
 
     /*
     //根据V卡等级增加天赋，从VIP6开始，1级是1点天赋
-
-    if (getVIP20())
-    {
-        zstalentpoint = zstalentpoint + 20;
-    }
-    else
-    {
-        if (getVIP19())
-        {
-            zstalentpoint = zstalentpoint + 19;
-        }
-        else
-        {
-            if (getVIP18())
-            {
-                zstalentpoint = zstalentpoint + 18;
-            }
-            else
-            {
-                if (getVIP17())
-                {
-                    zstalentpoint = zstalentpoint + 17;
-                }
-                else
-                {
-                    if (getVIP16())
-                    {
-                        zstalentpoint = zstalentpoint + 16;
-                    }
-                    else
-                    {
-                        if (getVIP15())
-                        {
-                            zstalentpoint = zstalentpoint + 15;
-                        }
-                        else
-                        {
-                            if (getVIP14())
-                            {
-                                zstalentpoint = zstalentpoint + 14;
-                            }
-                            else
-                            {
-                                if (getVIP13())
-                                {
-                                    zstalentpoint = zstalentpoint + 13;
-                                }
-                                else
-                                {
-                                    if (getVIP12())
-                                    {
-                                        zstalentpoint = zstalentpoint + 12;
-                                    }
-                                    else
-                                    {
-
-                                        if (getVIP11())
-                                        {
-                                            zstalentpoint = zstalentpoint + 11;
-                                        }
-                                        else
-                                        {
-                                            if (getVIP10())
-                                            {
-                                                zstalentpoint = zstalentpoint + 10;
-                                            }
-                                            else
-                                            {
-                                                if (getVIP9())
-                                                {
-                                                    zstalentpoint = zstalentpoint + 9;
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP8())
-                                                    {
-                                                        zstalentpoint = zstalentpoint + 8;
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP7())
-                                                        {
-                                                            zstalentpoint = zstalentpoint + 7;
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP6())
-                                                            {
-                                                                zstalentpoint = zstalentpoint + 6;
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP5())
-                                                                {
-                                                                    zstalentpoint = zstalentpoint + 5;
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP4())
-                                                                    {
-                                                                        zstalentpoint = zstalentpoint + 4;
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP3())
-                                                                        {
-                                                                            zstalentpoint = zstalentpoint + 3;
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP2())
-                                                                            {
-                                                                                zstalentpoint = zstalentpoint + 2;
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP1())
-                                                                                {
-                                                                                    zstalentpoint = zstalentpoint + 1;
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+        //根据V卡等级增加天赋，1级1点天赋
+    uint8 vipLevel = getVIPLevel();
+    zstalentpoint = zstalentpoint + vipLevel;
+    //end
     */
     talentPointsForLevel = talentPointsForLevel + zstalentpoint;
     //end -----------
@@ -5972,34 +5350,6 @@ void Player::KillPlayer()
                     ChatHandler(GetSession()).SendSysMessage(21741);//对话框里的提醒
                 }
             }
-
-            //取消远古转生石死亡扣除
-            /*
-            bool vipcar5 = getVIP5() || getVIP6() || getVIP7() || getVIP8() || getVIP9() || getVIP10() || getVIP11() || getVIP12() || getVIP13() || getVIP14() || getVIP15() || getVIP16() || getVIP17() || getVIP18() || getVIP19() || getVIP20();
-            //判断是否有远古转生石，有就直接扣除1个
-            //古拉巴什竞技场内外圈都不检测
-            if (GetAreaId() != 1741 && GetAreaId() != 3217)
-            {
-                uint16 _ygzsstoneall = GetItemCount(70629, true);
-                if (_ygzsstoneall > 0 && !vipcar5)//如果有远古转生石，且VIP卡小于5级
-                {
-                    //20%几率扣除1个远古转生石
-                    uint8 randomN = urand(1, 100);
-                    if (randomN < 20)
-                    {
-                        DestroyItemCount(70629, 1, true);
-                        if (AddItem(70008, 150))//返还150红包券
-                        {
-                            ChatHandler(GetSession()).PSendSysMessage(21717);
-                        }
-                        //全服通告
-                        sWorld->SendWorldText(21718, GetName().c_str());
-                    }
-
-                }
-            }
-            */
-            //end ----------------
 
             //判断是否是龟速模式，是就掉20%当前等级经验(经验槽4个格子)
             if (m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS1)
@@ -7682,31 +7032,34 @@ void Player::CheckAreaExploreAndOutdoor()
     */
 
     //检查室内使用坐骑
-    if (IsPlayer() && !GetSession()->IsBot() && isOutdoor == false && HasAuraType(SPELL_AURA_MOUNTED))
+    if (!GetSession()->IsBot())
     {
-        bool vipcar5 = getVIP5() || getVIP6() || getVIP7() || getVIP8() || getVIP9() || getVIP10() || getVIP11() || getVIP12() || getVIP13() || getVIP14() || getVIP15() || getVIP16() || getVIP17() || getVIP18() || getVIP19() || getVIP20();
-        //LOG_ERROR("xx", "xxxvipcarnum {} ", vipcarnum);//测试
-
-        for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
+        if (IsPlayer() && isOutdoor == false && HasAuraType(SPELL_AURA_MOUNTED))
         {
-            Aura* aura = iter->second->GetBase();
-            SpellInfo const* spell = aura->GetSpellInfo();
-            //if (spell->Id == 26655)
-            if (spell->Id == 26657)
+            bool vipcar5 = getVIPLevel() > 4;
+            //LOG_ERROR("xx", "xxxvipcarnum {} ", vipcarnum);//测试
+
+            for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
             {
-                if (vipcar5)
+                Aura* aura = iter->second->GetBase();
+                SpellInfo const* spell = aura->GetSpellInfo();
+                //if (spell->Id == 26655)
+                if (spell->Id == 26657)
                 {
-                    //如果玩家使用的是黑色其拉坦克，且VIP卡至少为5级卡，就不移除骑乘光环
-                    //LOG_ERROR("xx", "vipcarnum {} ", vipcarnum);//测试
-                    ++iter;
+                    if (vipcar5)
+                    {
+                        //如果玩家使用的是黑色其拉坦克，且VIP卡至少为5级卡，就不移除骑乘光环
+                        //LOG_ERROR("xx", "vipcarnum {} ", vipcarnum);//测试
+                        ++iter;
+                    }
+                    else
+                    {
+                        RemoveAura(iter);
+                    }
                 }
                 else
-                {
-                    RemoveAura(iter);
-                }
+                    ++iter;
             }
-            else
-                ++iter;
         }
     }
     //end----
@@ -7962,144 +7315,13 @@ void Player::RewardReputation(Unit* victim)
 
     //VIP卡增加声望倍率
     float _vipplusrate = 1.0f;
-    if (getVIP20())
-    {
-        _vipplusrate = float(_vipplusrate * 2.0f);
-    }
-    else
-    {
-        if (getVIP19())
-        {
-            _vipplusrate = float(_vipplusrate * 1.95f);
-        }
-        else
-        {
-            if (getVIP18())
-            {
-                _vipplusrate = float(_vipplusrate * 1.9f);
-            }
-            else
-            {
-                if (getVIP17())
-                {
-                    _vipplusrate = float(_vipplusrate * 1.85f);
-                }
-                else
-                {
-                    if (getVIP16())
-                    {
-                        _vipplusrate = float(_vipplusrate * 1.8f);
-                    }
-                    else
-                    {
-                        if (getVIP15())
-                        {
-                            _vipplusrate = float(_vipplusrate * 1.75f);
-                        }
-                        else
-                        {
-                            if (getVIP14())
-                            {
-                                _vipplusrate = float(_vipplusrate * 1.7f);
-                            }
-                            else
-                            {
-                                if (getVIP13())
-                                {
-                                    _vipplusrate = float(_vipplusrate * 1.65f);
-                                }
-                                else
-                                {
-                                    if (getVIP12())
-                                    {
-                                        _vipplusrate = float(_vipplusrate * 1.6f);
-                                    }
-                                    else
-                                    {
+    //根据会员等级给加成
+    static const float VIP_BONUS[21] = {
+        0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+    };
 
-                                        if (getVIP11())
-                                        {
-                                            _vipplusrate = float(_vipplusrate * 1.55f);
-                                        }
-                                        else
-                                        {
-                                            if (getVIP10())
-                                            {
-                                                _vipplusrate = float(_vipplusrate * 1.5f);
-                                            }
-                                            else
-                                            {
-                                                if (getVIP9())
-                                                {
-                                                    _vipplusrate = float(_vipplusrate * 1.45f);
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP8())
-                                                    {
-                                                        _vipplusrate = float(_vipplusrate * 1.4f);
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP7())
-                                                        {
-                                                            _vipplusrate = float(_vipplusrate * 1.35f);
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP6())
-                                                            {
-                                                                _vipplusrate = float(_vipplusrate * 1.3f);
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP5())
-                                                                {
-                                                                    _vipplusrate = float(_vipplusrate * 1.25f);
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP4())
-                                                                    {
-                                                                        _vipplusrate = float(_vipplusrate * 1.2f);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP3())
-                                                                        {
-                                                                            _vipplusrate = float(_vipplusrate * 1.15f);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP2())
-                                                                            {
-                                                                                _vipplusrate = float(_vipplusrate * 1.1f);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP1())
-                                                                                {
-                                                                                    _vipplusrate = float(_vipplusrate * 1.05f);
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    uint8 vipLevel = getVIPLevel();
+    _vipplusrate = float(_vipplusrate * VIP_BONUS[vipLevel]);
     //end -------------
 
 
@@ -8178,144 +7400,13 @@ void Player::RewardReputation(Quest const* quest)
 
         //VIP卡增加声望倍率
         float _vipplusrate = 1.0f;
-        if (getVIP20())
-        {
-            _vipplusrate = float(_vipplusrate * 2.0f);
-        }
-        else
-        {
-            if (getVIP19())
-            {
-                _vipplusrate = float(_vipplusrate * 1.95f);
-            }
-            else
-            {
-                if (getVIP18())
-                {
-                    _vipplusrate = float(_vipplusrate * 1.9f);
-                }
-                else
-                {
-                    if (getVIP17())
-                    {
-                        _vipplusrate = float(_vipplusrate * 1.85f);
-                    }
-                    else
-                    {
-                        if (getVIP16())
-                        {
-                            _vipplusrate = float(_vipplusrate * 1.8f);
-                        }
-                        else
-                        {
-                            if (getVIP15())
-                            {
-                                _vipplusrate = float(_vipplusrate * 1.75f);
-                            }
-                            else
-                            {
-                                if (getVIP14())
-                                {
-                                    _vipplusrate = float(_vipplusrate * 1.7f);
-                                }
-                                else
-                                {
-                                    if (getVIP13())
-                                    {
-                                        _vipplusrate = float(_vipplusrate * 1.65f);
-                                    }
-                                    else
-                                    {
-                                        if (getVIP12())
-                                        {
-                                            _vipplusrate = float(_vipplusrate * 1.6f);
-                                        }
-                                        else
-                                        {
+        //根据会员等级给加成
+        static const float VIP_BONUS[21] = {
+            0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+        };
 
-                                            if (getVIP11())
-                                            {
-                                                _vipplusrate = float(_vipplusrate * 1.55f);
-                                            }
-                                            else
-                                            {
-                                                if (getVIP10())
-                                                {
-                                                    _vipplusrate = float(_vipplusrate * 1.5f);
-                                                }
-                                                else
-                                                {
-                                                    if (getVIP9())
-                                                    {
-                                                        _vipplusrate = float(_vipplusrate * 1.45f);
-                                                    }
-                                                    else
-                                                    {
-                                                        if (getVIP8())
-                                                        {
-                                                            _vipplusrate = float(_vipplusrate * 1.4f);
-                                                        }
-                                                        else
-                                                        {
-                                                            if (getVIP7())
-                                                            {
-                                                                _vipplusrate = float(_vipplusrate * 1.35f);
-                                                            }
-                                                            else
-                                                            {
-                                                                if (getVIP6())
-                                                                {
-                                                                    _vipplusrate = float(_vipplusrate * 1.3f);
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (getVIP5())
-                                                                    {
-                                                                        _vipplusrate = float(_vipplusrate * 1.25f);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (getVIP4())
-                                                                        {
-                                                                            _vipplusrate = float(_vipplusrate * 1.2f);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (getVIP3())
-                                                                            {
-                                                                                _vipplusrate = float(_vipplusrate * 1.15f);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (getVIP2())
-                                                                                {
-                                                                                    _vipplusrate = float(_vipplusrate * 1.1f);
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    if (getVIP1())
-                                                                                    {
-                                                                                        _vipplusrate = float(_vipplusrate * 1.05f);
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        uint8 vipLevel = getVIPLevel();
+        _vipplusrate = float(_vipplusrate * VIP_BONUS[vipLevel]);
         //end -------------
 
         rep = rep * _vipplusrate;//乘以倍率
@@ -11129,130 +10220,134 @@ void Player::_ApplyAllItemMods()
         }
     }
 
-    //判断是否拥有赫拉迪姆魔盒(这里不能用getHLDM()，因为调用时还没有初始化)
-    uint32 hldmbox = GetItemCount(91666, true);
-//if (hldmbox)
-//获得玩家当前是否在战场或竞技场中
-    bool canusezuoqi = true;
-    //这里不能加这个判断，因为_ApplyAllItemMods会在角色未加载到地图上的时候在_LoadInventory里调用
-    if (IsInWorld() && isActiveObject())
-        if (GetMap() && GetAreaId() && GetAreaId())
-            canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
-
-    if (hldmbox && canusezuoqi)
+    if (!GetSession()->IsBot())
     {
+        //判断是否拥有赫拉迪姆魔盒(这里不能用getHLDM()，因为调用时还没有初始化)
+        uint32 hldmbox = GetItemCount(91666, true);
+        //if (hldmbox)
+        //获得玩家当前是否在战场或竞技场中
+        bool canusezuoqi = true;
+        //这里不能加这个判断，因为_ApplyAllItemMods会在角色未加载到地图上的时候在_LoadInventory里调用
+        if (IsInWorld() && isActiveObject())
+            if (GetMap() && GetAreaId() && GetAreaId())
+                canusezuoqi = !GetMap()->IsBattlegroundOrArena() && GetAreaId() != 2177 && GetAreaId() != 1741;
 
-
-        //如果有魔盒，看银行中前三个位置的装备slot:39,40,41
-        for (int i = 39; i < 42; ++i)
+        if (hldmbox && canusezuoqi)
         {
-            if (m_items[i])
+
+
+            //如果有魔盒，看银行中前三个位置的装备slot:39,40,41
+            for (int i = 39; i < 42; ++i)
             {
-                ItemTemplate const* proto = m_items[i]->GetTemplate();
-                if (!proto)
-                    continue;
-                if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
-                {
-                    uint32 attacktype = Player::GetAttackBySlot(i);
-                    if (attacktype < MAX_ATTACK)
-                        _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), true);
-
-                    //_ApplyItemBonusesByHLDM(proto, i, true);
-                    _ApplyItemBonusesByHLDMForSPELL(proto, i, true);
-
-                }
-
-            }
-        }
-
-        for (int i = 39; i < 42; ++i)
-        {
-            if (m_items[i])
-            {
-                ItemTemplate const* proto = m_items[i]->GetTemplate();
-                if (!proto)
-                    continue;
-                if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
-                {
-                    // item set bonuses not dependent from item broken state
-                    if (proto->ItemSet)
-                        AddItemsSetItem(this, m_items[i]);//套装属性
-
-                    ApplyItemEquipSpell(m_items[i], true);//装备绿字属性
-                    //ApplyEnchantmentByHLDM(m_items[i], true);//随机附魔和附魔的属性加成
-                }
-
-            }
-        }
-
-    }
-
-    //判断是否有赞助坐骑
-    if (m_zuoqis.size() > 0)
-    {
-        //uint32 zzmount = 0;
-        //for (auto zuoqis : m_zuoqis)
-        //{
-        //    zzmount += GetItemCount(zuoqis, true);
-        //}
-
-        if (canusezuoqi)
-        {
-            //如果有赞助坐骑，遍历默认背包的所有格子和银行默认格子（除了魔盒的格子39，40，41）
-            //背包默认格子23-38；银行默认格子39-62（除去魔盒的格子39，40，41）
-            for (int i = 23; i < 63; ++i)
-            {
-                if (i == 39 || i == 40 || i == 41)
-                    continue;
-
-                if (m_items[i])
-                {
-                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1GetEntry %u", m_items[i]->GetEntry());//测试
-                    ItemTemplate const* proto = m_items[i]->GetTemplate();
-                    if (!proto)
-                        continue;
-
-                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
-                    {
-                        continue;
-                    }
-                    uint32 attacktype = Player::GetAttackBySlot(i);
-                    if (attacktype < MAX_ATTACK)
-                        _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), true);
-
-                    _ApplyItemBonusesByMount(proto, i, true);
-
-                }
-            }
-            for (int i = 23; i < 63; ++i)
-            {
-                if (i == 39 || i == 40 || i == 41)
-                    continue;
-
                 if (m_items[i])
                 {
                     ItemTemplate const* proto = m_items[i]->GetTemplate();
                     if (!proto)
                         continue;
-
-                    if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                    if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
                     {
-                        continue;
+                        uint32 attacktype = Player::GetAttackBySlot(i);
+                        if (attacktype < MAX_ATTACK)
+                            _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), true);
+
+                        //_ApplyItemBonusesByHLDM(proto, i, true);
+                        _ApplyItemBonusesByHLDMForSPELL(proto, i, true);
+
                     }
 
-                    // item set bonuses not dependent from item broken state
-                    if (proto->ItemSet)
-                        AddItemsSetItem(this, m_items[i]);
+                }
+            }
 
-                    ApplyItemEquipSpell(m_items[i], true);
-                    ApplyEnchantmentByHLDM(m_items[i], true);
+            for (int i = 39; i < 42; ++i)
+            {
+                if (m_items[i])
+                {
+                    ItemTemplate const* proto = m_items[i]->GetTemplate();
+                    if (!proto)
+                        continue;
+                    if (proto && proto->RequiredLevel < 81 && m_items[i]->GetEntry() < 69901 && proto->Class == 2 || proto->Class == 4)//判断物品是否是装备类
+                    {
+                        // item set bonuses not dependent from item broken state
+                        if (proto->ItemSet)
+                            AddItemsSetItem(this, m_items[i]);//套装属性
+
+                        ApplyItemEquipSpell(m_items[i], true);//装备绿字属性
+                        //ApplyEnchantmentByHLDM(m_items[i], true);//随机附魔和附魔的属性加成
+                    }
 
                 }
             }
 
         }
 
+        //判断是否有赞助坐骑
+        if (m_zuoqis.size() > 0)
+        {
+            //uint32 zzmount = 0;
+            //for (auto zuoqis : m_zuoqis)
+            //{
+            //    zzmount += GetItemCount(zuoqis, true);
+            //}
+
+            if (canusezuoqi)
+            {
+                //如果有赞助坐骑，遍历默认背包的所有格子和银行默认格子（除了魔盒的格子39，40，41）
+                //背包默认格子23-38；银行默认格子39-62（除去魔盒的格子39，40，41）
+                for (int i = 23; i < 63; ++i)
+                {
+                    if (i == 39 || i == 40 || i == 41)
+                        continue;
+
+                    if (m_items[i])
+                    {
+                        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "1GetEntry %u", m_items[i]->GetEntry());//测试
+                        ItemTemplate const* proto = m_items[i]->GetTemplate();
+                        if (!proto)
+                            continue;
+
+                        if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                        {
+                            continue;
+                        }
+                        uint32 attacktype = Player::GetAttackBySlot(i);
+                        if (attacktype < MAX_ATTACK)
+                            _ApplyWeaponDependentAuraMods(m_items[i], WeaponAttackType(attacktype), true);
+
+                        _ApplyItemBonusesByMount(proto, i, true);
+
+                    }
+                }
+                for (int i = 23; i < 63; ++i)
+                {
+                    if (i == 39 || i == 40 || i == 41)
+                        continue;
+
+                    if (m_items[i])
+                    {
+                        ItemTemplate const* proto = m_items[i]->GetTemplate();
+                        if (!proto)
+                            continue;
+
+                        if (std::find(m_zuoqis.begin(), m_zuoqis.end(), m_items[i]->GetEntry()) == m_zuoqis.end())
+                        {
+                            continue;
+                        }
+
+                        // item set bonuses not dependent from item broken state
+                        if (proto->ItemSet)
+                            AddItemsSetItem(this, m_items[i]);
+
+                        ApplyItemEquipSpell(m_items[i], true);
+                        ApplyEnchantmentByHLDM(m_items[i], true);
+
+                    }
+                }
+
+            }
+
+        }
     }
+    
 
 
     LOG_DEBUG("entities.player.items", "_ApplyAllItemMods complete.");

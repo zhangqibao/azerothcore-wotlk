@@ -33,6 +33,11 @@
 #include "botspell.h"
 //end npcbot
 
+static const std::unordered_set<uint32> VIP_SPELLS = {
+//  月神  自由行动药剂  VIP卡技能------------------
+    6724,6615,85411,85412,85413,85414,85415,85416,85417,85418,85419,85420,85421,85422,85423,85424,85425,85426,85427,85428,85429,85430,85431,85432,85433,85434,85435,85436,85437,85438,85439,85440,85441,85442,85443,85444,85445,85446,85447,85448,85449,85450,85451,85452,85453,85454,85455,85456,85457,85458,85459,85460,85461,85462,85463,85464,85465,85466,85467,85468,85469,85470,85471,85472,85473,85474,85475,85476,85477,85478,85479,85480,85481,85482,85483,85484,85485,85486,85487,85488,85489,85490,85491,85492,85493,85494,85550,85551,85552,85553,85554,85555,85556,85557,85558,85559,85811,85812,85813,85814,85815,85816,85817,85818,85819,85820,85821,85822,85823,85824,85825,85826,85827,85828,85829,85830,85831,85832,85833  // 所有VIP技能ID
+};
+
 uint32 GetTargetFlagMask(SpellTargetObjectTypes objType)
 {
     switch (objType)
@@ -421,7 +426,7 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster, int32 const* bp, Unit const
     if (caster)
     {
         //获得玩家当前是否在战场或竞技场中
-        if (caster->IsPlayer())
+        if (caster->IsPlayer() && !caster->ToPlayer()->GetSession()->IsBot())
             if (caster->IsInWorld() && caster->isActiveObject())
                 if (caster->GetMap() && caster->GetAreaId() && caster->GetAreaId())
                     canusezuoqi = !caster->GetMap()->IsBattlegroundOrArena() && caster->GetAreaId() != 2177 && caster->GetAreaId() != 1741;
@@ -559,8 +564,9 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster, int32 const* bp, Unit const
                 //获得主人当前是否在战场或竞技场中
                 bool ownercanusezuoqi = false;
                 if (owner->IsInWorld() && owner->isActiveObject())
-                    if (owner->GetMap() && owner->GetAreaId() && owner->GetAreaId())
-                        ownercanusezuoqi = !owner->GetMap()->IsBattlegroundOrArena() && owner->GetAreaId() != 2177 && owner->GetAreaId() != 1741;
+                    if (owner->IsPlayer() && !owner->ToPlayer()->GetSession()->IsBot())
+                        if (owner->GetMap() && owner->GetAreaId() && owner->GetAreaId())
+                            ownercanusezuoqi = !owner->GetMap()->IsBattlegroundOrArena() && owner->GetAreaId() != 2177 && owner->GetAreaId() != 1741;
 
                 if (owner->IsPlayer() && ownercanusezuoqi)
                 {
@@ -640,8 +646,8 @@ int32 SpellEffectInfo::CalcValue(Unit const* caster, int32 const* bp, Unit const
 
 
 
-        //if (caster->IsPlayer() && !caster->ToPlayer()->GetSession()->IsBot())
-        if (caster->IsPlayer() && canusezuoqi)//机器人也加成
+        if (caster->IsPlayer() && !caster->ToPlayer()->GetSession()->IsBot())
+        //if (caster->IsPlayer() && canusezuoqi)//机器人也加成
         {
             //调试位置
             //if (caster->GetGUID().GetCounter()== 5238) {
@@ -2694,6 +2700,9 @@ SpellCastResult SpellInfo::CheckShapeshift(uint32 form) const
 
 SpellCastResult SpellInfo::CheckLocation(uint32 map_id, uint32 zone_id, uint32 area_id, Player* player /*= nullptr*/, bool strict /*= true*/) const
 {
+
+    MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
+
     // normal case
     if (AreaGroupId > 0)
     {
@@ -2732,7 +2741,6 @@ SpellCastResult SpellInfo::CheckLocation(uint32 map_id, uint32 zone_id, uint32 a
     // raid instance limitation
     if (HasAttribute(SPELL_ATTR6_NOT_IN_RAID_INSTANCES))
     {
-        MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
         if (!mapEntry || mapEntry->IsRaid())
             return SPELL_FAILED_NOT_IN_RAID_INSTANCE;
     }
@@ -2764,7 +2772,6 @@ SpellCastResult SpellInfo::CheckLocation(uint32 map_id, uint32 zone_id, uint32 a
         case 43681:                                         // Inactive
         case 44535:                                         // Spirit Heal (mana)
             {
-                MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
                 if (!mapEntry)
                     return SPELL_FAILED_INCORRECT_AREA;
 
@@ -2775,150 +2782,22 @@ SpellCastResult SpellInfo::CheckLocation(uint32 map_id, uint32 zone_id, uint32 a
         case 35774:                                         // Gold Team (Horde)
         case 35775:                                         // Green Team (Horde)
             {
-                MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
                 if (!mapEntry)
                     return SPELL_FAILED_INCORRECT_AREA;
 
                 return mapEntry->IsBattleArena() && player && player->InBattleground() ? SPELL_CAST_OK : SPELL_FAILED_REQUIRES_AREA;
             }
-        case 6724://月神之光
-        case 6615://自由行动药剂
-            //VIP卡增加的所有技能
-        case 85411:
-        case 85412:
-        case 85413:
-        case 85414:
-        case 85415:
-        case 85416:
-        case 85417:
-        case 85418:
-        case 85419:
-        case 85420:
-        case 85421:
-        case 85422:
-        case 85423:
-        case 85424:
-        case 85425:
-        case 85426:
-        case 85427:
-        case 85428:
-        case 85429:
-        case 85430:
-        case 85431:
-        case 85432:
-        case 85433:
-        case 85434:
-        case 85435:
-        case 85436:
-        case 85437:
-        case 85438:
-        case 85439:
-        case 85440:
-        case 85441:
-        case 85442:
-        case 85443:
-        case 85444:
-        case 85445:
-        case 85446:
-        case 85447:
-        case 85448:
-        case 85449:
-        case 85450:
-        case 85451:
-        case 85452:
-        case 85453:
-        case 85454:
-        case 85455:
-        case 85456:
-        case 85457:
-        case 85458:
-        case 85459:
-        case 85460:
-        case 85461:
-        case 85462:
-        case 85463:
-        case 85464:
-        case 85465:
-        case 85466:
-        case 85467:
-        case 85468:
-        case 85469:
-        case 85470:
-        case 85471:
-        case 85472:
-        case 85473:
-        case 85474:
-        case 85475:
-        case 85476:
-        case 85477:
-        case 85478:
-        case 85479:
-        case 85480:
-        case 85481:
-        case 85482:
-        case 85483:
-        case 85484:
-        case 85485:
-        case 85486:
-        case 85487:
-        case 85488:
-        case 85489:
-        case 85490:
-        case 85491:
-        case 85492:
-        case 85493:
-        case 85494:
-        case 85550:
-        case 85551:
-        case 85552:
-        case 85553:
-        case 85554:
-        case 85555:
-        case 85556:
-        case 85557:
-        case 85558:
-        case 85559:
-        case 85811:
-        case 85812:
-        case 85813:
-        case 85814:
-        case 85815:
-        case 85816:
-        case 85817:
-        case 85818:
-        case 85819:
-        case 85820:
-        case 85821:
-        case 85822:
-        case 85823:
-        case 85824:
-        case 85825:
-        case 85826:
-        case 85827:
-        case 85828:
-        case 85829:
-        case 85830:
-        case 85831:
-        case 85832:
-        case 85833:
-        {
-            //禁止在战场和竞技场中生效VIP相关技能
-            MapEntry const* mapEntry = sMapStore.LookupEntry(map_id);
-            if (!mapEntry)
-                return SPELL_FAILED_INCORRECT_AREA;
+    }
+    if (VIP_SPELLS.count(Id))
+    {
+        // 统一处理逻辑
+        if (!mapEntry)
+            return SPELL_FAILED_INCORRECT_AREA;
 
-            if (player)
-            {
-                if (mapEntry->IsBattlegroundOrArena() || area_id == 2177 || area_id == 1741)
-                {
-                    return SPELL_FAILED_INCORRECT_AREA;
-                }
-                else
-                    return SPELL_CAST_OK;
-            }
+        if (player && (mapEntry->IsBattlegroundOrArena() || area_id == 2177 || area_id == 1741))
+            return SPELL_FAILED_INCORRECT_AREA;
 
-        }
-
+        return SPELL_CAST_OK;
     }
 
     return SPELL_CAST_OK;

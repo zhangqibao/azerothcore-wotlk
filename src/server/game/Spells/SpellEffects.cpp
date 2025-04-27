@@ -5033,146 +5033,16 @@ void Spell::EffectReputation(SpellEffIndex effIndex)
 
     repChange = player->CalculateReputationGain(REPUTATION_SOURCE_SPELL, 0, repChange, factionId);
 
+
     //VIP卡增加声望倍率
     float _vipplusrate = 1.0f;
-    if (player->getVIP20())
-    {
-        _vipplusrate = float(_vipplusrate * 2.0f);
-    }
-    else
-    {
-        if (player->getVIP19())
-        {
-            _vipplusrate = float(_vipplusrate * 1.95f);
-        }
-        else
-        {
-            if (player->getVIP18())
-            {
-                _vipplusrate = float(_vipplusrate * 1.9f);
-            }
-            else
-            {
-                if (player->getVIP17())
-                {
-                    _vipplusrate = float(_vipplusrate * 1.85f);
-                }
-                else
-                {
-                    if (player->getVIP16())
-                    {
-                        _vipplusrate = float(_vipplusrate * 1.8f);
-                    }
-                    else
-                    {
-                        if (player->getVIP15())
-                        {
-                            _vipplusrate = float(_vipplusrate * 1.75f);
-                        }
-                        else
-                        {
-                            if (player->getVIP14())
-                            {
-                                _vipplusrate = float(_vipplusrate * 1.7f);
-                            }
-                            else
-                            {
-                                if (player->getVIP13())
-                                {
-                                    _vipplusrate = float(_vipplusrate * 1.65f);
-                                }
-                                else
-                                {
-                                    if (player->getVIP12())
-                                    {
-                                        _vipplusrate = float(_vipplusrate * 1.6f);
-                                    }
-                                    else
-                                    {
+    //根据会员等级给加成
+    static const float VIP_BONUS[21] = {
+        0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+    };
 
-                                        if (player->getVIP11())
-                                        {
-                                            _vipplusrate = float(_vipplusrate * 1.55f);
-                                        }
-                                        else
-                                        {
-                                            if (player->getVIP10())
-                                            {
-                                                _vipplusrate = float(_vipplusrate * 1.5f);
-                                            }
-                                            else
-                                            {
-                                                if (player->getVIP9())
-                                                {
-                                                    _vipplusrate = float(_vipplusrate * 1.45f);
-                                                }
-                                                else
-                                                {
-                                                    if (player->getVIP8())
-                                                    {
-                                                        _vipplusrate = float(_vipplusrate * 1.4f);
-                                                    }
-                                                    else
-                                                    {
-                                                        if (player->getVIP7())
-                                                        {
-                                                            _vipplusrate = float(_vipplusrate * 1.35f);
-                                                        }
-                                                        else
-                                                        {
-                                                            if (player->getVIP6())
-                                                            {
-                                                                _vipplusrate = float(_vipplusrate * 1.3f);
-                                                            }
-                                                            else
-                                                            {
-                                                                if (player->getVIP5())
-                                                                {
-                                                                    _vipplusrate = float(_vipplusrate * 1.25f);
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (player->getVIP4())
-                                                                    {
-                                                                        _vipplusrate = float(_vipplusrate * 1.2f);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (player->getVIP3())
-                                                                        {
-                                                                            _vipplusrate = float(_vipplusrate * 1.15f);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (player->getVIP2())
-                                                                            {
-                                                                                _vipplusrate = float(_vipplusrate * 1.1f);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (player->getVIP1())
-                                                                                {
-                                                                                    _vipplusrate = float(_vipplusrate * 1.05f);
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    uint8 vipLevel = player->getVIPLevel();
+    _vipplusrate = float(_vipplusrate * VIP_BONUS[vipLevel]);
     //end -------------
 
     repChange = repChange * _vipplusrate;//乘以倍率

@@ -192,8 +192,8 @@ INSERT INTO `creature_template` VALUES ('11327', '0', '0', '0', '0', '0', '跳�
 INSERT INTO `creature_template` VALUES ('7547', '0', '0', '0', '0', '0', '蓝龙宝宝', '新人助理', null, '71017', '1', '1', '0', '35', '131', '1', '1.14286', '1', '1', '18', '1.5', '0', '0', '1', '2000', '2000', '1', '1', '1', '2', '0', '0', '0', '2', '0', '0', '0', '12', '0', '0', '0', '0', '0', '0', '0', '0', '', '0', '1', '1', '1', '1', '1', '0', '0', '1', '0', '0', '16777218', '', '12340');
 
 -- creature模型表
-INSERT INTO `creature_template_model` VALUES ('60000', '0', '10990', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60001', '0', '15992', '1', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60000', '0', '10990', '2.5', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60001', '0', '15992', '3.5', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60002', '0', '10990', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60003', '0', '10990', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60004', '0', '10990', '1', '1', '12340');
@@ -204,41 +204,41 @@ INSERT INTO `creature_template_model` VALUES ('60009', '0', '10990', '1', '1', '
 INSERT INTO `creature_template_model` VALUES ('60010', '0', '10990', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60011', '0', '10990', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60012', '0', '7190', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60013', '0', '7167', '1', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60013', '0', '7167', '2', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60014', '0', '9341', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60015', '0', '13729', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60016', '0', '14546', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60016', '1', '14546', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60016', '2', '14546', '1', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60016', '3', '14546', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60017', '0', '14379', '1', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60017', '0', '14379', '0.5', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60018', '0', '21180', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60101', '0', '28048', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60102', '0', '28048', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60103', '0', '28048', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60104', '0', '28048', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60105', '0', '28048', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60106', '0', '28048', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60107', '0', '28048', '1', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60101', '0', '28048', '0.6', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60102', '0', '28048', '0.6', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60103', '0', '28048', '0.6', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60104', '0', '28048', '0.6', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60105', '0', '28048', '0.6', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60106', '0', '28048', '0.6', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60107', '0', '28048', '0.6', '1', '12340');
 INSERT INTO `creature_template_model` VALUES ('60110', '0', '7190', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60111', '0', '7165', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('60130', '0', '31833', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('90001', '0', '90001', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('90001', '1', '90001', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('90001', '2', '90001', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('90001', '3', '90001', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988901', '0', '1141', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988902', '0', '1060', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988903', '0', '320', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988904', '0', '328', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988905', '0', '14779', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988906', '0', '1206', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988907', '0', '229', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988908', '0', '10000', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988909', '0', '837', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988910', '0', '304', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988911', '0', '643', '1', '1', '12340');
-INSERT INTO `creature_template_model` VALUES ('988912', '0', '8871', '1', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60111', '0', '7165', '1.5', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('60130', '0', '31833', '1.1', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('90001', '0', '90001', '1.5', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('90001', '1', '90001', '1.5', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('90001', '2', '90001', '1.5', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('90001', '3', '90001', '1.5', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988901', '0', '1141', '20', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988902', '0', '1060', '10', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988903', '0', '320', '12', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988904', '0', '328', '20', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988905', '0', '14779', '15', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988906', '0', '1206', '20', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988907', '0', '229', '8', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988908', '0', '10000', '8', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988909', '0', '837', '10', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988910', '0', '304', '25', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988911', '0', '643', '8', '1', '12340');
+INSERT INTO `creature_template_model` VALUES ('988912', '0', '8871', '8', '1', '12340');
 
 
 INSERT IGNORE INTO `creature_template_model` (`CreatureID`,`Idx`,`CreatureDisplayID`,`DisplayScale`,`Probability`,`VerifiedBuild`) VALUES
@@ -1807,6 +1807,10 @@ INSERT INTO `creature` VALUES ('1000202', '7899', '0', '0', '0', '0', '0', '1', 
 INSERT INTO `creature` VALUES ('1000206', '7899', '0', '0', '0', '0', '0', '1', '1', '1', '-8172.02', '-1575.79', '138.816', '1.47253', '300', '0', '0', '2218', '0', '0', '0', '0', '0', '', null, '0', null);
 INSERT INTO `creature` VALUES ('1000207', '7899', '0', '0', '0', '0', '0', '1', '1', '1', '1846.87', '-3717.35', '162.226', '0.113815', '300', '0', '0', '2218', '0', '0', '0', '0', '0', '', null, '0', null);
 INSERT INTO `creature` VALUES ('1000209', '7899', '0', '0', '0', '0', '0', '1', '1', '1', '-13203.9', '278.438', '21.8579', '0.113815', '600', '0', '0', '2218', '0', '0', '0', '0', '0', '', null, '0', null);
+INSERT INTO `creature` VALUES ('1000220', '60130', '0', '0', '1', '0', '0', '0', '1', '0', '-8554.89', '1995.9', '100.719', '1.99524', '300', '0', '0', '6411', '0', '0', '0', '0', '0', '', null, '0', null);
+INSERT INTO `creature` VALUES ('1000221', '60110', '0', '0', '1', '0', '0', '1', '1', '0', '-8558.76', '2006.15', '100.72', '5.19541', '300', '0', '0', '3663', '0', '0', '0', '0', '0', '', null, '0', null);
+INSERT INTO `creature` VALUES ('1000222', '60018', '0', '0', '0', '0', '0', '1', '1', '0', '-14402.3', '688.181', '23.7948', '2.45046', '300', '0', '0', '57', '0', '0', '0', '0', '0', '', null, '0', null);
+INSERT INTO `creature` VALUES ('1000223', '60018', '0', '0', '1', '0', '0', '1', '1', '0', '-8547.91', '2026.26', '100.721', '4.81841', '300', '0', '0', '57', '0', '0', '0', '0', '0', '', null, '0', null);
 
 -- 新手村邮箱、火炬、远古宝箱
 INSERT INTO `gameobject` VALUES ('3000001', '144126', '0', '0', '0', '1', '1', '-8919.74', '-137.317', '80.5512', '2.01849', '0', '0', '-0.846429', '-0.532502', '25', '0', '1', '', null, null);

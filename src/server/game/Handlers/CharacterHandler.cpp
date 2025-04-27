@@ -791,6 +791,7 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
     m_playerLoading = true;
     ObjectGuid playerGuid = holder.GetGuid();
 
+    /*
     //判断是否有bot登录在这个角色上(当前session好像已经是新登录玩家的session了，不是之前bot的，所以写法有问题！)
 //LOG_ERROR("xx", "HandlePlayerLoginFromDB {}", playerGuid.GetCounter());//测试,角色登录打印到这里了
     Player* oldchar = ObjectAccessor::FindPlayer(playerGuid);
@@ -820,7 +821,7 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
     }
 
     //------------
-
+    */
 
     Player* pCurrChar = new Player(this);
     // for send server info and strings (config)

@@ -1306,6 +1306,7 @@ public:
     [[nodiscard]] uint16 getYGZHUANSHENGNUMALL() const { return m_ygzhuanshengnumall; }//远古转生石个数(包括银行)
     void setYGZHUANSHENGNUMALL(uint16 a) { m_ygzhuanshengnumall = a; }
 
+    /*
     bool m_vip1;
     bool m_vip2;
     bool m_vip3;
@@ -1369,6 +1370,15 @@ public:
     void setVIP19(bool a) { m_vip19 = a; }
     [[nodiscard]] bool getVIP20() const { return m_vip20; }//是否有VIP卡20
     void setVIP20(bool a) { m_vip20 = a; }
+    */
+
+    uint8 m_viplevel;
+    [[nodiscard]] uint8 calVIPLevel() const;
+    [[nodiscard]] uint8 getVIPLevel() const { return m_viplevel; }
+    [[nodiscard]] void setVIPLevel(uint8 a) { m_viplevel = a; }
+
+
+
 
     [[nodiscard]] Item* GetItemByGuid(ObjectGuid guid) const;
     [[nodiscard]] Item* GetItemByEntry(uint32 entry) const;

@@ -75,35 +75,36 @@ void Unit::UpdateDamagePhysical(WeaponAttackType attType)
 
     if (GetOwner() && GetOwner()->IsPlayer())
     {
-        //主人是否是硬核模式
+        if (!GetOwner()->ToPlayer()->GetSession()->IsBot())
+        {
+            //主人是否是硬核模式
         //if (((Player*)GetOwner())->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL)//现在允许非硬核模式生效
         //{
             //ownerpower = ((Player*)GetOwner())->GetSession()->GetPlayer()->GetTotalAttackPowerValue(attType);//取近战攻强
-        ownerpower = ((Player*)GetOwner())->GetSession()->GetPlayer()->GetTotalAttackPowerValue(RANGED_ATTACK);//取远程攻强
-        if (ownerpower > 0)
-        {
-            totalMin = float(totalMin + float(ownerpower * 0.023));
-            totalMax = float(totalMax + float(ownerpower * 0.023));
+            ownerpower = ((Player*)GetOwner())->GetSession()->GetPlayer()->GetTotalAttackPowerValue(RANGED_ATTACK);//取远程攻强
+            if (ownerpower > 0)
+            {
+                totalMin = float(totalMin + float(ownerpower * 0.023));
+                totalMax = float(totalMax + float(ownerpower * 0.023));
+            }
+
+            //获取主人的法伤
+            float ownerfashang = 0.0f;
+            //取法伤中的最大值作为伤害加成参考
+            int32 DoneAdvertisedBenefit = (((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE)) ? ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE);
+            DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
+            DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST);
+            DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW);
+            DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE);
+            ownerfashang = float(DoneAdvertisedBenefit);
+            if (ownerfashang > 0)
+            {
+                totalMin = float(totalMin + float(ownerfashang * 0.05));
+                totalMax = float(totalMax + float(ownerfashang * 0.05));
+            }
+          //}
         }
-
-        //获取主人的法伤
-        float ownerfashang = 0.0f;
-        //取法伤中的最大值作为伤害加成参考
-        int32 DoneAdvertisedBenefit = (((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE)) ? ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE);
-        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
-        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST);
-        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW);
-        DoneAdvertisedBenefit = (DoneAdvertisedBenefit > ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE)) ? DoneAdvertisedBenefit : ((Player*)GetOwner())->GetSession()->GetPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE);
-        ownerfashang = float(DoneAdvertisedBenefit);
-        if (ownerfashang > 0)
-        {
-            totalMin = float(totalMin + float(ownerfashang * 0.05));
-            totalMax = float(totalMax + float(ownerfashang * 0.05));
-        }
-
-
-
-        //}
+        
     }
 
     switch (attType)
@@ -323,10 +324,12 @@ void Player::UpdateArmor()
             dynamic = (varmaxvl * 2.0f) + (varmaxv2 - varmaxvl) * valxs2 + (statvalue - varmaxv2) * valxs3;
         }
 
+        /*
         //防御加护甲,1点防御10护甲
         float statvalue2 = (int32(GetDefenseSkillValue()) - 300) * 10.0f;
         if (statvalue2 > 0)
             dynamic = dynamic + statvalue2;
+        */
 
         value += dynamic;
 
@@ -434,7 +437,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_STATS))
         {
             //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
-            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
             {
                 val2 = level * 2.0f + GetStat(STAT_AGILITY) - 10.0f;
             }
@@ -458,7 +461,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         else if (IsClass(CLASS_ROGUE, CLASS_CONTEXT_STATS) || IsClass(CLASS_WARRIOR, CLASS_CONTEXT_STATS))
         {
             //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
-            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
             {
                 val2 = level + GetStat(STAT_AGILITY) - 10.0f;
             }
@@ -496,7 +499,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         else
         {
             //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
-            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
             {
                 val2 = GetStat(STAT_AGILITY) - 10.0f;
             }
@@ -527,7 +530,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         else if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_STATS) || IsClass(CLASS_SHAMAN, CLASS_CONTEXT_STATS) || IsClass(CLASS_ROGUE, CLASS_CONTEXT_STATS))
         {
             //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
-            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
             {
                 val2 = level * 2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f;
             }
@@ -616,7 +619,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
             {
             case FORM_CAT:
                 //如果服务器设置的最大等级是80就正常处理，否则就特殊处理
-                if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) <= 80)
+                if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
                 {
                     val2 = (GetLevel() * mLevelMult) + GetStat(STAT_STRENGTH) * 2.0f + GetStat(STAT_AGILITY) - 20.0f + weapon_bonus + m_baseFeralAP;
                 }
@@ -759,26 +762,35 @@ void Player::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bo
             lvl = 60;
 
         //德鲁伊变形状态伤害不依赖武器，但硬核模式做出伤害提升
-        if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL))//硬核模式增加变形的伤害
+        if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 80)
         {
-
             weaponMinDamage = lvl * 0.85f * attackSpeedMod;
             weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
-
-            float pluspower = 0.0f;
-            //先获得整体攻强数值
-            pluspower = GetTotalAttackPowerValue(attType);
-            if (int32(pluspower) > 0)
-            {
-                weaponMinDamage = weaponMinDamage + float(pluspower * 0.08) / 2.0f;
-                weaponMaxDamage = weaponMaxDamage + float(pluspower * 0.08) / 2.0f;
-            }
         }
         else
         {
-            weaponMinDamage = lvl * 0.85f * attackSpeedMod;
-            weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
+            if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL))//硬核模式增加变形的伤害
+            {
+
+                weaponMinDamage = lvl * 0.85f * attackSpeedMod;
+                weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
+
+                float pluspower = 0.0f;
+                //先获得整体攻强数值
+                pluspower = GetTotalAttackPowerValue(attType);
+                if (int32(pluspower) > 0)
+                {
+                    weaponMinDamage = weaponMinDamage + float(pluspower * 0.08) / 2.0f;
+                    weaponMaxDamage = weaponMaxDamage + float(pluspower * 0.08) / 2.0f;
+                }
+            }
+            else
+            {
+                weaponMinDamage = lvl * 0.85f * attackSpeedMod;
+                weaponMaxDamage = lvl * 1.25f * attackSpeedMod;
+            }
         }
+        
     }
     else if (!CanUseAttackType(attType)) // check if player not in form but still can't use (disarm case)
     {
