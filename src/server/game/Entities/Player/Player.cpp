@@ -2122,7 +2122,7 @@ void Player::RegenerateHealth()
         {
             //根据会员等级给加成
             static const float VIP_BONUS[21] = {
-                0.0f, 0.002f, 0.004f, 0.006f, 0.008f, 0.01f, 0.012f, 0.014f, 0.016f, 0.018f, 0.02f, 0.022f, 0.024f, 0.026f, 0.028f, 0.03f, 0.032f, 0.034f, 0.036f, 0.038f, 0.04f // 按VIP等级预定义数值
+                1.0f, 0.002f, 0.004f, 0.006f, 0.008f, 0.01f, 0.012f, 0.014f, 0.016f, 0.018f, 0.02f, 0.022f, 0.024f, 0.026f, 0.028f, 0.03f, 0.032f, 0.034f, 0.036f, 0.038f, 0.04f // 按VIP等级预定义数值
             };
 
             uint8 vipLevel = getVIPLevel();
@@ -2884,7 +2884,7 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
 
     //根据会员等级给加成
     static const float VIP_BONUS[21] = {
-        0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+        1.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
     };
 
     uint8 vipLevel = getVIPLevel();
@@ -7317,7 +7317,7 @@ void Player::RewardReputation(Unit* victim)
     float _vipplusrate = 1.0f;
     //根据会员等级给加成
     static const float VIP_BONUS[21] = {
-        0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+        1.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
     };
 
     uint8 vipLevel = getVIPLevel();
@@ -7402,7 +7402,7 @@ void Player::RewardReputation(Quest const* quest)
         float _vipplusrate = 1.0f;
         //根据会员等级给加成
         static const float VIP_BONUS[21] = {
-            0.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
+            1.0f, 1.05f,1.10f,1.15f,1.20f,1.25f,1.30f,1.35f,1.40f,1.45f,1.50f,1.55f,1.60f,1.65f,1.70f,1.75f,1.80f,1.85f,1.90f,1.95f,2.0f // 按VIP等级预定义数值
         };
 
         uint8 vipLevel = getVIPLevel();

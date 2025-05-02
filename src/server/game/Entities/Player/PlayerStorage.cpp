@@ -6808,22 +6808,6 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     //加载技能冷却时间 原来的位置
     _LoadSpellCooldowns(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_SPELL_COOLDOWNS));
 
-    //如果机器人没有公会，自动加入公会
-    if (GetGuildId() == 0 && GetSession()->IsBot())
-    {
-        uint32 guildIdarr[9] = { 4, 5, 6, 7, 8, 9, 10, 11, 12 };//默认加入的公会ID
-
-        Guild* guild;
-        guild = sGuildMgr->GetGuildById(guildIdarr[urand(0, 8)]);
-        if (guild)
-        {
-            if (guild->AddMember(GetGUID(), guild->GetLowestRankId()))
-            {
-                //添加机器人到公会
-            }
-        }
-    }
-
     // Spell code allow apply any auras to dead character in load time in aura/spell/item loading
     // Do now before stats re-calculation cleanup for ghost state unexpected auras
     if (!IsAlive())

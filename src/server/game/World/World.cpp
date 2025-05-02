@@ -389,6 +389,13 @@ void World::LoadConfigSettings(bool reload)
     //多少级以下禁止PVP
     _int_configs[CONFIG_UINT32_PVP_FORBID_LEVEL_MIX] = sConfigMgr->GetOption<int32>("PvpForbidLevelMix", 5);
 
+    //角色第一次登陆是否自动加入公会
+    _bool_configs[CONFIG_BOOL_STARTGUILD_ENABLE] = sConfigMgr->GetOption<bool>("StartGuild.Enable", false);
+    //部落默认加公会ID
+    _int_configs[CONFIG_UINT32_STARTGUILD_BL] = sConfigMgr->GetOption<int32>("StartGuild.Horde", 1);
+    //联盟默认加公会ID
+    _int_configs[CONFIG_UINT32_STARTGUILD_LM] = sConfigMgr->GetOption<int32>("StartGuild.Alliance", 2);
+
     //是否PVP掉落装备
     _bool_configs[CONFIG_BOOL_PVPDROPITEM_ENABLE] = sConfigMgr->GetOption<bool>("PVPDropItemEnable", false);
 

@@ -1882,6 +1882,25 @@ public:
                     {
                         _pet->AddAura(buffspells.second, _pet);
                     }
+
+                    //如果玩家队伍里有机器人，给机器人也上buff
+                    if (Group* grp = handler->GetSession()->GetPlayer()->GetGroup())
+                    {
+                        for (GroupReference* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
+                        {
+                            Player* member = itr->GetSource();
+                            if (!member)
+                                continue;
+
+                            if (member == handler->GetSession()->GetPlayer())
+                                continue;
+
+                            if (member->GetSession()->IsBot())
+                            {
+                                member->AddAura(buffspells.second, member);
+                            }
+                        }
+                    }
                 }
             }
             return true;

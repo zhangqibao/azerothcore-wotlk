@@ -16,7 +16,7 @@ INSERT INTO `characters` VALUES ('13', '2', '楼兰娜', '1', '2', '1', '1', '0'
 
 
 
-INSERT INTO `guild` VALUES ('1', '无尽风暴', '1', '0', '0', '0', '0', '0', '', 'No message set.', '1716458277', '0');
+INSERT INTO `guild` VALUES ('1', '总接待处', '1', '0', '0', '0', '0', '0', '', 'No message set.', '1716458277', '0');
 INSERT INTO `guild_eventlog` VALUES ('1', '0', '2', '1', '0', '0', '1716458277');
 INSERT INTO `guild_member` VALUES ('1', '1', '0', '', '');
 INSERT INTO `guild_rank` VALUES ('1', '0', '公会会长', '1962495', '4294967295');
@@ -25,7 +25,7 @@ INSERT INTO `guild_rank` VALUES ('1', '2', '精英', '67', '0');
 INSERT INTO `guild_rank` VALUES ('1', '3', '会员', '67', '0');
 INSERT INTO `guild_rank` VALUES ('1', '4', '新人', '67', '0');
 
-INSERT INTO `guild` VALUES ('2', '狂野怒吼', '3', '0', '0', '0', '0', '0', '', 'No message set.', '1716458674', '0');
+INSERT INTO `guild` VALUES ('2', '部落接待处', '3', '0', '0', '0', '0', '0', '', 'No message set.', '1716458674', '0');
 INSERT INTO `guild_eventlog` VALUES ('2', '0', '2', '3', '0', '0', '1716458674');
 INSERT INTO `guild_member` VALUES ('2', '3', '0', '', '');
 INSERT INTO `guild_rank` VALUES ('2', '0', '公会会长', '1962495', '4294967295');
@@ -34,7 +34,7 @@ INSERT INTO `guild_rank` VALUES ('2', '2', '精英', '67', '0');
 INSERT INTO `guild_rank` VALUES ('2', '3', '会员', '67', '0');
 INSERT INTO `guild_rank` VALUES ('2', '4', '新人', '67', '0');
 
-INSERT INTO `guild` VALUES ('3', '圣光荣耀', '4', '0', '0', '0', '0', '0', '', 'No message set.', '1716458935', '0');
+INSERT INTO `guild` VALUES ('3', '联盟接待处', '4', '0', '0', '0', '0', '0', '', 'No message set.', '1716458935', '0');
 INSERT INTO `guild_eventlog` VALUES ('3', '0', '2', '4', '0', '0', '1716458935');
 INSERT INTO `guild_member` VALUES ('3', '4', '0', '', '');
 INSERT INTO `guild_rank` VALUES ('3', '0', '公会会长', '1962495', '4294967295');

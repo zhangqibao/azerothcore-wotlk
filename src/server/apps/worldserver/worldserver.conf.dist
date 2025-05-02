@@ -1,4 +1,4 @@
-﻿################################################
+################################################
 # AzerothCore World Server configuration file #
 ################################################
 [worldserver]
@@ -1174,6 +1174,15 @@ ItemCanUseInBGEnable = true
 #是否允许竞技场内使用氪金道具
 ItemCanUseInArenaEnable = false
 
+#角色第一次登陆是否自动加入公会
+StartGuild.Enable = true
+
+#默认加入一个公会，可以设置为相同ID，不受下面的AllowTwoSide.Interaction.Guild影响，可以作为服务器默认接待公会
+#部落默认加公会ID
+StartGuild.Horde = 1
+
+#联盟默认加公会ID
+StartGuild.Alliance = 1
 
 #
 ###################################################################################################

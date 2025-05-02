@@ -719,6 +719,14 @@ bool Group::RemoveMember(ObjectGuid guid, const RemoveMethod& method /*= GROUP_R
         return m_memberSlots.size() > 0;
     }
 
+    //如果是机器人离队，移除所有buff
+    Player* _chkplayer = ObjectAccessor::FindConnectedPlayer(guid);
+    if (_chkplayer && _chkplayer->GetSession()->IsBot())
+    {
+        _chkplayer->RemoveAllAurasVisibility();
+    }
+    //-------------
+
     // remove member and change leader (if need) only if strong more 2 members _before_ member remove (BG/BF allow 1 member group)
     if (GetMembersCount() > ((isBGGroup() || isLFGGroup() || isBFGroup()) ? 1u : 2u))
     {

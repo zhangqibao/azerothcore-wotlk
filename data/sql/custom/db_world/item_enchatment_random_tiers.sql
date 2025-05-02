@@ -728,3 +728,11 @@ INSERT INTO `item_enchantment_random_tiers` (`enchantID`, `tier`, `class`, `excl
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
 /*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+
+
+-- 删除奇怪的随机附魔
+delete from item_enchantment_random_tiers where enchantID in(36,199,200,253,201,202,303,803,912,2718,203,1023,1863,1864,1894,2015,204,205,284,910,1865,1866,1898,1899,1900,2587,2673,2719);
+-- 删除几个奇怪的随机附魔
+delete from item_enchantment_random_tiers where enchantID in(1523,1524,1525,1526,1527,1528,1529,1530,1531,1532,1543);
+-- 去掉几个临时随机附魔，防止物品被绑定
+delete from item_enchantment_random_tiers where enchantID in(89,121,122,123,346,347,348,383,384,385,1504);

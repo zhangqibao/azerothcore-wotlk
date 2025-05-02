@@ -791,7 +791,6 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
     m_playerLoading = true;
     ObjectGuid playerGuid = holder.GetGuid();
 
-    /*
     //判断是否有bot登录在这个角色上(当前session好像已经是新登录玩家的session了，不是之前bot的，所以写法有问题！)
 //LOG_ERROR("xx", "HandlePlayerLoginFromDB {}", playerGuid.GetCounter());//测试,角色登录打印到这里了
     Player* oldchar = ObjectAccessor::FindPlayer(playerGuid);
@@ -821,7 +820,7 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
     }
 
     //------------
-    */
+    
 
     Player* pCurrChar = new Player(this);
     // for send server info and strings (config)
@@ -1147,6 +1146,48 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
     }
 
     sScriptMgr->OnPlayerLogin(pCurrChar);
+
+
+    //如果机器人没有公会，自动加入公会
+    /*
+    if (pCurrChar->GetGuildId() == 0 && pCurrChar->GetSession()->IsBot())
+    {
+        uint32 guildIdarr[9] = { 4, 5, 6, 7, 8, 9, 10, 11, 12 };//默认加入的公会ID
+
+        Guild* guild;
+        guild = sGuildMgr->GetGuildById(guildIdarr[urand(0, 8)]);
+        if (guild)
+        {
+            if (guild->AddMember(pCurrChar->GetGUID(), guild->GetLowestRankId()))
+            {
+                //添加机器人到公会
+            }
+        }
+    }
+    */
+    if (sWorld->getBoolConfig(CONFIG_BOOL_STARTGUILD_ENABLE))
+    {
+        if (pCurrChar->GetGuildId() == 0 && ((!pCurrChar->GetSession()->IsBot() && pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST)) || pCurrChar->GetSession()->IsBot()))
+        {
+            //默认加入的公会ID
+            const uint32 GUILD_ID_ALLIANCE = sWorld->getIntConfig(CONFIG_UINT32_STARTGUILD_LM);
+            const uint32 GUILD_ID_HORDE = sWorld->getIntConfig(CONFIG_UINT32_STARTGUILD_BL);
+
+            LOG_ERROR("xx", "GUILD_ID_ALLIANCE {}  ", GUILD_ID_ALLIANCE);//测试
+            LOG_ERROR("xx", "GUILD_ID_HORDE {}  ", GUILD_ID_HORDE);//测试
+
+            Guild* guild;
+            guild = sGuildMgr->GetGuildById(pCurrChar->GetTeamId() == TEAM_ALLIANCE ? GUILD_ID_ALLIANCE : GUILD_ID_HORDE);
+            if (guild)
+            {
+                if (guild->AddMember(pCurrChar->GetGUID(), guild->GetLowestRankId()))
+                {
+                    //添加玩家到公会
+                }
+            }
+        }
+    }
+    //end ----------------
 
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
     {

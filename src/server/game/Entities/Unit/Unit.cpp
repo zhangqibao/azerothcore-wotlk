@@ -6313,8 +6313,8 @@ void Unit::RemoveAllAurasVisibility()
 {
     if (Player* player = ToPlayer())
     {
-        if (!player->GetSession()->IsBot())
-        {
+        //if (!player->GetSession()->IsBot())
+        //{
             for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
             {
                 if (permanentAuras.find(iter->second->GetBase()->GetSpellInfo()->Id) != permanentAuras.end())
@@ -6337,7 +6337,7 @@ void Unit::RemoveAllAurasVisibility()
                     ++aurIter;
             }
 
-        }
+        //}
     }
 }
 
@@ -16798,7 +16798,6 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
     // additional checks - only PvP case
     if (playerAffectingAttacker && playerAffectingTarget)
     {
-        /*
         //pvp保护
         if (!playerAffectingAttacker->GetMap()->IsBattlegroundOrArena() && playerAffectingAttacker->GetAreaId() != 976 && playerAffectingAttacker->GetAreaId() != 2177 && playerAffectingAttacker->GetAreaId() != 3217)//加基森和荆棘谷的大竞技场有PVP抢箱子，所以没有PVP保护
         {
@@ -16837,10 +16836,12 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
                 }
 
                 //如果任何一方是机器人，并且机器人是等级大于55，禁止PVP（因为高等级机器人的装备等级会很高）
+                /*
                 if (((((Player*)playerAffectingTarget)->GetSession()->IsBot() && ((Player*)playerAffectingTarget)->GetLevel() > 55) || (((Player*)playerAffectingAttacker)->GetSession()->IsBot()) && ((Player*)playerAffectingAttacker)->GetLevel() > 55))
                 {
                     return false;
                 }
+                */
 
                 //其中一方为专家模式，另一方非专家模式，禁止PVP(任何一方是机器人的话，不禁止)
             //if ( ((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3) && !(((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
@@ -16877,7 +16878,6 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
 
         }
         //pvp保护end----
-        */
 
 
         if (!IsPvP() && bySpell && bySpell->IsAffectingArea() && !bySpell->HasAttribute(SPELL_ATTR5_IGNORE_AREA_EFFECT_PVP_CHECK))
