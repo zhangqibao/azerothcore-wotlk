@@ -207,7 +207,7 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (2, 558, 3, "", "", "奥金尼地穴");
 
 -- 70的副本
-DELETE FROM `disables` WHERE `entry` IN (540, 545, 556, 552, 553, 554, 555,  585);
+DELETE FROM `disables` WHERE `entry` IN (540, 545, 556, 552, 553, 554, 555,560, 595, 269);
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES 
 (2, 540, 3, "", "", "破碎大厅"),
 (2, 545, 3, "", "", "蒸汽地窖"),
@@ -216,15 +216,17 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (2, 553, 3, "", "", "生态船"),
 (2, 554, 3, "", "", "能源舰"),
 (2, 555, 3, "", "", "暗影迷宫"),
+(2, 560, 3, "", "", "旧希尔斯布莱德丘陵：逃离敦霍尔德"),
+(2, 595, 3, "", "", "净化斯坦索姆"),
+(2, 269, 3, "", "", "黑色沼泽：开启黑暗之门");
+
+
+
+-- 70的副本 魔导师平台
+DELETE FROM `disables` WHERE `entry` IN (585);
+INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES 
 (2, 585, 3, "", "", "魔导师平台");
 
-DELETE FROM `disables` WHERE `entry` IN (560, 595, 269);
-INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES 
-(2, 560, 3, "", "", "旧希尔斯布莱德丘陵：逃离敦霍尔德");
-INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES 
-(2, 595, 3, "", "", "净化斯坦索姆");
-INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES 
-(2, 269, 3, "", "", "黑色沼泽：开启黑暗之门");
 
 -- 80 五人本
 

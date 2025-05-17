@@ -1149,13 +1149,15 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
 
 
     //如果机器人没有公会，自动加入公会
-    /*
-    if (pCurrChar->GetGuildId() == 0 && pCurrChar->GetSession()->IsBot())
+    if (pCurrChar->GetGuildId() == 0 && pCurrChar->GetSession()->IsBot() && pCurrChar->GetLevel()>10)
+    //if (pCurrChar->GetGuildId() == 0 && ( pCurrChar->GetSession()->IsBot() && pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST) ))
     {
-        uint32 guildIdarr[9] = { 4, 5, 6, 7, 8, 9, 10, 11, 12 };//默认加入的公会ID
+        uint32 guildIdarrBL[5] = { 4, 5, 6, 7, 8 };//部落默认加入的公会ID
+        uint32 guildIdarrLM[4] = { 9, 10, 11, 12 };//联盟默认加入的公会ID
 
         Guild* guild;
-        guild = sGuildMgr->GetGuildById(guildIdarr[urand(0, 8)]);
+        //guild = sGuildMgr->GetGuildById(guildIdarr[urand(0, 8)]);
+        guild = sGuildMgr->GetGuildById(pCurrChar->GetTeamId() == TEAM_ALLIANCE ? guildIdarrLM[urand(0, 8)] : guildIdarrBL[urand(0, 8)]);
         if (guild)
         {
             if (guild->AddMember(pCurrChar->GetGUID(), guild->GetLowestRankId()))
@@ -1164,17 +1166,15 @@ void WorldSession::HandlePlayerLoginFromDB(LoginQueryHolder const& holder)
             }
         }
     }
-    */
+    
     if (sWorld->getBoolConfig(CONFIG_BOOL_STARTGUILD_ENABLE))
     {
-        if (pCurrChar->GetGuildId() == 0 && ((!pCurrChar->GetSession()->IsBot() && pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST)) || pCurrChar->GetSession()->IsBot()))
+        //if (pCurrChar->GetGuildId() == 0 && ((!pCurrChar->GetSession()->IsBot() && pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST)) || pCurrChar->GetSession()->IsBot()))
+        if (pCurrChar->GetGuildId() == 0 && ((!pCurrChar->GetSession()->IsBot() && pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST)) ))
         {
             //默认加入的公会ID
             const uint32 GUILD_ID_ALLIANCE = sWorld->getIntConfig(CONFIG_UINT32_STARTGUILD_LM);
             const uint32 GUILD_ID_HORDE = sWorld->getIntConfig(CONFIG_UINT32_STARTGUILD_BL);
-
-            LOG_ERROR("xx", "GUILD_ID_ALLIANCE {}  ", GUILD_ID_ALLIANCE);//测试
-            LOG_ERROR("xx", "GUILD_ID_HORDE {}  ", GUILD_ID_HORDE);//测试
 
             Guild* guild;
             guild = sGuildMgr->GetGuildById(pCurrChar->GetTeamId() == TEAM_ALLIANCE ? GUILD_ID_ALLIANCE : GUILD_ID_HORDE);

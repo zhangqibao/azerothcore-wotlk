@@ -20,11 +20,11 @@ public:
             return false;
 
         //检查包里是否有足够的红包券
-        if (player->GetItemCount(70000) < 500)
+        if (player->GetItemCount(70008) < 1000)
         {
-            ItemTemplate const* vProto = sObjectMgr->GetItemTemplate(70000);
+            ItemTemplate const* vProto = sObjectMgr->GetItemTemplate(70008);
             if (vProto)
-                ChatHandler(player->GetSession()).PSendSysMessage(LANG_CURRENCY_NOT_ENOUGH, vProto ? vProto->Name1 : nullptr, vProto ? vProto->Name1 : nullptr, 500);
+                ChatHandler(player->GetSession()).PSendSysMessage(LANG_CURRENCY_NOT_ENOUGH, vProto ? vProto->Name1 : nullptr, vProto ? vProto->Name1 : nullptr, 1000);
             return false;
         }
 
@@ -278,37 +278,37 @@ public:
         AddGossipItemFor(player, 10, "欢迎使用转职功能", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
 
         if (Race != RACE_BLOODELF && player->getClass() != CLASS_WARRIOR)
-            AddGossipItemFor(player, 10, "转职为战士", CLASS_WARRIOR, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为战士", CLASS_WARRIOR, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if (Race != RACE_NIGHTELF && Race != RACE_GNOME && Race != RACE_ORC && Race != RACE_UNDEAD_PLAYER && Race != RACE_TAUREN && Race != RACE_TROLL && player->getClass() != CLASS_PALADIN)
-            AddGossipItemFor(player, 10, "转职为圣骑士", CLASS_PALADIN, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为圣骑士", CLASS_PALADIN, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if (Race != RACE_HUMAN && Race != RACE_GNOME && Race != RACE_UNDEAD_PLAYER && player->getClass() != CLASS_HUNTER)
-            AddGossipItemFor(player, 10, "转职为猎人", CLASS_HUNTER, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为猎人", CLASS_HUNTER, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if (Race != RACE_DRAENEI && Race != RACE_TAUREN && player->getClass() != CLASS_ROGUE)
-            AddGossipItemFor(player, 10, "转职为盗贼", CLASS_ROGUE, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为盗贼", CLASS_ROGUE, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if (Race != RACE_GNOME && Race != RACE_ORC && Race != RACE_TAUREN && player->getClass() != CLASS_PRIEST)
-            AddGossipItemFor(player, 10, "转职为牧师", CLASS_PRIEST, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为牧师", CLASS_PRIEST, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if (sWorld->getIntConfig(CONFIG_WOWPATCH) > 0 || sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL) >= 60)
         {
-            if (player->getClass() != CLASS_DEATH_KNIGHT)
-                AddGossipItemFor(player, 10, "转职为死亡骑士", CLASS_DEATH_KNIGHT, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            if (player->getClass() != CLASS_DEATH_KNIGHT && player->GetLevel()>54)
+                AddGossipItemFor(player, 10, "转职为死亡骑士", CLASS_DEATH_KNIGHT, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
         }
 
         if ((Race == RACE_DRAENEI || Race == RACE_ORC || Race == RACE_TAUREN || Race == RACE_TROLL) && player->getClass() != CLASS_SHAMAN)
-            AddGossipItemFor(player, 10, "转职为萨满祭司", CLASS_SHAMAN, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为萨满祭司", CLASS_SHAMAN, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if ((Race == RACE_HUMAN || Race == RACE_GNOME || Race == RACE_DRAENEI || Race == RACE_UNDEAD_PLAYER || Race == RACE_TROLL || Race == RACE_BLOODELF) && player->getClass() != CLASS_MAGE)
-            AddGossipItemFor(player, 10, "转职为法师", CLASS_MAGE, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为法师", CLASS_MAGE, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if ((Race == RACE_HUMAN || Race == RACE_GNOME || Race == RACE_ORC || Race == RACE_UNDEAD_PLAYER || Race == RACE_BLOODELF) && player->getClass() != CLASS_WARLOCK)
-            AddGossipItemFor(player, 10, "转职为术士", CLASS_WARLOCK, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为术士", CLASS_WARLOCK, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         if ((Race == RACE_NIGHTELF || Race == RACE_TAUREN) && player->getClass() != CLASS_DRUID)
-            AddGossipItemFor(player, 10, "转职为德鲁伊", CLASS_DRUID, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费500点券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
+            AddGossipItemFor(player, 10, "转职为德鲁伊", CLASS_DRUID, GOSSIP_ACTION_INFO_DEF + 999, "转职需要花费1000红包券，且会遗忘掉已学习过的职业技能，确定继续吗？", 0, false);
 
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
 
@@ -334,7 +334,7 @@ public:
                 return true;
 
             //以下是扣材料
-            player->DestroyItemCount(70000, 500, true);
+            player->DestroyItemCount(70008, 1000, true);
             //----
         }
 

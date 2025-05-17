@@ -420,11 +420,11 @@ namespace lfg
             uint32 lockData = 0;
             if (dungeon->expansion > expansion || (onlySeasonalBosses && !dungeon->seasonal))
                 lockData = LFG_LOCKSTATUS_INSUFFICIENT_EXPANSION;
-            else if (wowpatch == 0 && dungeon->group > 1)
+            else if (wowpatch == 0 && (dungeon->id == 259 || dungeon->id == 260 || dungeon->id == 261 || dungeon->id == 262))
             {
                 lockData = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
             }
-            else if (wowpatch == 1 && dungeon->group > 2)
+            else if (wowpatch == 1 && (dungeon->id == 261 || dungeon->id == 262))
             {
                 lockData = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
             }

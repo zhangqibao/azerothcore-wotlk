@@ -2122,7 +2122,7 @@ void Player::RegenerateHealth()
         {
             //根据会员等级给加成
             static const float VIP_BONUS[21] = {
-                1.0f, 0.002f, 0.004f, 0.006f, 0.008f, 0.01f, 0.012f, 0.014f, 0.016f, 0.018f, 0.02f, 0.022f, 0.024f, 0.026f, 0.028f, 0.03f, 0.032f, 0.034f, 0.036f, 0.038f, 0.04f // 按VIP等级预定义数值
+                0.000f, 0.002f, 0.004f, 0.006f, 0.008f, 0.01f, 0.012f, 0.014f, 0.016f, 0.018f, 0.02f, 0.022f, 0.024f, 0.026f, 0.028f, 0.03f, 0.032f, 0.034f, 0.036f, 0.038f, 0.04f // 按VIP等级预定义数值
             };
 
             uint8 vipLevel = getVIPLevel();
@@ -6444,11 +6444,12 @@ void Player::SetSkill(uint16 id, uint16 step, uint16 newVal, uint16 maxVal, bool
                         //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "kkk22 %u", currVal);//测试
                     }
                     break;
-                case 171://炼金 坐骑速度+3%  13587
+                case 171://炼金 坐骑速度+3%  13587 （略微提高移动速度）23990
                     if (currVal >= 300)
                     {
                         //被动技能生效
                         CastSpell(this, 13587, true);
+                        CastSpell(this, 23990, true);
                     }
                     break;
                 case 197://裁缝 每秒回蓝8点  21629（护甲提高200）14803

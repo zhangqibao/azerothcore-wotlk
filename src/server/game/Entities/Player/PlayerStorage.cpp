@@ -3918,9 +3918,10 @@ void Player::SwapItem(uint16 src, uint16 dst)
     // or swap empty bag with another empty or not empty bag (with items exchange)
 
     // Move case
+    //移动物品到空的格子
     if (!pDstItem)
     {
-        if (IsInventoryPos(dst))
+        if (IsInventoryPos(dst))//到包里
         {
             ItemPosCountVec dest;
             InventoryResult msg = CanStoreItem(dstbag, dstslot, dest, pSrcItem, false);
@@ -4057,8 +4058,8 @@ void Player::SwapItem(uint16 src, uint16 dst)
             }
 
             //判断是否拥有赫拉迪姆魔盒
-//uint32 hldmbox = GetItemCount(91666, true);
-//if (hldmbox)
+            //uint32 hldmbox = GetItemCount(91666, true);
+            //if (hldmbox)
             if (getHLDM() && canusezuoqi)
             {
                 //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
@@ -4186,8 +4187,8 @@ void Player::SwapItem(uint16 src, uint16 dst)
             }
 
             //判断是否拥有赫拉迪姆魔盒
-//uint32 hldmbox = GetItemCount(91666, true);
-//if (hldmbox)
+            //uint32 hldmbox = GetItemCount(91666, true);
+            //if (hldmbox)
             if (getHLDM() && canusezuoqi)
             {
                 //如果来源地src是赫拉迪姆魔盒的位子：银行前三个格子，删除物品属性并更新角色状态
@@ -4284,9 +4285,9 @@ void Player::SwapItem(uint16 src, uint16 dst)
     //和一个非空栏的物品进行位置交换
 
 
-//判断是否拥有赫拉迪姆魔盒
-//uint32 hldmbox = GetItemCount(91666, true);
-//if (hldmbox)
+    //判断是否拥有赫拉迪姆魔盒
+    //uint32 hldmbox = GetItemCount(91666, true);
+    //if (hldmbox)
     if (getHLDM() && canusezuoqi)
     {
         //这个src包含了srcbag和srcslot两个信息
@@ -4323,11 +4324,11 @@ void Player::SwapItem(uint16 src, uint16 dst)
                 if (IsEquipmentPos(dst))
                 {
                     uint16 xdest;
-                    InventoryResult msg = CanEquipItem(dstslot, xdest, pSrcItem, false);
+                    InventoryResult msg = CanEquipItem(dstslot, xdest, pSrcItem, true);
                     if (msg != EQUIP_ERR_OK)
                     {
                         SendEquipError(msg, pSrcItem, nullptr);
-
+                        return;
                     }
                     else
                     {
@@ -4413,11 +4414,11 @@ void Player::SwapItem(uint16 src, uint16 dst)
                 if (IsEquipmentPos(src))
                 {
                     uint16 xdest;
-                    InventoryResult msg = CanEquipItem(srcslot, xdest, pDstItem, false);
+                    InventoryResult msg = CanEquipItem(srcslot, xdest, pDstItem, true);
                     if (msg != EQUIP_ERR_OK)
                     {
                         SendEquipError(msg, pDstItem, nullptr);
-
+                        return;
                     }
                     else
                     {
@@ -6985,6 +6986,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85840, true);//+200%
             //CastSpell(this, 85494, true);//-60%
+            CastSpell(this, 86719, true);//命中400
             CastSpell(this, 17427, true);
             //CastSpell(this, 900011, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7009,6 +7011,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85839, true);//+190%
             //CastSpell(this, 85493, true);//-57%
+            CastSpell(this, 86718, true);//命中380
             CastSpell(this, 17427, true);
             //CastSpell(this, 900010, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7026,6 +7029,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85838, true);//+180%
             //CastSpell(this, 85492, true);//-54%
+            CastSpell(this, 86717, true);//命中360
             CastSpell(this, 17427, true);
             //CastSpell(this, 900009, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7043,6 +7047,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85837, true);//+170%
             //CastSpell(this, 85491, true);//-51%
+            CastSpell(this, 86716, true);//命中340
             CastSpell(this, 17427, true);
             //CastSpell(this, 900008, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7060,6 +7065,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85836, true);//+160%
             //CastSpell(this, 85490, true);//-48%
+            CastSpell(this, 86715, true);//命中320
             CastSpell(this, 17427, true);
             //CastSpell(this, 900007, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7077,6 +7083,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85835, true);//+150%
             //CastSpell(this, 85489, true);//-45%
+            CastSpell(this, 86714, true);//命中300
             CastSpell(this, 17427, true);
             //CastSpell(this, 900006, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7094,6 +7101,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85834, true);//+140%
             //CastSpell(this, 85488, true);//-42%
+            CastSpell(this, 86713, true);//命中280
             CastSpell(this, 17427, true);
             //CastSpell(this, 900005, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7111,6 +7119,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85833, true);//+130%
             //CastSpell(this, 85487, true);//-39%
+            CastSpell(this, 86712, true);//命中260
             CastSpell(this, 17427, true);
             //CastSpell(this, 900004, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7128,6 +7137,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85832, true);//+120%
             //CastSpell(this, 85486, true);//-36%
+            CastSpell(this, 86711, true);//命中240
             CastSpell(this, 17427, true);
             //CastSpell(this, 900003, true);//翅膀
             //CastSpell(this, 17625, true);//DK剑效果
@@ -7145,6 +7155,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             //CastSpell(this, 85484, true);//-30%
             //CastSpell(this, 85831, true);//+110%
             //CastSpell(this, 85485, true);//-33%
+            CastSpell(this, 86710, true);//命中220
             CastSpell(this, 17427, true);
             //CastSpell(this, 900002, true);//翅膀
             //CastSpell(this, 27571, true);
@@ -7159,6 +7170,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85473, true);//+50%
             //CastSpell(this, 85478, true);//+100%
             //CastSpell(this, 85484, true);//-30%
+            CastSpell(this, 86709, true);//命中200
             CastSpell(this, 17427, true);
             //CastSpell(this, 900001, true);//翅膀
             //CastSpell(this, 27571, true);
@@ -7172,6 +7184,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85552, true);//+45%
             //CastSpell(this, 85477, true);//+90%
             //CastSpell(this, 85483, true);//-27%
+            CastSpell(this, 86708, true);//命中180
             CastSpell(this, 17427, true);
             //CastSpell(this, 27571, true);
             break;
@@ -7183,6 +7196,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85472, true);//+40%
             //CastSpell(this, 85476, true);//+80%
             //CastSpell(this, 85482, true);//-24%
+            CastSpell(this, 86707, true);//命中160
             CastSpell(this, 17427, true);
             //CastSpell(this, 27571, true);
             CastSpell(this, 17625, true);//DK剑效果
@@ -7195,6 +7209,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85551, true);//+35%
             //CastSpell(this, 85475, true);//+70%
             //CastSpell(this, 85481, true);//-21%
+            CastSpell(this, 86706, true);//命中140
             CastSpell(this, 17427, true);
             //CastSpell(this, 27571, true);
             CastSpell(this, 17625, true);//DK剑效果
@@ -7207,6 +7222,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85471, true);//+30%
             //CastSpell(this, 85474, true);//+60%
             //CastSpell(this, 85458, true);//-18%
+            CastSpell(this, 86705, true);//命中120
             CastSpell(this, 17427, true);
             //CastSpell(this, 27571, true);
             CastSpell(this, 17625, true);//DK剑效果
@@ -7219,6 +7235,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85550, true);//+25%
             //CastSpell(this, 85473, true);//+50%
             //CastSpell(this, 85455, true);//-15%
+            CastSpell(this, 86704, true);//命中100
             CastSpell(this, 17427, true);
             //CastSpell(this, 27571, true);
             CastSpell(this, 17625, true);//DK剑效果
@@ -7231,6 +7248,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85470, true);//+20%
             //CastSpell(this, 85472, true);//+40%
             //CastSpell(this, 85452, true);//-12%
+            CastSpell(this, 86703, true);//命中80
             CastSpell(this, 17427, true);
             break;
         }
@@ -7241,6 +7259,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85465, true);//+15%
             //CastSpell(this, 85471, true);//+30%
             //CastSpell(this, 85449, true);//-9%
+            CastSpell(this, 86702, true);//命中60
             CastSpell(this, 17427, true);
             break;
         }
@@ -7251,6 +7270,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85440, true);//+5%
             //CastSpell(this, 85470, true);//+20%
             //CastSpell(this, 85446, true);//-6%
+            CastSpell(this, 86701, true);//命中40
             CastSpell(this, 17427, true);
             break;
         }
@@ -7261,6 +7281,7 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
             CastSpell(this, 85435, true);//+5%
             //CastSpell(this, 85440, true);//+10%
             //CastSpell(this, 85443, true);//-3%
+            CastSpell(this, 86700, true);//命中20
             CastSpell(this, 17427, true);
             break;
         }

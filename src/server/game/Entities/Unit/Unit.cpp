@@ -2242,10 +2242,14 @@ void Unit::DealMeleeDamage(CalcDamageInfo* damageInfo, bool durabilityLoss)
                 {
                     //如果有魔盒，看银行中第一个位置的装备slot:39
                     Item* hldmitem = pplayer->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
-                    if (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR)
+                    if (hldmitem)
                     {
-                        pplayer->CastItemCombatSpellByHLDM(victim, hldmitem);
+                        if (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR)
+                        {
+                            pplayer->CastItemCombatSpellByHLDM(victim, hldmitem);
+                        }
                     }
+
                 }
             }
 

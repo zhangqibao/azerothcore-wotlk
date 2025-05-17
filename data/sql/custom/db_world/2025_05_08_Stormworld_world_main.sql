@@ -2339,3 +2339,4 @@ REPLACE INTO `acore_string` VALUES ('21709', '|cffff0000[PVP消息]：{} 被 {} 
 REPLACE INTO `acore_string` VALUES ('21718', '|cffff0000[PVP消息]：{} 因死亡而损失了一颗远古转生石。', '', null, null, null, null, null, null, null);
 REPLACE INTO `acore_string` VALUES ('21720', '|cffff0000唯我独尊！一骑绝尘！大佬|r [{}] |c0000ff00购买了特殊商品 ，并为阵营在线勇士赠送了<世界BUFF>！让我们为他欢呼吧！|r', null, null, null, null, null, null, null, null);
 REPLACE INTO `acore_string` VALUES ('21727', '|cffff0000大吉大利，今晚吃鸡！|r [{}] |c0000ff00在宝箱抽到了[{}]，并为阵营在线勇士赠送了<世界BUFF>！让我们为他欢呼吧！|r', null, null, null, null, null, null, null, null);
+
