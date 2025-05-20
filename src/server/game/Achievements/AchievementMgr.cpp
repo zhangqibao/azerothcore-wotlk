@@ -704,6 +704,10 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) 
     if (GetPlayer()->GetSession()->PlayerLoading())
         return;
 
+    //机器人不提示
+    if(GetPlayer()->GetSession()->IsBot())
+        return;
+
     // Don't send for achievements with ACHIEVEMENT_FLAG_TRACKING
     if (achievement->flags & ACHIEVEMENT_FLAG_HIDDEN)
         return;
@@ -715,7 +719,7 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) 
     {
         Acore::BroadcastTextBuilder _builder(GetPlayer(), CHAT_MSG_GUILD_ACHIEVEMENT, BROADCAST_TEXT_ACHIEVEMENT_EARNED, GetPlayer()->getGender(), GetPlayer(), achievement->ID);
         Acore::LocalizedPacketDo<Acore::BroadcastTextBuilder> _localizer(_builder);
-        if (GetPlayer()->GetGUID().GetCounter() > 3)//ID小于3的角色在公会中不提示上线
+        if (GetPlayer()->GetGUID().GetCounter() > 3)//ID小于3的角色在公会中不提示成就
         {
             guild->BroadcastWorker(_localizer, GetPlayer());
         }
