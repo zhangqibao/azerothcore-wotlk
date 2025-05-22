@@ -1340,6 +1340,27 @@ bool WorldObject::IsWithinDist(WorldObject const* obj, float dist2compare, bool 
 
 bool WorldObject::IsWithinDistInMap(WorldObject const* obj, float dist2compare, bool is3D, bool useBoundingRadius) const
 {
+    //if (obj->IsPlayer())
+    //{
+    //    if (obj)
+    //    {
+    //        LOG_ERROR("xx", "obj1 ");//测试
+    //    }
+    //    if (IsInMap(obj))// 如果玩家死亡后，服务器重启，这里就是false
+    //    {
+    //        LOG_ERROR("xx", "obj2 ");//测试
+    //    }
+    //    if (InSamePhase(obj))
+    //    {
+    //        LOG_ERROR("xx", "obj3 ");//测试
+    //    }
+    //    if (_IsWithinDist(obj, dist2compare, is3D, useBoundingRadius))
+    //    {
+    //        LOG_ERROR("xx", "obj4 ");//测试
+    //    }
+    //}
+    
+
     return obj && IsInMap(obj) && InSamePhase(obj) && _IsWithinDist(obj, dist2compare, is3D, useBoundingRadius);
 }
 

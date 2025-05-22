@@ -1812,7 +1812,8 @@ uint32 Map::ApplyDynamicModeRespawnScaling(WorldObject const* obj, uint32 respaw
 
     float rate = sWorld->getFloatConfig(obj->IsGameObject() ? CONFIG_RESPAWN_DYNAMICRATE_GAMEOBJECT : CONFIG_RESPAWN_DYNAMICRATE_CREATURE);
 
-    if (rate == 1.0f)
+    //如果动态刷新是1:disable ,或者地图是副本，使用原本的默认刷新时间
+    if (rate == 1.0f || IsDungeon())
         return respawnDelay;
 
     // No instanced maps (dungeons, battlegrounds, arenas etc.)

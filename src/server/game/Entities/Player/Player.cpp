@@ -1648,7 +1648,7 @@ void Player::ProcessDelayedOperations()
     {
         if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
         {
-            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+            //LOG_ERROR("xx", "ProcessDelayedOperations");//测试
             //如果是专家模式，这里不继续运行
             if (!GetMap()->IsBattlegroundOrArena())
                 return;
@@ -5073,7 +5073,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 {
     if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
     {
-        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "ResurrectPlayer");//测试
+        //LOG_ERROR("xx", "ResurrectPlayer");//测试
         //如果玩家是专家模式，这里不运行复活代码，但玩家点复活按钮尸体会变成骷髅
         //一旦恢复为非专家模式，玩家将直接复活，要在调用这个函数的外面进行判断，不去改变尸体的状态
         if (!GetMap()->IsBattlegroundOrArena())
@@ -16178,7 +16178,7 @@ void Player::ResurectUsingRequestData()
 {
     if ((m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetSession()->IsBot() && GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
     {
-        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+        //LOG_ERROR("xx", "ResurectUsingRequestData ");//测试
         //如果是专家模式，这里不继续运行
         if (!GetMap()->IsBattlegroundOrArena())
             return;

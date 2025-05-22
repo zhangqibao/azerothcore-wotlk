@@ -3300,6 +3300,9 @@ void Unit::AddExtraAttacks(uint32 count)
 
 MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackType attType) const
 {
+    //获得配置项目wowpatch
+    uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+
     //计算武器技能差值
     int32 _skillDiff = int32(GetWeaponSkillValue(attType, victim)) - int32(victim->GetMaxSkillValueForLevel(this));
 
@@ -3307,16 +3310,26 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
     if ((IsPlayer() || (IsPet() && GetOwner())) && GetLevel() == 60 && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
     {
         if (_skillDiff < -15)
-            _skillDiff = -15 + (_skillDiff + 15) * 0.4;//(_skillDiff+15) 的范围是 -5 到 -85 ，最终得到的_skillDiff最小是-49，相当于原来60打70怪的设置
+        {
+            if (wowpatch <= 1 && victim->GetLevel() <= 73)
+            {
+                //如果阶段只开到TBC，还没有强力的80级装备，命中装备数值很少
+                //60玩家面对等级70的怪，_skillDiff = -50，按下面公式算出来是 -22
+                _skillDiff = -15 + (_skillDiff + 15) * 0.2;//(_skillDiff+15) 的范围是 -5 到 -85 ，最终得到的_skillDiff最小是-49，相当于原来60打70怪的设置
+            }
+            else
+            {
+                //60玩家面对等级80的怪，_skillDiff = -100，按下面公式算出来是 -49
+                //60玩家面对等级70的怪，_skillDiff = -50，按下面公式算出来是 -29
+                _skillDiff = -15 + (_skillDiff + 15) * 0.4;//(_skillDiff+15) 的范围是 -5 到 -85 ，最终得到的_skillDiff最小是-49，相当于原来60打70怪的设置
+            }
+        }
     }
     //60打80的怪，初始的misschance是40.6
 
     if (IsPlayer() && !ToPlayer()->GetSession()->IsBot())
     {
         float raidDodgeMod = 1.0f;//闪避降低的系数
-
-        //获得配置项目wowpatch,大于2的时候
-        uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
 
         //如果是5人本，且是英雄副本
         if (GetMap()->IsDungeon() && !GetMap()->IsRaid())
@@ -4181,6 +4194,9 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* victim, SpellInfo const* spellInfo
         return SPELL_MISS_NONE;
     }
 
+    //获得配置项目wowpatch
+    uint32 wowpatch = sWorld->getIntConfig(CONFIG_WOWPATCH);
+
     SpellSchoolMask schoolMask = spellInfo->GetSchoolMask();
     int32 thisLevel = getLevelForTarget(victim);
     if (IsCreature() && ToCreature()->IsTrigger())
@@ -4206,12 +4222,20 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* victim, SpellInfo const* spellInfo
         //LOG_ERROR("xx", "levelDiff: {} ", levelDiff);//测试
 
         if (levelDiff > 3) {
-            levelDiff = 3 + (levelDiff - 3) * 0.2;//进一步提高法术命中  60打80，45%能命中
-            //levelDiff = 3 + (levelDiff-3) * 0.25;//(levelDiff-3) 的范围是 1 到 17,   --- 60打70，63%能命中 --- 60打80，36%能命中
-            //levelDiff = 3 + (levelDiff-3) * 0.3;// --- 60打70，60%能命中 --- 60打80，27%能命中
-            //levelDiff = 3 + (levelDiff-3) * 0.35;// --- 60打70，56%能命中 --- 60打80，17.5%能命中
-            //levelDiff = 3 + (levelDiff - 3) * 0.45;//---60打70，48%能命中 --- 60打80，-1%能命中
-            //levelDiff = 3 + (levelDiff - 3) * 0.65;//---60打70，33%能命中 --- 60打80，-38%能命中
+            if (wowpatch <= 1 && thisLevel <= 73)
+            {
+                //如果阶段只开到TBC，还没有强力的80级装备，命中装备数值很少
+                levelDiff = 3 + (levelDiff - 3) * 0.15;
+            }
+            else
+            {
+                levelDiff = 3 + (levelDiff - 3) * 0.2;//进一步提高法术命中  60打80，45%能命中
+                //levelDiff = 3 + (levelDiff-3) * 0.25;//(levelDiff-3) 的范围是 1 到 17,   --- 60打70，63%能命中 --- 60打80，36%能命中
+                //levelDiff = 3 + (levelDiff-3) * 0.3;// --- 60打70，60%能命中 --- 60打80，27%能命中
+                //levelDiff = 3 + (levelDiff-3) * 0.35;// --- 60打70，56%能命中 --- 60打80，17.5%能命中
+                //levelDiff = 3 + (levelDiff - 3) * 0.45;//---60打70，48%能命中 --- 60打80，-1%能命中
+                //levelDiff = 3 + (levelDiff - 3) * 0.65;//---60打70，33%能命中 --- 60打80，-38%能命中
+            }
         }
 
         //猎人宠物低吼不会miss

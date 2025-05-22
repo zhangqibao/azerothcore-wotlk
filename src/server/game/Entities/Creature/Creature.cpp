@@ -2360,9 +2360,29 @@ void Creature::setDeathState(DeathState state, bool despawn)
 
     if (state == DeathState::JustDied)
     {
-        m_corpseRemoveTime = GameTime::GetGameTime().count() + m_corpseDelay;
         uint32 dynamicRespawnDelay = GetMap()->ApplyDynamicModeRespawnScaling(this, m_respawnDelay);
-        m_respawnTime = GameTime::GetGameTime().count() + dynamicRespawnDelay + m_corpseDelay;
+
+        //根据动态刷新时间重新计算尸体存在时间和刷新时间
+        if (dynamicRespawnDelay < m_corpseDelay)
+        {
+            m_corpseRemoveTime = GameTime::GetGameTime().count() + dynamicRespawnDelay;
+            m_respawnTime = GameTime::GetGameTime().count() + dynamicRespawnDelay + 5;
+        }
+        else
+        {
+            m_corpseRemoveTime = GameTime::GetGameTime().count() + m_corpseDelay;
+            m_respawnTime = GameTime::GetGameTime().count() + dynamicRespawnDelay + 5;
+        }
+            
+        //if (GetEntry()==2955)
+        //{
+        //    LOG_ERROR("xx", "m_respawnDelay {}  ", m_respawnDelay);//测试
+        //    LOG_ERROR("xx", "dynamicRespawnDelay {}  ", dynamicRespawnDelay);//测试
+        //    LOG_ERROR("xx", "m_corpseDelay {}  ", m_corpseDelay);//测试
+        //    LOG_ERROR("xx", "m_respawnTime {}  ", m_respawnTime);//测试
+        //    LOG_ERROR("xx", "m_corpseRemoveTime {}  ", m_corpseRemoveTime);//测试
+        //}
+        //end -------------
 
         // always save boss respawn time at death to prevent crash cheating
         if (GetMap()->IsDungeon() || isWorldBoss() || GetCreatureTemplate()->rank >= CREATURE_ELITE_ELITE)

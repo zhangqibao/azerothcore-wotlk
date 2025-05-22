@@ -635,10 +635,9 @@ void WorldSession::HandleBugOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
 {
-
     if ((GetPlayer()->m_ExtraFlags & PLAYER_EXTRA_YH_MODEL_PLUS3) && !GetPlayer()->GetSession()->IsBot() && GetPlayer()->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))
     {
-        //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "HandleReclaimCorpseOpcode");//测试
+        //LOG_ERROR("xx", "HandleReclaimCorpseOpcode ");//测试
         //如果是专家模式，这里不继续运行
         if (!GetPlayer()->GetMap()->IsBattlegroundOrArena())
             return;
@@ -666,7 +665,11 @@ void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
     if (time_t(corpse->GetGhostTime() + _player->GetCorpseReclaimDelay(corpse->GetType() == CORPSE_RESURRECTABLE_PVP)) > time_t(GameTime::GetGameTime().count()))
         return;
 
-    if (!corpse->IsWithinDistInMap(_player, CORPSE_RECLAIM_RADIUS, true))
+    //如果玩家死亡后，服务器重启，那下面这行就出问题导致无法复活，问题出在corpse->IsInMap()是false
+    //if (!corpse->IsWithinDistInMap(_player, CORPSE_RECLAIM_RADIUS, true))
+    //    return;
+    //改成下面的代码，规避这个问题
+    if (corpse->IsInMap(corpse) && !corpse->IsWithinDistInMap(_player, CORPSE_RECLAIM_RADIUS, true))
         return;
 
     // resurrect
