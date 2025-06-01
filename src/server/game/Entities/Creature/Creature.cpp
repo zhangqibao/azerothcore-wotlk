@@ -2360,8 +2360,9 @@ void Creature::setDeathState(DeathState state, bool despawn)
 
     if (state == DeathState::JustDied)
     {
+        /*
         uint32 dynamicRespawnDelay = GetMap()->ApplyDynamicModeRespawnScaling(this, m_respawnDelay);
-
+        //这种写法会导致副本里奈法的尸体存在时间只有5m，因为AZ里奈法的刷新时间是5m，尸体保存时间是1h
         //根据动态刷新时间重新计算尸体存在时间和刷新时间
         if (dynamicRespawnDelay < m_corpseDelay)
         {
@@ -2371,18 +2372,24 @@ void Creature::setDeathState(DeathState state, bool despawn)
         else
         {
             m_corpseRemoveTime = GameTime::GetGameTime().count() + m_corpseDelay;
-            m_respawnTime = GameTime::GetGameTime().count() + dynamicRespawnDelay + 5;
+            m_respawnTime = GameTime::GetGameTime().count() + dynamicRespawnDelay + m_corpseDelay;
         }
+        */
             
         //if (GetEntry()==2955)
         //{
-        //    LOG_ERROR("xx", "m_respawnDelay {}  ", m_respawnDelay);//测试
-        //    LOG_ERROR("xx", "dynamicRespawnDelay {}  ", dynamicRespawnDelay);//测试
-        //    LOG_ERROR("xx", "m_corpseDelay {}  ", m_corpseDelay);//测试
-        //    LOG_ERROR("xx", "m_respawnTime {}  ", m_respawnTime);//测试
-        //    LOG_ERROR("xx", "m_corpseRemoveTime {}  ", m_corpseRemoveTime);//测试
+            //LOG_ERROR("xx", "m_respawnDelay {}  ", m_respawnDelay);//测试
+            //LOG_ERROR("xx", "dynamicRespawnDelay {}  ", dynamicRespawnDelay);//测试
+            //LOG_ERROR("xx", "m_corpseDelay {}  ", m_corpseDelay);//测试
+            //LOG_ERROR("xx", "m_respawnTime {}  ", m_respawnTime);//测试
+            //LOG_ERROR("xx", "m_corpseRemoveTime {}  ", m_corpseRemoveTime);//测试
         //}
         //end -------------
+
+
+        m_corpseRemoveTime = GameTime::GetGameTime().count() + m_corpseDelay;
+        uint32 dynamicRespawnDelay = GetMap()->ApplyDynamicModeRespawnScaling(this, m_respawnDelay);
+        m_respawnTime = GameTime::GetGameTime().count() + dynamicRespawnDelay + m_corpseDelay;
 
         // always save boss respawn time at death to prevent crash cheating
         if (GetMap()->IsDungeon() || isWorldBoss() || GetCreatureTemplate()->rank >= CREATURE_ELITE_ELITE)

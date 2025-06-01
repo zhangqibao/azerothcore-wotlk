@@ -16845,6 +16845,12 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
                 //    || (((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
                     
 
+                //处于保留区域area==0或者GM岛 area== 876，禁止PVP
+                if (playerAffectingAttacker->GetAreaId() == 0 || playerAffectingAttacker->GetAreaId() == 876)
+                {
+                    return false;
+                }
+
 
                     //任何一方为专家模式，禁止PVP
                 if ((((Player*)playerAffectingTarget)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3)
@@ -21194,8 +21200,8 @@ void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackTyp
     //如果是机器人杀人或被杀，且玩家是专家模式或硬核模式，且不是在战场中，全服播报（作废，机器人被杀太频繁，播报无意义）
     //if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && ((pPlayerVictim->GetSession()->IsBot() && !pPlayerTap->GetSession()->IsBot()) || (!pPlayerVictim->GetSession()->IsBot() && pPlayerTap->GetSession()->IsBot())) && !pPlayerVictim->GetMap()->IsBattlegroundOrArena())
 
-    //如果是机器人杀人，且玩家是专家模式或硬核模式，且不是在战场中，全服播报
-    if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && (!pPlayerVictim->GetSession()->IsBot() && pPlayerTap->GetSession()->IsBot()) && !pPlayerVictim->GetMap()->IsBattlegroundOrArena())
+    //如果是机器人杀人，或机器人被真人杀死，且玩家是专家模式或硬核模式，且不是在战场中，全服播报
+    if (pPlayerVictim && pPlayerTap && pPlayerVictim != pPlayerTap && ((!pPlayerVictim->GetSession()->IsBot() && pPlayerTap->GetSession()->IsBot()) || (pPlayerVictim->GetSession()->IsBot() && !pPlayerTap->GetSession()->IsBot())) && !pPlayerVictim->GetMap()->IsBattlegroundOrArena())
     {
         if ((pPlayerVictim->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL) && pPlayerVictim->GetLevel() < sWorld->getIntConfig(CONFIG_UINT32_EARNXP_MAX_PLAYER_LEVEL))//硬核模式被玩家杀死
         {

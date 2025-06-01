@@ -486,11 +486,20 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
             }
             catch (ByteBufferException const&)
             {
-                LOG_ERROR("network", "WorldSession::Update ByteBufferException occured while parsing a packet (opcode: {}) from client {}, accountid={}. Skipped packet.", packet->GetOpcode(), GetRemoteAddress(), GetAccountId());
-                if (sLog->ShouldLog("network", LogLevel::LOG_LEVEL_DEBUG))
+                //组机器人后，释放治疗法术老报错：WorldSession::Update ByteBufferException occured while parsing a packet (opcode: 149) from client 127.0.0.1, accountid=1. Skipped packet.
+                //原因应该是客户端插件某个功能导致了客户端组机器人后调用了Opcode: CMSG_MESSAGECHAT，这里把这个报错屏蔽掉
+                if (packet->GetOpcode() == CMSG_MESSAGECHAT)
                 {
-                    LOG_DEBUG("network", "Dumping error causing packet:");
-                    packet->hexlike();
+                    //donothing
+                }
+                else
+                {
+                    LOG_ERROR("network", "WorldSession::Update ByteBufferException occured while parsing a packet (opcode: {}) from client {}, accountid={}. Skipped packet.", packet->GetOpcode(), GetRemoteAddress(), GetAccountId());
+                    if (sLog->ShouldLog("network", LogLevel::LOG_LEVEL_DEBUG))
+                    {
+                        LOG_DEBUG("network", "Dumping error causing packet:");
+                        packet->hexlike();
+                    }
                 }
             }
         }
