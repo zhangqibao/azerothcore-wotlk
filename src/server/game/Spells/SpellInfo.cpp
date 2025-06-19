@@ -3797,6 +3797,13 @@ SpellInfo const* SpellInfo::GetAuraRankForLevel(uint8 level) const
 
     for (nextSpellInfo = this; nextSpellInfo != nullptr; nextSpellInfo = nextSpellInfo->GetPrevRankSpell())
     {
+        //如果服务器设置的是卡60的玩法，而且当前技能的目标是60级
+        if (level == 60 && sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) == 60)
+        {
+            return nextSpellInfo;
+        }
+        //end -------------------
+        
         // if found appropriate level
         if (uint32(level + 10) >= nextSpellInfo->SpellLevel)
             return nextSpellInfo;

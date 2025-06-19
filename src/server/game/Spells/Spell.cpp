@@ -3167,313 +3167,394 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         }
     }
 
-//如果玩家带有赫拉迪姆魔盒，且第一个栏位放了武器，这里每次攻击都尝试调用该武器的触发特效
-//判断是否拥有赫拉迪姆魔盒
 
-bool triggerWeaponProcsPlus = true;//默认让所有技能都可以触发魔盒特效
-if (triggerWeaponProcsPlus && m_caster->IsPlayer())
-{
-    if (m_spellInfo)
+//判断魔盒和远古饰品
+    if (m_caster->IsPlayer() && !m_caster->ToPlayer()->GetSession()->IsBot() && unitTarget->IsAlive())
     {
-        if (EXCLUDED_ICON_IDS.count(m_spellInfo->SpellIconID) ||
-            EXCLUDED_SPELL_IDS.count(m_spellInfo->Id)) {
-            triggerWeaponProcsPlus = false;
-        }
-    }
 
-    //机器人不触发魔盒
-    if (m_caster->ToPlayer()->GetSession()->IsBot())
-    {
-        triggerWeaponProcsPlus = false;
-    }
+        //如果玩家带有赫拉迪姆魔盒，且第一个栏位放了武器，这里每次攻击都尝试调用该武器的触发特效
+        //判断是否拥有赫拉迪姆魔盒
 
-    /*
-    if (m_spellInfo && m_spellInfo->SpellIconID == 15)//如果是拦截技能，不触发
-        triggerWeaponProcsPlus = false;
-    //魔盒第一格放的武器如果带火舌图腾类似的必出特效，会造成循环调用的死循环，报错ERROR: Spell 16344 too deep in cast chain for cast. Cast not allowed for prevent overflow stack crash.
-    //这里先禁止掉这些技能的触发
-    if (m_spellInfo && m_spellInfo->SpellIconID == 679)//如果是火舌武器技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->SpellIconID == 681)//如果是冰封武器技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->SpellIconID == 688)//如果是石化武器技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && (m_spellInfo->Id == 7712 || m_spellInfo->Id == 7714 || m_spellInfo->Id == 7715 || m_spellInfo->Id == 7716 || m_spellInfo->Id == 7717 || m_spellInfo->Id == 7718 || m_spellInfo->Id == 7719))//如果是火焰打击技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->Id == 16614)//如果是闪电打击，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->Id == 55736)//如果是严寒射击，不触发
-        triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && m_spellInfo->Id == 15494)//如果是反对者铸铁之怒，不触发
-    //    triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && (m_spellInfo->Id == 15600 || m_spellInfo->Id == 15601))//如果是正义之手，不触发
-    //    triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && (m_spellInfo->Id == 18943 || m_spellInfo->Id == 18941))//如果是两次攻击，不触发
-    //    triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && m_spellInfo->Id == 21919)//如果是痛击之刃，不触发
-    //    triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->SpellIconID == 2709)//如果是DK的骨疽技能，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && m_spellInfo->Id == 13897)//如果是附魔：灼热器 技能，不触发
-        triggerWeaponProcsPlus = false;
-
-    if (m_spellInfo && (m_spellInfo->Id == 50401))//如果是冰锋符文，不触发
-        triggerWeaponProcsPlus = false;
-    if (m_spellInfo && (m_spellInfo->SpellIconID == 118))//如果是枯萎凋零，不触发
-        triggerWeaponProcsPlus = false;
-
-    //if (m_spellInfo && (m_spellInfo->Id == 20004))//如果是生命偷取，不触发
-    //    triggerWeaponProcsPlus = false;
-
-    if (m_spellInfo && (m_spellInfo->Id == 54181))//如果是邪能共效，不触发
-        triggerWeaponProcsPlus = false;
-
-    if (m_spellInfo && (m_spellInfo->Id == 50475))//如果是 鲜血灵气，不触发
-        triggerWeaponProcsPlus = false;
-
-    if (m_spellInfo && (m_spellInfo->Id == 50903))//如果是 冰虫腿甲强化片，不触发
-        triggerWeaponProcsPlus = false;
-
-    if (m_spellInfo && (m_spellInfo->Id == 50463))//如果是 浸血打击，不触发
-        triggerWeaponProcsPlus = false;
-
-    if (m_spellInfo && (m_spellInfo->Id == 51460))//如果是骨蛆技能触发的骨蛆效果 ，不触发（宕机罪魁祸首，因为天赋，DK每个技能都会调用到这里）
-        triggerWeaponProcsPlus = false;
-
-
-    //if (m_spellInfo && (m_spellInfo->Id == 59913))//如果是迅捷的正义之手，不触发
-    //    triggerWeaponProcsPlus = false;
-
-    //if (m_spellInfo && m_spellInfo->SpellIconID == 247 && (m_spellInfo->SpellFamilyFlags[0] & 0x2000))//如果是盗贼的速效毒药，不触发（非100%几率，可以允许）
-    //    triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && (m_spellInfo->Id == 16610 || m_spellInfo->Id == 15279))//如果是野猪之皮和尖刺水晶技能，不触发
-    //    triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && m_spellInfo->SpellIconID == 555 && (m_spellInfo->SpellFamilyFlags[0] & 0x8))//如果是惩戒光环，不触发
-    //    triggerWeaponProcsPlus = false;
-    //if (m_spellInfo && m_spellInfo->SpellIconID == 53 && (m_spellInfo->SpellFamilyFlags[0] & 0x100))//荆棘术，不触发
-    //    triggerWeaponProcsPlus = false;
-
-    //ImplicitTargetA 22,18   15,16 的是AOE目标
-    //EffectAura_1 == SPELL_AURA_DAMAGE_SHIELD 15 的是被动伤害技能
-    //EffectRadiusIndex_1 这个代表AOE的半径范围 AOE技能的的共同点是这个值大于0
-    //LOG_ERROR("xx", "xxxx22 ");//测试
-    */
-
-}
-
-
-if (triggerWeaponProcsPlus)
-{
-
-    if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
-    {
-        if (m_spellInfo)
+        bool triggerWeaponProcsPlus = true;//默认让所有技能都可以触发魔盒特效
+        if (triggerWeaponProcsPlus && m_spellInfo)
         {
-            //LOG_ERROR("xx", "hldmstart {}", m_spellInfo->Id);//测试，调试看是什么技能触发了bug
+            if (EXCLUDED_ICON_IDS.count(m_spellInfo->SpellIconID) ||
+                EXCLUDED_SPELL_IDS.count(m_spellInfo->Id)) {
+                triggerWeaponProcsPlus = false;
+            }
 
-            //uint32 hldmbox = ((Player*)m_caster)->GetItemCount(91666, true);
-            //if (hldmbox)
-            if (((Player*)m_caster)->getHLDM())
-            {
-                //如果有魔盒，看银行中第一个位置的装备slot:39
-                Item* hldmitem = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
-                if (hldmitem && (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR))
-                {
-                    /*
-                    if(m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex==1)//瞬发技能，就调用只能被动触发的函数
-                        ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
-                    else//非瞬发技能，调用主动使用可变被动触发的函数
-                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem);
-                    */
+            //优化写法
+                       // 定义禁止触发的图标ID集合
+            static const uint32 forbiddenIcons[] = { 15, 679, 681, 688, 2709, 118 };
 
-                    //只有超过200的伤害或治疗，才会触发,这里的伤害或治疗,如果风暴护手这种物品触发，是PVE战袍,VIP卡加成之前的，无法伤加成
-                    //火舌图腾则是PVE战袍,VIP卡加成之前的，有法伤加成
-                    //如果是奥爆是加成之后的，神圣新星伤害是加成后的，治疗是加成前的（法伤加成后的效果）
-                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_damage %f", m_damage);//测试
-                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_healing %f", m_healing);//测试
-                    //if (m_damage > 75.0f || m_healing > 75.0f)//上面屏蔽了萨满图腾和火舌武器等的特效，漏洞已经解决，这里就没必要控制伤害了,烈焰之怒伤害最高是170，不是必出，就不限制了
-                    //{
-                    /*
-                        //只有法术伤害才能调用主动使用可变被动触发的函数
-                        if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
-                        {
-                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx %f", m_damage);//测试
-                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "x2xx %f", m_healing);//测试
-                            if (m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex == 1)//瞬发技能
-                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem,true);
-                            else
-                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, false);
-                        }
-                        else
-                        {
-                            ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
-                        }
-                    */
-                    //后期法系收益比物理高，这里改为物理伤害也可以触发
-                    if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
-                    {
-                        if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
-                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
-                        else
-                            ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
-                    }
-                    else
-                    {
-                        //LOG_ERROR("xx", "melee1 {}", m_spellInfo->Id);//测试
-                        if (roll_chance_f(20.0f))
-                        {
-                            //LOG_ERROR("xx", "melee2 {}", m_spellInfo->Id);//测试
+            // 定义禁止触发的法术ID集合
+            static const uint32 forbiddenSpellIds[] = {
+                7712, 7714, 7715, 7716, 7717, 7718, 7719,  // 火焰打击系列
+                16614, 55736, 15494, 15600, 15601, 18943, 18941, 21919, 13897,
+                18817, 16414, 24585, 18084, 21170, 26693, 34107, 34696, 71838,  // 吸血技能
+                18818, 16559, 16560, 50401, 20004, 54181, 50475, 50903, 50463, 51460, 59913
+            };
+            // 检查当前技能是否在禁止触发列表中
+            bool isForbidden = false;
 
-                            if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
-                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
-                            else
-                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
-                        }
-                        else
-                        {
-                            ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
-                        }
-                    }
-                    //}
-
+            // 检查图标ID
+            for (uint32 icon : forbiddenIcons) {
+                if (m_spellInfo->SpellIconID == icon) {
+                    isForbidden = true;
+                    break;
                 }
             }
+
+            // 如果图标未命中，再检查法术ID
+            if (!isForbidden) {
+                for (uint32 id : forbiddenSpellIds) {
+                    if (m_spellInfo->Id == id) {
+                        isForbidden = true;
+                        break;
+                    }
+                }
+            }
+
+            // 命中任意禁止条件则关闭触发
+            if (isForbidden) {
+                triggerWeaponProcsPlus = false;
+            }
+
+            /*
+            if (m_spellInfo->SpellIconID == 15)//如果是拦截技能，不触发
+                triggerWeaponProcsPlus = false;
+            //魔盒第一格放的武器如果带火舌图腾类似的必出特效，会造成循环调用的死循环，报错ERROR: Spell 16344 too deep in cast chain for cast. Cast not allowed for prevent overflow stack crash.
+            //这里先禁止掉这些技能的触发
+            if (m_spellInfo->SpellIconID == 679)//如果是火舌武器技能，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->SpellIconID == 681)//如果是冰封武器技能，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->SpellIconID == 688)//如果是石化武器技能，不触发
+                triggerWeaponProcsPlus = false;
+            if ( (m_spellInfo->Id == 7712 || m_spellInfo->Id == 7714 || m_spellInfo->Id == 7715 || m_spellInfo->Id == 7716 || m_spellInfo->Id == 7717 || m_spellInfo->Id == 7718 || m_spellInfo->Id == 7719))//如果是火焰打击技能，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->Id == 16614)//如果是闪电打击，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->Id == 55736)//如果是严寒射击，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->Id == 15494)//如果是反对者铸铁之怒，不触发
+                triggerWeaponProcsPlus = false;
+            if ( (m_spellInfo->Id == 15600 || m_spellInfo->Id == 15601))//如果是正义之手，不触发
+                triggerWeaponProcsPlus = false;
+            if ((m_spellInfo->Id == 18943 || m_spellInfo->Id == 18941))//如果是两次攻击，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->Id == 21919)//如果是痛击之刃，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->SpellIconID == 2709)//如果是DK的骨疽技能，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->Id == 13897)//如果是附魔：灼热器 技能，不触发
+                triggerWeaponProcsPlus = false;
+
+            //不再禁止，改为直接改技能，增加3秒CD，避免自己调用自己死循环，同时避免魔盒乐趣减少
+            //重新禁止，看是否是造成卡顿的原因
+            if ( (m_spellInfo->Id == 18817 || m_spellInfo->Id == 16414 || m_spellInfo->Id == 24585
+                || m_spellInfo->Id == 18084 || m_spellInfo->Id == 21170 || m_spellInfo->Id == 26693
+                || m_spellInfo->Id == 34107 || m_spellInfo->Id == 34696 || m_spellInfo->Id == 71838
+                ))//如果是吸血技能，不触发
+                triggerWeaponProcsPlus = false;
+            if (m_spellInfo->Id == 18818)//如果是骨火的群攻技能，不触发
+                triggerWeaponProcsPlus = false;
+            if ( (m_spellInfo->Id == 16559 || m_spellInfo->Id == 16560))//如果是烈焰之怒技能，不触发
+                triggerWeaponProcsPlus = false;
+            //end --------------
+
+            if ( (m_spellInfo->Id == 50401))//如果是冰锋符文，不触发
+                triggerWeaponProcsPlus = false;
+            if ( (m_spellInfo->SpellIconID == 118))//如果是枯萎凋零，不触发
+                triggerWeaponProcsPlus = false;
+
+            if ( (m_spellInfo->Id == 20004))//如果是生命偷取，不触发
+                triggerWeaponProcsPlus = false;
+
+            if ( (m_spellInfo->Id == 54181))//如果是邪能共效，不触发
+                triggerWeaponProcsPlus = false;
+
+            if ( (m_spellInfo->Id == 50475))//如果是 鲜血灵气，不触发
+                triggerWeaponProcsPlus = false;
+
+            if ( (m_spellInfo->Id == 50903))//如果是 冰虫腿甲强化片，不触发
+                triggerWeaponProcsPlus = false;
+
+            if ( (m_spellInfo->Id == 50463))//如果是 浸血打击，不触发
+                triggerWeaponProcsPlus = false;
+
+            if ( (m_spellInfo->Id == 51460))//如果是骨蛆技能触发的骨蛆效果 ，不触发（宕机罪魁祸首，因为天赋，DK每个技能都会调用到这里）
+                triggerWeaponProcsPlus = false;
+
+
+            if ( (m_spellInfo->Id == 59913))//如果是迅捷的正义之手，不触发
+                triggerWeaponProcsPlus = false;
+
+            //if (m_spellInfo && m_spellInfo->SpellIconID == 247 && (m_spellInfo->SpellFamilyFlags[0] & 0x2000))//如果是盗贼的速效毒药，不触发（非100%几率，可以允许）
+            //    triggerWeaponProcsPlus = false;
+            //if (m_spellInfo && (m_spellInfo->Id == 16610 || m_spellInfo->Id == 15279))//如果是野猪之皮和尖刺水晶技能，不触发
+            //    triggerWeaponProcsPlus = false;
+            //if (m_spellInfo && m_spellInfo->SpellIconID == 555 && (m_spellInfo->SpellFamilyFlags[0] & 0x8))//如果是惩戒光环，不触发
+            //    triggerWeaponProcsPlus = false;
+            //if (m_spellInfo && m_spellInfo->SpellIconID == 53 && (m_spellInfo->SpellFamilyFlags[0] & 0x100))//荆棘术，不触发
+            //    triggerWeaponProcsPlus = false;
+
+            //ImplicitTargetA 22,18   15,16 的是AOE目标
+            //EffectAura_1 == SPELL_AURA_DAMAGE_SHIELD 15 的是被动伤害技能
+            //EffectRadiusIndex_1 这个代表AOE的半径范围 AOE技能的的共同点是这个值大于0
+
+            //LOG_ERROR("xx", "xxxx22 ");//测试
+            */
+
+
+            //不再禁止，改为直接改技能，增加3秒CD，避免自己调用自己死循环，同时避免魔盒乐趣减少
+            //重新禁止，看是否是造成卡顿的原因
+            //魔盒的设计初心是提高游戏乐趣，并不是为了A怪方便，如果A怪导致了服务器出问题，只能禁掉AOE或反弹伤害的魔盒触发
+            if (triggerWeaponProcsPlus)
+            {
+                if (m_spellInfo->Effects[0].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD || m_spellInfo->Effects[1].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD || m_spellInfo->Effects[2].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD
+                    || m_spellInfo->Effects[0].HasRadius() || m_spellInfo->Effects[1].HasRadius() || m_spellInfo->Effects[2].HasRadius()
+                    )
+                {
+                    //LOG_ERROR("xx", "xxxx ");//测试
+                    triggerWeaponProcsPlus = false;
+                }
+            }
+
+            //end-----------------
+
+            //for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+            //{
+            //    //如果该技能是反弹伤害类型的，不触发魔盒第一格
+            //    if (m_spellInfo->Effects[i].ApplyAuraName == SPELL_AURA_DAMAGE_SHIELD)
+            //    {
+            //        triggerWeaponProcsPlus = false;
+            //    }
+            //    //如果该技能是AOE类型的，不触发魔盒第一格
+            //    if (m_spellInfo->Effects[i].HasRadius())
+            //    {
+            //        triggerWeaponProcsPlus = false;
+            //    }
+            //}
+
+
         }
 
-    }
-}
 
-
-//看玩家是否装备了远古能量徽记
-if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && !m_caster->ToPlayer()->GetSession()->IsBot())//如果技能造成了伤害或治疗，才触发
-{
-    //如果玩家拥有远古能量徽记
-    //uint32 yuanguhuijinum = ((Player*)m_caster)->GetItemCount(91150, false) + ((Player*)m_caster)->GetItemCount(91151, false) + ((Player*)m_caster)->GetItemCount(91152, false) +
-    //    ((Player*)m_caster)->GetItemCount(91153, false) + ((Player*)m_caster)->GetItemCount(91154, false) + ((Player*)m_caster)->GetItemCount(91155, false) +
-    //    ((Player*)m_caster)->GetItemCount(91156, false) + ((Player*)m_caster)->GetItemCount(91157, false) + ((Player*)m_caster)->GetItemCount(91158, false) + ((Player*)m_caster)->GetItemCount(91159, false);
-    //if (yuanguhuijinum > 0)
-    if (((Player*)m_caster)->getYGNL())
-    {
-        Item* yuanguhuiji1 = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 12);
-        Item* yuanguhuiji2 = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 13);
-
-        //看玩家是否装备职业对应的远古能量徽记
-        float chance = 15.0f;
-        if (((Player*)m_caster)->GetClass())
+        if (triggerWeaponProcsPlus)
         {
-            switch (((Player*)m_caster)->GetClass())
+
+            if (m_caster->IsPlayer() && (m_damage || m_healing) && unitTarget->IsAlive() && unitTarget != m_caster)//如果技能造成了伤害或治疗，才触发
             {
-            case CLASS_PRIEST:
-                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91154 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91154)
+                if (m_spellInfo)
                 {
-                    if (m_spellInfo && (m_spellInfo->SpellIconID == 241 || m_spellInfo->SpellIconID == 540))//如果是强效治疗术或治疗祷言
-                    {
-                        //几率触发心灵专注
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(14751, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 14751, true);
-                            ((Player*)m_caster)->SendClearCooldown(14751, ((Player*)m_caster));
-                        }
-                        //几率触发无尽祝福
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(34210, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 34210, true);
-                            ((Player*)m_caster)->SendClearCooldown(34210, ((Player*)m_caster));
-                        }
+                    //LOG_ERROR("xx", "hldmstart {}", m_spellInfo->Id);//测试，调试看是什么技能触发了bug
 
+                    //uint32 hldmbox = ((Player*)m_caster)->GetItemCount(91666, true);
+                    //if (hldmbox)
+                    if (((Player*)m_caster)->getHLDM())
+                    {
+                        //如果有魔盒，看银行中第一个位置的装备slot:39
+                        Item* hldmitem = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 39);
+                        if (hldmitem && (hldmitem->GetTemplate()->Class == ITEM_CLASS_WEAPON || hldmitem->GetTemplate()->Class == ITEM_CLASS_ARMOR))
+                        {
+                            /*
+                            if(m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex==1)//瞬发技能，就调用只能被动触发的函数
+                                ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                            else//非瞬发技能，调用主动使用可变被动触发的函数
+                                ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem);
+                            */
 
-                    }
-                }
-                break;
-            case CLASS_PALADIN:
-                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91157 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91157)
-                {
-                    if (m_spellInfo && (m_spellInfo->SpellIconID == 70))//如果是圣光术
-                    {
-                        //几率触发神恩术
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(20216, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 20216, true);
-                            ((Player*)m_caster)->SendClearCooldown(20216, ((Player*)m_caster));
-                        }
-                    }
-                }
-                break;
-            case CLASS_SHAMAN:
-                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91156 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91156)
-                {
-                    if (m_spellInfo && (m_spellInfo->SpellIconID == 13 || m_spellInfo->SpellIconID == 963 || m_spellInfo->SpellIconID == 62 || m_spellInfo->SpellIconID == 165))//如果是治疗波或治疗链，闪电箭，闪电链
-                    {
-                        //几率触发自然迅捷16188
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(16188, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 16188, true);
-                            ((Player*)m_caster)->SendClearCooldown(16188, ((Player*)m_caster));
-                        }
-                    }
-                }
-                break;
-            case CLASS_MAGE:
-                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91153 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91153)
-                {
-                    if (m_spellInfo && (m_spellInfo->SpellIconID == 188 || m_spellInfo->SpellIconID == 185 || m_spellInfo->SpellIconID == 2294))//如果是寒冰箭或火球术或奥术冲击
-                    {
-                        //几率触发气定神闲
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(12043, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 12043, true);
-                            ((Player*)m_caster)->SendClearCooldown(12043, ((Player*)m_caster));
-                        }
-                    }
-                }
-                break;
-            case CLASS_WARLOCK:
-                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91152 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91152)
-                {
-                    if (m_spellInfo && (m_spellInfo->SpellIconID == 213))//如果是暗影箭
-                    {
-                        //几率触发暗影冥思 17941
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(17941, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 17941, true);
-                            ((Player*)m_caster)->SendClearCooldown(17941, ((Player*)m_caster));
-                        }
-                    }
-                }
-                break;
-            case CLASS_DRUID:
-                if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91155 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91155)
-                {
-                    if (m_spellInfo && (m_spellInfo->SpellIconID == 962 || m_spellInfo->SpellIconID == 197 || m_spellInfo->SpellIconID == 1485 || m_spellInfo->SpellIconID == 263))//如果是治疗之触\愈合\星火术\愤怒
-                    {
-                        //几率触发自然迅捷17116
-                        if (roll_chance_f(chance))
-                        {
-                            ((Player*)m_caster)->SendClearCooldown(17116, ((Player*)m_caster));
-                            ((Player*)m_caster)->CastSpell(((Player*)m_caster), 17116, true);
-                            ((Player*)m_caster)->SendClearCooldown(17116, ((Player*)m_caster));
-                        }
-                    }
-                }
-                break;
-            case CLASS_WARRIOR:
-            case CLASS_ROGUE:
-            case CLASS_HUNTER:
-                break;
+                            //只有超过200的伤害或治疗，才会触发,这里的伤害或治疗,如果风暴护手这种物品触发，是PVE战袍,VIP卡加成之前的，无法伤加成
+                            //火舌图腾则是PVE战袍,VIP卡加成之前的，有法伤加成
+                            //如果是奥爆是加成之后的，神圣新星伤害是加成后的，治疗是加成前的（法伤加成后的效果）
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_damage %f", m_damage);//测试
+                            //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "m_healing %f", m_healing);//测试
+                            //if (m_damage > 75.0f || m_healing > 75.0f)//上面屏蔽了萨满图腾和火舌武器等的特效，漏洞已经解决，这里就没必要控制伤害了,烈焰之怒伤害最高是170，不是必出，就不限制了
+                            //{
+                            /*
+                                //只有法术伤害才能调用主动使用可变被动触发的函数
+                                if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
+                                {
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "xxx %f", m_damage);//测试
+                                    //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "x2xx %f", m_healing);//测试
+                                    if (m_spellInfo->CastingTimeIndex && m_spellInfo->CastingTimeIndex == 1)//瞬发技能
+                                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem,true);
+                                    else
+                                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, false);
+                                }
+                                else
+                                {
+                                    ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                                }
+                            */
+                            //后期法系收益比物理高，这里改为物理伤害也可以触发
+                            if (m_spellSchoolMask && GetFirstSchoolInMask(m_spellSchoolMask) != SPELL_SCHOOL_NORMAL)
+                            {
+                                if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
+                                    ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
+                                else
+                                    ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
+                            }
+                            else
+                            {
+                                //LOG_ERROR("xx", "melee1 {}", m_spellInfo->Id);//测试
+                                if (roll_chance_f(20.0f))
+                                {
+                                    //LOG_ERROR("xx", "melee2 {}", m_spellInfo->Id);//测试
 
+                                    if (m_spellInfo->CastTimeEntry && m_spellInfo->CastTimeEntry->CastTime == 1)//瞬发技能
+                                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, true);
+                                    else
+                                        ((Player*)m_caster)->CastItemCombatSpellPlusByHLDM(unitTarget, hldmitem, m_spellInfo->Id, false);
+                                }
+                                else
+                                {
+                                    ((Player*)m_caster)->CastItemCombatSpellByHLDM(unitTarget, hldmitem);
+                                }
+                            }
+                            //}
+
+                        }
+                    }
+                }
 
             }
         }
 
-    }
 
-}
+        //看玩家是否装备了远古能量徽记
+        if ( (m_damage || m_healing) && unitTarget->IsAlive() )//如果技能造成了伤害或治疗，才触发
+        {
+            //如果玩家拥有远古能量徽记
+            //uint32 yuanguhuijinum = ((Player*)m_caster)->GetItemCount(91150, false) + ((Player*)m_caster)->GetItemCount(91151, false) + ((Player*)m_caster)->GetItemCount(91152, false) +
+            //    ((Player*)m_caster)->GetItemCount(91153, false) + ((Player*)m_caster)->GetItemCount(91154, false) + ((Player*)m_caster)->GetItemCount(91155, false) +
+            //    ((Player*)m_caster)->GetItemCount(91156, false) + ((Player*)m_caster)->GetItemCount(91157, false) + ((Player*)m_caster)->GetItemCount(91158, false) + ((Player*)m_caster)->GetItemCount(91159, false);
+            //if (yuanguhuijinum > 0)
+            if (((Player*)m_caster)->getYGNL())
+            {
+                Item* yuanguhuiji1 = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 12);
+                Item* yuanguhuiji2 = ((Player*)m_caster)->GetItemByPos(INVENTORY_SLOT_BAG_0, 13);
+
+                //看玩家是否装备职业对应的远古能量徽记
+                float chance = 15.0f;
+                if (((Player*)m_caster)->GetClass())
+                {
+                    switch (((Player*)m_caster)->GetClass())
+                    {
+                    case CLASS_PRIEST:
+                        if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91154 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91154)
+                        {
+                            if (m_spellInfo && (m_spellInfo->SpellIconID == 241 || m_spellInfo->SpellIconID == 540))//如果是强效治疗术或治疗祷言
+                            {
+                                //几率触发心灵专注
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(14751, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 14751, true);
+                                    ((Player*)m_caster)->SendClearCooldown(14751, ((Player*)m_caster));
+                                }
+                                //几率触发无尽祝福
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(34210, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 34210, true);
+                                    ((Player*)m_caster)->SendClearCooldown(34210, ((Player*)m_caster));
+                                }
+
+
+                            }
+                        }
+                        break;
+                    case CLASS_PALADIN:
+                        if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91157 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91157)
+                        {
+                            if (m_spellInfo && (m_spellInfo->SpellIconID == 70))//如果是圣光术
+                            {
+                                //几率触发神恩术
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(20216, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 20216, true);
+                                    ((Player*)m_caster)->SendClearCooldown(20216, ((Player*)m_caster));
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_SHAMAN:
+                        if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91156 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91156)
+                        {
+                            if (m_spellInfo && (m_spellInfo->SpellIconID == 13 || m_spellInfo->SpellIconID == 963 || m_spellInfo->SpellIconID == 62 || m_spellInfo->SpellIconID == 165))//如果是治疗波或治疗链，闪电箭，闪电链
+                            {
+                                //几率触发自然迅捷16188
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(16188, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 16188, true);
+                                    ((Player*)m_caster)->SendClearCooldown(16188, ((Player*)m_caster));
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_MAGE:
+                        if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91153 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91153)
+                        {
+                            if (m_spellInfo && (m_spellInfo->SpellIconID == 188 || m_spellInfo->SpellIconID == 185 || m_spellInfo->SpellIconID == 2294))//如果是寒冰箭或火球术或奥术冲击
+                            {
+                                //几率触发气定神闲
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(12043, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 12043, true);
+                                    ((Player*)m_caster)->SendClearCooldown(12043, ((Player*)m_caster));
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_WARLOCK:
+                        if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91152 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91152)
+                        {
+                            if (m_spellInfo && (m_spellInfo->SpellIconID == 213))//如果是暗影箭
+                            {
+                                //几率触发暗影冥思 17941
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(17941, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 17941, true);
+                                    ((Player*)m_caster)->SendClearCooldown(17941, ((Player*)m_caster));
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_DRUID:
+                        if (yuanguhuiji1 && yuanguhuiji1->GetEntry() == 91155 || yuanguhuiji2 && yuanguhuiji2->GetEntry() == 91155)
+                        {
+                            if (m_spellInfo && (m_spellInfo->SpellIconID == 962 || m_spellInfo->SpellIconID == 197 || m_spellInfo->SpellIconID == 1485 || m_spellInfo->SpellIconID == 263))//如果是治疗之触\愈合\星火术\愤怒
+                            {
+                                //几率触发自然迅捷17116
+                                if (roll_chance_f(chance))
+                                {
+                                    ((Player*)m_caster)->SendClearCooldown(17116, ((Player*)m_caster));
+                                    ((Player*)m_caster)->CastSpell(((Player*)m_caster), 17116, true);
+                                    ((Player*)m_caster)->SendClearCooldown(17116, ((Player*)m_caster));
+                                }
+                            }
+                        }
+                        break;
+                    case CLASS_WARRIOR:
+                    case CLASS_ROGUE:
+                    case CLASS_HUNTER:
+                        break;
+
+
+                    }
+                }
+
+            }
+
+        }
+    }
+//end ---------
 
 
     if (m_caster)
