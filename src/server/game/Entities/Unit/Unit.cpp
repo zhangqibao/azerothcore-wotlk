@@ -4229,7 +4229,8 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* victim, SpellInfo const* spellInfo
             }
             else
             {
-                levelDiff = 3 + (levelDiff - 3) * 0.2;//进一步提高法术命中  60打80，45%能命中
+                levelDiff = 3 + (levelDiff - 3) * 0.15;//进一步提高法术命中 ，相当于加强法系职业
+                //levelDiff = 3 + (levelDiff - 3) * 0.2;//进一步提高法术命中  60打80，45%能命中
                 //levelDiff = 3 + (levelDiff-3) * 0.25;//(levelDiff-3) 的范围是 1 到 17,   --- 60打70，63%能命中 --- 60打80，36%能命中
                 //levelDiff = 3 + (levelDiff-3) * 0.3;// --- 60打70，60%能命中 --- 60打80，27%能命中
                 //levelDiff = 3 + (levelDiff-3) * 0.35;// --- 60打70，56%能命中 --- 60打80，17.5%能命中
@@ -16835,7 +16836,7 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
             //	return false;
 
             //PVP保护方式2：一方为专家模式，禁止PVP
-            if (playerAffectingAttacker->GetLevel() < 61 || playerAffectingTarget->GetLevel() < 61)
+            if (playerAffectingAttacker->GetLevel() < 81 || playerAffectingTarget->GetLevel() < 81)
             {
                 
                 //任何一方为硬核模式或专家模式，禁止PVP（硬核模式转生就是为了PVP的，这个不可采用）
@@ -16845,8 +16846,8 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
                 //    || (((Player*)playerAffectingAttacker)->GetSession()->GetPlayer()->GetExtraFlags() & PLAYER_EXTRA_YH_MODEL_PLUS3))
                     
 
-                //处于保留区域area==0或者GM岛 area== 876，禁止PVP
-                if (playerAffectingAttacker->GetAreaId() == 0 || playerAffectingAttacker->GetAreaId() == 876)
+                //处于保留区域area==0或者GM岛 area== 876，禁止PVP，35和1577是荆棘谷
+                if (playerAffectingAttacker->GetAreaId() == 0 || playerAffectingAttacker->GetAreaId() == 876 || playerAffectingAttacker->GetAreaId() == 35 || playerAffectingAttacker->GetAreaId() == 1577)
                 {
                     return false;
                 }

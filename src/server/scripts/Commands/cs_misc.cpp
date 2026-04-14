@@ -1951,7 +1951,7 @@ public:
 
             //判断玩家当前的转生石和远古转生数量是否符合要求
             uint16 _zsstoneall = player->GetItemCount(70630, true);
-            uint16 _ygzsstone = player->GetItemCount(70629, false);
+            uint16 _ygzsstone = player->GetItemCount(70629, true);
             //LOG_ERROR("xx", "num {}  ", num);//测试
             //LOG_ERROR("xx", "_zsstoneall {}  ", _zsstoneall);//测试
             //LOG_ERROR("xx", "_ygzsstone {}  ", _ygzsstone);//测试
@@ -2112,7 +2112,7 @@ public:
                 }
                 break;
             case 11:
-                if (_ygzsstone != 0)
+                if (_ygzsstone != 0 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2126,7 +2126,7 @@ public:
                 }
                 break;
             case 12:
-                if (_ygzsstone != 1)
+                if (_ygzsstone != 1 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2140,7 +2140,7 @@ public:
                 }
                 break;
             case 13:
-                if (_ygzsstone != 2)
+                if (_ygzsstone != 2 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2154,7 +2154,7 @@ public:
                 }
                 break;
             case 14:
-                if (_ygzsstone != 3)
+                if (_ygzsstone != 3 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2168,7 +2168,7 @@ public:
                 }
                 break;
             case 15:
-                if (_ygzsstone != 4)
+                if (_ygzsstone != 4 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2182,7 +2182,7 @@ public:
                 }
                 break;
             case 16:
-                if (_ygzsstone != 5)
+                if (_ygzsstone != 5 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2196,7 +2196,7 @@ public:
                 }
                 break;
             case 17:
-                if (_ygzsstone != 6)
+                if (_ygzsstone != 6 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2210,7 +2210,7 @@ public:
                 }
                 break;
             case 18:
-                if (_ygzsstone != 7)
+                if (_ygzsstone != 7 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2224,7 +2224,7 @@ public:
                 }
                 break;
             case 19:
-                if (_ygzsstone != 8)
+                if (_ygzsstone != 8 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷
@@ -2238,7 +2238,7 @@ public:
                 }
                 break;
             case 20:
-                if (_ygzsstone != 9)
+                if (_ygzsstone != 9 || _zsstoneall != 10)
                 {
                     handler->PSendSysMessage(21739);
                     //补转生卷

@@ -911,10 +911,18 @@ public:
     {
         if (Player* player = handler->GetSession()->GetPlayer())
         {
+            /*
+            //香草地球的
             if (player->TeamIdForRace(player->GetRace()) == TEAM_ALLIANCE)
                 player->m_taxi.LoadTaxiMask("3456411898 2148078928 49991 0 0 0 0 0 ");
             else
                 player->m_taxi.LoadTaxiMask("830150144 315656864 56504 0 0 0 0 0 ");
+            */
+            //香草+TBC的
+            if (player->TeamIdForRace(player->GetRace()) == TEAM_ALLIANCE)
+                player->m_taxi.LoadTaxiMask("3456411898 2148078928 805356359 2605711384 3357543425 262184 1052676 0 0 67108864 0 1073741824 0 0 ");
+            else
+                player->m_taxi.LoadTaxiMask("830150144 315656864 449720 3869245476 3227524098 262180 1052672 0 0 67108864 0 3221225472 0 0 ");
 
             handler->PSendSysMessage("Fly paths unlocked for %s.", player->GetName());
             return true;
